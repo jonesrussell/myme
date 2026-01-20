@@ -71,6 +71,14 @@ target_link_libraries(myme-qt PRIVATE
 if(WIN32)
     target_link_libraries(myme-qt PRIVATE
         "${RUST_LIB_DIR}/myme_ui.lib"
+        # Windows system libraries required by Rust dependencies
+        ntdll
+        Shlwapi
+        ws2_32
+        userenv
+        bcrypt
+        secur32
+        crypt32
     )
 else()
     target_link_libraries(myme-qt PRIVATE
