@@ -81,7 +81,7 @@ impl SecureStorage {
         let entry = Entry::new("myme", service)
             .context("Failed to create keyring entry")?;
 
-        entry.delete_password()
+        entry.delete_credential()
             .context("Failed to delete token from keyring")?;
 
         tracing::info!("Deleted token for service: {}", service);

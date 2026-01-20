@@ -12,6 +12,7 @@ anyhow.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 url.workspace = true
+reqwest.workspace = true
 
 # GitHub API
 octocrab = "0.41"

@@ -1,7 +1,4 @@
-use anyhow::Result;
-
 use crate::oauth::{OAuth2Config, OAuth2Provider};
-use crate::storage::TokenSet;
 
 /// GitHub OAuth2 authentication provider
 pub struct GitHubAuth {
@@ -38,7 +35,7 @@ impl GitHubAuth {
     /// * `client_secret` - GitHub OAuth App client secret
     /// * `scopes` - Custom scopes to request
     pub fn with_scopes(client_id: String, client_secret: String, scopes: Vec<String>) -> Self {
-        let mut config = OAuth2Config {
+        let config = OAuth2Config {
             client_id,
             client_secret,
             auth_url: "https://github.com/login/oauth/authorize".to_string(),

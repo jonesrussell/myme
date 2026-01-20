@@ -72,7 +72,7 @@ impl qobject::NoteModel {
         let client = match &self.as_ref().rust().client {
             Some(c) => c.clone(),
             None => {
-                self.as_mut().set_error_message(&QString::from("Not initialized"));
+                self.as_mut().set_error_message(QString::from("Not initialized"));
                 return;
             }
         };
@@ -83,7 +83,7 @@ impl qobject::NoteModel {
         };
 
         self.as_mut().set_loading(true);
-        self.as_mut().set_error_message(&QString::from(""));
+        self.as_mut().set_error_message(QString::from(""));
 
         runtime.spawn(async move {
             match client.list_todos().await {
@@ -101,7 +101,7 @@ impl qobject::NoteModel {
         let client = match &self.as_ref().rust().client {
             Some(c) => c.clone(),
             None => {
-                self.as_mut().set_error_message(&QString::from("Not initialized"));
+                self.as_mut().set_error_message(QString::from("Not initialized"));
                 return;
             }
         };
@@ -128,7 +128,7 @@ impl qobject::NoteModel {
         });
     }
 
-    pub fn toggle_done(mut self: Pin<&mut Self>, index: i32) {
+    pub fn toggle_done(self: Pin<&mut Self>, index: i32) {
         let binding = self.as_ref();
         let notes = &binding.rust().notes;
         if index < 0 || index >= notes.len() as i32 {
@@ -165,7 +165,7 @@ impl qobject::NoteModel {
         });
     }
 
-    pub fn delete_note(mut self: Pin<&mut Self>, index: i32) {
+    pub fn delete_note(self: Pin<&mut Self>, index: i32) {
         let binding = self.as_ref();
         let notes = &binding.rust().notes;
         if index < 0 || index >= notes.len() as i32 {

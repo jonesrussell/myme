@@ -19,7 +19,9 @@
       "Bash(export RUST_BACKTRACE=1)",
       "Bash(cargo expand:*)",
       "Bash(cargo install:*)",
-      "Bash(env)"
+      "Bash(env)",
+      "Bash(powershell:*)",
+      "Bash(cargo tree:*)"
     ]
   }
 }

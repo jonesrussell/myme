@@ -1,14 +1,15 @@
+// Allow async fn in traits - we use these internally and Send bounds are acceptable
+#![allow(async_fn_in_trait)]
+
 use anyhow::{Context, Result};
 use oauth2::{
     AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge,
     RedirectUrl, Scope, TokenResponse, TokenUrl,
 };
-use oauth2::basic::{BasicClient, BasicTokenType};
+use oauth2::basic::BasicClient;
 use oauth2::reqwest::async_http_client;
-use oauth2::{EmptyExtraTokenFields, StandardTokenResponse};
 use std::sync::Arc;
 use tokio::sync::oneshot;
-use url::Url;
 use warp::Filter;
 
 use crate::storage::{SecureStorage, TokenSet};
@@ -172,7 +173,7 @@ pub trait OAuth2Provider: Send + Sync {
             .context("Failed to receive OAuth callback")?;
 
         // Validate CSRF token
-        if state != csrf_token.secret() {
+        if state != *csrf_token.secret() {
             anyhow::bail!("CSRF token mismatch");
         }
 

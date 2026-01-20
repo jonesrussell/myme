@@ -16,6 +16,8 @@ cxx-qt-lib = { workspace = true, features = ["qt_full"] }
 
 # Internal crates
 myme-services = { path = "../myme-services" }
+myme-auth = { path = "../myme-auth" }
+myme-integrations = { path = "../myme-integrations" }
 
 [build-dependencies]
 cxx-qt-build = { version = "0.8", features = ["link_qt_object_files"] }
