@@ -1,97 +1,102 @@
 import QtQuick
-import QtQuick.Controls as Controls
+import QtQuick.Controls
 import QtQuick.Layouts
-import org.kde.kirigami as Kirigami
-import com.myme 1.0
 
-Kirigami.ApplicationWindow {
+ApplicationWindow {
     id: root
-
     width: 1200
     height: 800
+    visible: true
     title: "MyMe - Personal Productivity Hub"
 
-    globalDrawer: Kirigami.GlobalDrawer {
-        title: "MyMe"
-        titleIcon: "applications-utilities"
-
-        actions: [
-            Kirigami.Action {
-                text: "Notes"
-                icon.name: "view-task"
-                onTriggered: {
-                    pageStack.clear()
-                    pageStack.push(Qt.resolvedUrl("pages/NotePage.qml"))
-                }
-            },
-            Kirigami.Action {
-                text: "Repos"
-                icon.name: "folder-git"
-                enabled: true
-                onTriggered: {
-                    pageStack.clear()
-                    pageStack.push(Qt.resolvedUrl("pages/RepoPage.qml"))
-                }
-            },
-            Kirigami.Action {
-                text: "Email"
-                icon.name: "mail-message"
-                enabled: false
-                onTriggered: {
-                    // Will be implemented in Phase 3
-                }
-            },
-            Kirigami.Action {
-                text: "Calendar"
-                icon.name: "view-calendar"
-                enabled: false
-                onTriggered: {
-                    // Will be implemented in Phase 3
-                }
-            },
-            Kirigami.Action {
-                text: "New Project"
-                icon.name: "document-new"
-                enabled: false
-                onTriggered: {
-                    // Will be implemented in Phase 4
-                }
-            }
-        ]
-    }
-
-    pageStack.initialPage: Kirigami.Page {
-        title: "Welcome"
+    // Simple drawer menu
+    Drawer {
+        id: drawer
+        width: 250
+        height: root.height
 
         ColumnLayout {
-            anchors.centerIn: parent
-            spacing: Kirigami.Units.largeSpacing
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 5
 
-            Kirigami.Icon {
-                source: "applications-utilities"
-                Layout.preferredWidth: Kirigami.Units.iconSizes.enormous
-                Layout.preferredHeight: Kirigami.Units.iconSizes.enormous
-                Layout.alignment: Qt.AlignHCenter
-            }
-
-            Kirigami.Heading {
+            Label {
                 text: "MyMe"
-                level: 1
-                Layout.alignment: Qt.AlignHCenter
+                font.pixelSize: 24
+                font.bold: true
+                Layout.fillWidth: true
             }
 
-            Controls.Label {
-                text: "Your Personal Productivity & Dev Hub"
-                Layout.alignment: Qt.AlignHCenter
-            }
-
-            Controls.Button {
-                text: "View Notes"
-                icon.name: "view-task"
-                Layout.alignment: Qt.AlignHCenter
+            Button {
+                text: "Notes"
+                Layout.fillWidth: true
                 onClicked: {
-                    pageStack.clear()
-                    pageStack.push(Qt.resolvedUrl("pages/NotePage.qml"))
+                    stackView.replace("pages/NotePage.qml")
+                    drawer.close()
+                }
+            }
+
+            Button {
+                text: "Repos"
+                Layout.fillWidth: true
+                enabled: false
+                onClicked: {
+                    stackView.replace("pages/RepoPage.qml")
+                    drawer.close()
+                }
+            }
+
+            Item { Layout.fillHeight: true }
+        }
+    }
+
+    header: ToolBar {
+        RowLayout {
+            anchors.fill: parent
+
+            ToolButton {
+                text: "☰"
+                onClicked: drawer.open()
+            }
+
+            Label {
+                text: "MyMe"
+                elide: Label.ElideRight
+                horizontalAlignment: Qt.AlignHCenter
+                verticalAlignment: Qt.AlignVCenter
+                Layout.fillWidth: true
+            }
+        }
+    }
+
+    StackView {
+        id: stackView
+        anchors.fill: parent
+
+        initialItem: Page {
+            title: "Welcome"
+
+            ColumnLayout {
+                anchors.centerIn: parent
+                spacing: 20
+
+                Label {
+                    text: "MyMe"
+                    font.pixelSize: 48
+                    font.bold: true
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
+                Label {
+                    text: "Your Personal Productivity & Dev Hub"
+                    font.pixelSize: 16
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
+                Button {
+                    text: "View Notes"
+                    Layout.alignment: Qt.AlignHCenter
+                    onClicked: stackView.replace("pages/NotePage.qml")
                 }
             }
         }

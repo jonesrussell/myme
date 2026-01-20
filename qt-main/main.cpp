@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
     // Set icon theme (for Kirigami icons)
     QIcon::setThemeName("breeze");
 
-    // Initialize cxx-qt types
+    // Initialize cxx-qt types (this also registers QML types)
     cxx_qt_init_crate_myme_ui();
 
     QQmlApplicationEngine engine;
