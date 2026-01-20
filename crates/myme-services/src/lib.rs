@@ -1,3 +1,3 @@
 pub mod todo;
 
-pub use todo::{Todo, TodoClient, TodoCreateRequest, TodoStatus, TodoUpdateRequest};
+pub use todo::{Todo, TodoClient, TodoCreateRequest, TodoUpdateRequest};

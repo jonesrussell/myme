@@ -1,7 +1,7 @@
 use std::pin::Pin;
 use std::sync::Arc;
 
-use myme_services::{Todo, TodoClient, TodoCreateRequest, TodoStatus};
+use myme_services::{Todo, TodoClient, TodoCreateRequest, TodoUpdateRequest};
 
 #[cxx_qt::bridge(cxx_file_stem = "todo_model")]
 pub mod ffi {
@@ -24,15 +24,15 @@ pub mod ffi {
         #[qinvokable]
         fn fetch_todos(self: Pin<&mut TodoModel>);
 
-        /// Add a new todo
+        /// Add a new note/todo
         #[qinvokable]
-        fn add_todo(self: Pin<&mut TodoModel>, title: QString, description: QString);
+        fn add_todo(self: Pin<&mut TodoModel>, content: QString);
 
-        /// Mark a todo as completed
+        /// Mark a note as done/not done
         #[qinvokable]
-        fn complete_todo(self: Pin<&mut TodoModel>, index: i32);
+        fn toggle_done(self: Pin<&mut TodoModel>, index: i32);
 
-        /// Delete a todo
+        /// Delete a note
         #[qinvokable]
         fn delete_todo(self: Pin<&mut TodoModel>, index: i32);
 
@@ -40,21 +40,21 @@ pub mod ffi {
         #[qinvokable]
         fn row_count(self: &TodoModel) -> i32;
 
-        /// Get todo title at index
+        /// Get note content at index
         #[qinvokable]
-        fn get_title(self: &TodoModel, index: i32) -> QString;
+        fn get_content(self: &TodoModel, index: i32) -> QString;
 
-        /// Get todo description at index
+        /// Get done status at index
         #[qinvokable]
-        fn get_description(self: &TodoModel, index: i32) -> QString;
+        fn get_done(self: &TodoModel, index: i32) -> bool;
 
-        /// Get todo status at index (0=pending, 1=in_progress, 2=completed)
+        /// Get note ID at index (UUID string)
         #[qinvokable]
-        fn get_status(self: &TodoModel, index: i32) -> i32;
+        fn get_id(self: &TodoModel, index: i32) -> QString;
 
-        /// Get todo ID at index
+        /// Get created_at timestamp
         #[qinvokable]
-        fn get_id(self: &TodoModel, index: i32) -> u64;
+        fn get_created_at(self: &TodoModel, index: i32) -> QString;
 
         /// Signal emitted when the todo list changes
         #[qsignal]
@@ -108,21 +108,21 @@ impl ffi::TodoModel {
             async move {
                 match client.list_todos().await {
                     Ok(todos) => {
-                        tracing::info!("Successfully fetched {} todos", todos.len());
+                        tracing::info!("Successfully fetched {} notes", todos.len());
                         // Note: In a real implementation, we'd need to send these
                         // back to the Qt thread using a channel or signal
                         // For now, this demonstrates the pattern
                     }
                     Err(e) => {
-                        tracing::error!("Failed to fetch todos: {}", e);
+                        tracing::error!("Failed to fetch notes: {}", e);
                     }
                 }
             }
         });
     }
 
-    /// Add a new todo
-    pub fn add_todo(mut self: Pin<&mut Self>, title: QString, description: QString) {
+    /// Add a new note
+    pub fn add_todo(mut self: Pin<&mut Self>, content: QString) {
         let client = match &self.as_ref().rust().client {
             Some(c) => c.clone(),
             None => {
@@ -136,44 +136,35 @@ impl ffi::TodoModel {
             None => return,
         };
 
-        let title_str = title.to_string();
-        let desc_str = description.to_string();
-        let desc = if desc_str.is_empty() {
-            None
-        } else {
-            Some(desc_str)
-        };
+        let content_str = content.to_string();
 
         self.as_mut().set_loading(true);
 
         runtime.spawn(async move {
             let request = TodoCreateRequest {
-                title: title_str,
-                description: desc,
+                content: content_str,
             };
 
             match client.create_todo(request).await {
                 Ok(todo) => {
-                    tracing::info!("Created todo: {:?}", todo.id);
+                    tracing::info!("Created note: {}", todo.id);
                 }
                 Err(e) => {
-                    tracing::error!("Failed to create todo: {}", e);
+                    tracing::error!("Failed to create note: {}", e);
                 }
             }
         });
     }
 
-    /// Mark a todo as completed
-    pub fn complete_todo(mut self: Pin<&mut Self>, index: i32) {
+    /// Toggle the done status of a note
+    pub fn toggle_done(mut self: Pin<&mut Self>, index: i32) {
         let todos = &self.as_ref().rust().todos;
         if index < 0 || index >= todos.len() as i32 {
             return;
         }
 
-        let todo_id = match todos[index as usize].id {
-            Some(id) => id,
-            None => return,
-        };
+        let note_id = todos[index as usize].id.clone();
+        let current_done = todos[index as usize].done;
 
         let client = match &self.as_ref().rust().client {
             Some(c) => c.clone(),
@@ -186,35 +177,30 @@ impl ffi::TodoModel {
         };
 
         runtime.spawn(async move {
-            use myme_services::TodoUpdateRequest;
             let request = TodoUpdateRequest {
-                title: None,
-                description: None,
-                status: Some(TodoStatus::Completed),
+                content: None,
+                done: Some(!current_done),
             };
 
-            match client.update_todo(todo_id, request).await {
+            match client.update_todo(&note_id, request).await {
                 Ok(_) => {
-                    tracing::info!("Marked todo {} as completed", todo_id);
+                    tracing::info!("Toggled note {} done status to {}", note_id, !current_done);
                 }
                 Err(e) => {
-                    tracing::error!("Failed to update todo: {}", e);
+                    tracing::error!("Failed to update note: {}", e);
                 }
             }
         });
     }
 
-    /// Delete a todo
+    /// Delete a note
     pub fn delete_todo(mut self: Pin<&mut Self>, index: i32) {
         let todos = &self.as_ref().rust().todos;
         if index < 0 || index >= todos.len() as i32 {
             return;
         }
 
-        let todo_id = match todos[index as usize].id {
-            Some(id) => id,
-            None => return,
-        };
+        let note_id = todos[index as usize].id.clone();
 
         let client = match &self.as_ref().rust().client {
             Some(c) => c.clone(),
@@ -227,12 +213,12 @@ impl ffi::TodoModel {
         };
 
         runtime.spawn(async move {
-            match client.delete_todo(todo_id).await {
+            match client.delete_todo(&note_id).await {
                 Ok(_) => {
-                    tracing::info!("Deleted todo {}", todo_id);
+                    tracing::info!("Deleted note {}", note_id);
                 }
                 Err(e) => {
-                    tracing::error!("Failed to delete todo: {}", e);
+                    tracing::error!("Failed to delete note: {}", e);
                 }
             }
         });
@@ -243,43 +229,39 @@ impl ffi::TodoModel {
         self.rust().todos.len() as i32
     }
 
-    /// Get todo title at index
-    pub fn get_title(&self, index: i32) -> QString {
+    /// Get note content at index
+    pub fn get_content(&self, index: i32) -> QString {
         let todos = &self.rust().todos;
         if index < 0 || index >= todos.len() as i32 {
             return QString::from("");
         }
-        QString::from(&todos[index as usize].title)
+        QString::from(&todos[index as usize].content)
     }
 
-    /// Get todo description at index
-    pub fn get_description(&self, index: i32) -> QString {
+    /// Get done status at index
+    pub fn get_done(&self, index: i32) -> bool {
+        let todos = &self.rust().todos;
+        if index < 0 || index >= todos.len() as i32 {
+            return false;
+        }
+        todos[index as usize].done
+    }
+
+    /// Get note ID at index
+    pub fn get_id(&self, index: i32) -> QString {
         let todos = &self.rust().todos;
         if index < 0 || index >= todos.len() as i32 {
             return QString::from("");
         }
-        QString::from(todos[index as usize].description.as_deref().unwrap_or(""))
+        QString::from(&todos[index as usize].id)
     }
 
-    /// Get todo status at index
-    pub fn get_status(&self, index: i32) -> i32 {
+    /// Get created_at timestamp formatted as string
+    pub fn get_created_at(&self, index: i32) -> QString {
         let todos = &self.rust().todos;
         if index < 0 || index >= todos.len() as i32 {
-            return 0;
+            return QString::from("");
         }
-        match todos[index as usize].status {
-            TodoStatus::Pending => 0,
-            TodoStatus::InProgress => 1,
-            TodoStatus::Completed => 2,
-        }
-    }
-
-    /// Get todo ID at index
-    pub fn get_id(&self, index: i32) -> u64 {
-        let todos = &self.rust().todos;
-        if index < 0 || index >= todos.len() as i32 {
-            return 0;
-        }
-        todos[index as usize].id.unwrap_or(0)
+        QString::from(todos[index as usize].created_at.format("%Y-%m-%d %H:%M").to_string())
     }
 }

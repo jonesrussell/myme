@@ -16,8 +16,11 @@ pub struct Config {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceConfig {
-    /// URL for the Golang todo API
+    /// URL for the Godo API
     pub todo_api_url: String,
+
+    /// JWT token for Godo API authentication (optional, can be set via environment)
+    pub jwt_token: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,7 +44,8 @@ impl Default for Config {
         Self {
             config_dir,
             services: ServiceConfig {
-                todo_api_url: "http://localhost:8080".to_string(),
+                todo_api_url: "http://localhost:8008".to_string(),  // Godo default port
+                jwt_token: std::env::var("GODO_JWT_TOKEN").ok(),  // Read from environment
             },
             ui: UiConfig {
                 window_width: 1200,

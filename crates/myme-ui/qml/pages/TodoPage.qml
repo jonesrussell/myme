@@ -6,7 +6,7 @@ import com.myme 1.0
 
 Kirigami.ScrollablePage {
     id: todoPage
-    title: "Todos"
+    title: "Notes"
 
     actions: [
         Kirigami.Action {
@@ -15,7 +15,7 @@ Kirigami.ScrollablePage {
             onTriggered: todoModel.fetchTodos()
         },
         Kirigami.Action {
-            text: "Add Todo"
+            text: "Add Note"
             icon.name: "list-add"
             onTriggered: addDialog.open()
         }
@@ -41,32 +41,32 @@ Kirigami.ScrollablePage {
             RowLayout {
                 spacing: Kirigami.Units.largeSpacing
 
-                // Status indicator
-                Rectangle {
-                    width: 12
-                    height: 12
-                    radius: 6
-                    color: {
-                        var status = todoModel.getStatus(todoItem.index)
-                        if (status === 2) return Kirigami.Theme.positiveTextColor      // completed
-                        if (status === 1) return Kirigami.Theme.neutralTextColor       // in progress
-                        return Kirigami.Theme.textColor                                // pending
-                    }
+                // Status indicator (checkmark)
+                Kirigami.Icon {
+                    source: todoModel.getDone(todoItem.index) ? "checkmark" : "empty"
+                    width: 24
+                    height: 24
+                    color: todoModel.getDone(todoItem.index) ?
+                           Kirigami.Theme.positiveTextColor :
+                           Kirigami.Theme.disabledTextColor
                 }
 
-                // Todo content
+                // Note content
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: Kirigami.Units.smallSpacing
 
                     Controls.Label {
-                        text: todoModel.getTitle(todoItem.index)
-                        font.weight: Font.Bold
+                        text: todoModel.getContent(todoItem.index)
+                        font.weight: Font.Normal
+                        font.strikeout: todoModel.getDone(todoItem.index)
                         Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        opacity: todoModel.getDone(todoItem.index) ? 0.6 : 1.0
                     }
 
                     Controls.Label {
-                        text: todoModel.getDescription(todoItem.index)
+                        text: todoModel.getCreatedAt(todoItem.index)
                         font: Kirigami.Theme.smallFont
                         color: Kirigami.Theme.disabledTextColor
                         Layout.fillWidth: true
@@ -74,29 +74,20 @@ Kirigami.ScrollablePage {
                     }
 
                     Controls.Label {
-                        text: {
-                            var status = todoModel.getStatus(todoItem.index)
-                            if (status === 2) return "Completed"
-                            if (status === 1) return "In Progress"
-                            return "Pending"
-                        }
+                        text: todoModel.getDone(todoItem.index) ? "Completed" : "Pending"
                         font: Kirigami.Theme.smallFont
-                        color: {
-                            var status = todoModel.getStatus(todoItem.index)
-                            if (status === 2) return Kirigami.Theme.positiveTextColor
-                            if (status === 1) return Kirigami.Theme.neutralTextColor
-                            return Kirigami.Theme.textColor
-                        }
+                        color: todoModel.getDone(todoItem.index) ?
+                               Kirigami.Theme.positiveTextColor :
+                               Kirigami.Theme.neutralTextColor
                     }
                 }
             }
 
             actions: [
                 Kirigami.Action {
-                    text: "Complete"
-                    icon.name: "dialog-ok"
-                    visible: todoModel.getStatus(todoItem.index) !== 2
-                    onTriggered: todoModel.completeTodo(todoItem.index)
+                    text: todoModel.getDone(todoItem.index) ? "Mark Undone" : "Mark Done"
+                    icon.name: todoModel.getDone(todoItem.index) ? "dialog-cancel" : "dialog-ok"
+                    onTriggered: todoModel.toggleDone(todoItem.index)
                 },
                 Kirigami.Action {
                     text: "Delete"
@@ -104,6 +95,11 @@ Kirigami.ScrollablePage {
                     onTriggered: todoModel.deleteTodo(todoItem.index)
                 }
             ]
+
+            // Click to toggle done status
+            onClicked: {
+                todoModel.toggleDone(todoItem.index)
+            }
         }
 
         Kirigami.PlaceholderMessage {
@@ -112,11 +108,11 @@ Kirigami.ScrollablePage {
             visible: !todoModel.loading && todoModel.rowCount() === 0
 
             icon.name: "view-task"
-            text: "No todos yet"
-            explanation: "Add your first todo to get started"
+            text: "No notes yet"
+            explanation: "Add your first note to get started with Godo"
 
             helpfulAction: Kirigami.Action {
-                text: "Add Todo"
+                text: "Add Note"
                 icon.name: "list-add"
                 onTriggered: addDialog.open()
             }
@@ -135,12 +131,23 @@ Kirigami.ScrollablePage {
         visible: todoModel.errorMessage.length > 0
         type: Kirigami.MessageType.Error
         text: todoModel.errorMessage
+
+        actions: [
+            Kirigami.Action {
+                text: "Retry"
+                icon.name: "view-refresh"
+                onTriggered: {
+                    todoModel.errorMessage = ""
+                    todoModel.fetchTodos()
+                }
+            }
+        ]
     }
 
-    // Add todo dialog
+    // Add note dialog
     Controls.Dialog {
         id: addDialog
-        title: "Add New Todo"
+        title: "Add New Note"
         standardButtons: Controls.Dialog.Ok | Controls.Dialog.Cancel
         modal: true
 
@@ -148,9 +155,14 @@ Kirigami.ScrollablePage {
         width: Math.min(parent.width * 0.8, 500)
 
         onAccepted: {
-            todoModel.addTodo(titleField.text, descriptionField.text)
-            titleField.text = ""
-            descriptionField.text = ""
+            if (contentField.text.trim().length > 0) {
+                todoModel.addTodo(contentField.text)
+                contentField.text = ""
+            }
+        }
+
+        onRejected: {
+            contentField.text = ""
         }
 
         ColumnLayout {
@@ -158,24 +170,75 @@ Kirigami.ScrollablePage {
             spacing: Kirigami.Units.largeSpacing
 
             Controls.Label {
-                text: "Title:"
-            }
-
-            Controls.TextField {
-                id: titleField
-                Layout.fillWidth: true
-                placeholderText: "Enter todo title..."
-            }
-
-            Controls.Label {
-                text: "Description:"
+                text: "Note content:"
             }
 
             Controls.TextArea {
-                id: descriptionField
+                id: contentField
                 Layout.fillWidth: true
-                Layout.preferredHeight: 100
-                placeholderText: "Enter description (optional)..."
+                Layout.preferredHeight: 150
+                placeholderText: "Enter note content (1-1000 characters)..."
+                wrapMode: TextEdit.Wrap
+
+                // Character count
+                background: Rectangle {
+                    color: Kirigami.Theme.backgroundColor
+                    border.color: Kirigami.Theme.disabledTextColor
+                    border.width: 1
+                    radius: 3
+                }
+            }
+
+            Controls.Label {
+                text: contentField.text.length + " / 1000 characters"
+                font: Kirigami.Theme.smallFont
+                color: contentField.text.length > 1000 ?
+                       Kirigami.Theme.negativeTextColor :
+                       Kirigami.Theme.disabledTextColor
+            }
+
+            Controls.Label {
+                text: "Tip: Press Ctrl+Enter to save quickly"
+                font: Kirigami.Theme.smallFont
+                color: Kirigami.Theme.disabledTextColor
+                Layout.fillWidth: true
+            }
+        }
+
+        // Allow Ctrl+Enter to accept
+        Shortcut {
+            sequence: "Ctrl+Return"
+            onActivated: addDialog.accept()
+        }
+    }
+
+    // Footer with statistics
+    footer: Controls.ToolBar {
+        RowLayout {
+            anchors.fill: parent
+            spacing: Kirigami.Units.largeSpacing
+
+            Controls.Label {
+                text: {
+                    var total = todoModel.rowCount()
+                    var done = 0
+                    for (var i = 0; i < total; i++) {
+                        if (todoModel.getDone(i)) done++
+                    }
+                    return total + " notes (" + done + " done, " + (total - done) + " pending)"
+                }
+                font: Kirigami.Theme.smallFont
+            }
+
+            Item { Layout.fillWidth: true }
+
+            Controls.ToolButton {
+                text: "Godo API"
+                icon.name: "network-connect"
+                display: Controls.AbstractButton.IconOnly
+                Controls.ToolTip.text: "Connected to Godo API"
+                Controls.ToolTip.visible: hovered
+                flat: true
             }
         }
     }

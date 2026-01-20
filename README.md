@@ -2,11 +2,13 @@
 
 A modular Rust desktop application using Qt/QML + Kirigami via cxx-qt that serves as a personal control center for productivity and development workflows.
 
+**Integrated with [Godo](../godo/)** - Your Golang note-taking application!
+
 ## Project Status
 
-**Phase 1: Foundation + Todo Service Integration** - In Progress ✓
+**Phase 1: Foundation + Godo Integration** - Complete ✓
 
-The core architecture has been established with a multi-crate workspace structure.
+The core architecture has been established and fully integrated with your Godo application.
 
 ## Architecture
 
@@ -73,13 +75,43 @@ Example configuration:
 config_dir = "/path/to/config"
 
 [services]
-todo_api_url = "http://localhost:8080"
+todo_api_url = "http://localhost:8008"  # Godo default port
+jwt_token = "your-jwt-token-here"  # Optional, for Godo authentication
 
 [ui]
 window_width = 1200
 window_height = 800
 dark_mode = false
 ```
+
+## Godo Integration
+
+MyMe is fully integrated with your Godo note-taking application:
+
+- **API**: Connects to Godo's `/api/v1/notes` endpoints
+- **Authentication**: Supports JWT Bearer tokens
+- **Features**: Create, read, update, delete notes with done/pending status
+- **Port**: Default 8008 (configurable)
+
+**Quick Start with Godo**:
+
+```bash
+# 1. Start Godo
+cd ../godo
+./godo-windows-amd64.exe
+
+# 2. Verify Godo is running
+curl http://localhost:8008/api/v1/health
+
+# 3. (Optional) Set JWT token
+$env:GODO_JWT_TOKEN="your-token"
+
+# 4. Start MyMe
+cd ../myme
+.\build\Release\myme-qt.exe
+```
+
+See [GODO_INTEGRATION.md](GODO_INTEGRATION.md) for complete integration details.
 
 ## Next Steps
 
