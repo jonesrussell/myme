@@ -3,6 +3,8 @@ members = [
     "crates/myme-core",
     "crates/myme-ui",
     "crates/myme-services",
+    "crates/myme-auth",
+    "crates/myme-integrations",
 ]
 resolver = "2"
 

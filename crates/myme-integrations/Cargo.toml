@@ -1,0 +1,29 @@
+[package]
+name = "myme-integrations"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+# Workspace dependencies
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+url.workspace = true
+
+# GitHub API
+octocrab = "0.41"
+
+# Git operations
+git2 = "0.19"
+
+# Path handling
+dirs = "5.0"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Internal dependencies
+myme-auth = { path = "../myme-auth" }

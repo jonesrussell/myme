@@ -1,0 +1,31 @@
+[package]
+name = "myme-auth"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+# Workspace dependencies
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+# OAuth2
+oauth2 = "4.4"
+
+# Secure storage
+keyring = "3.2"
+
+# HTTP server for OAuth callback
+warp = "0.3"
+
+# URL handling
+url.workspace = true
+
+# Browser opening
+webbrowser = "1.0"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
