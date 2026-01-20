@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cargo check:*)"
+      "Bash(cargo check:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File verify-architecture.ps1)",
+      "Bash(powershell -ExecutionPolicy Bypass -File check-files.ps1)"
     ]
   }
 }
