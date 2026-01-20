@@ -4,6 +4,7 @@ use cxx_qt::CxxQtType;
 use cxx_qt_lib::QString;
 
 use myme_services::{Todo as Note, TodoClient as NoteClient, TodoCreateRequest as NoteCreateRequest, TodoUpdateRequest as NoteUpdateRequest};
+use std::sync::Mutex;
 
 #[cxx_qt::bridge]
 pub mod qobject {
@@ -65,10 +66,25 @@ impl NoteModelRust {
         self.client = Some(client);
         self.runtime = Some(runtime);
     }
+
+    /// Auto-initialize from global services if not already initialized
+    fn ensure_initialized(&mut self) {
+        if self.client.is_none() || self.runtime.is_none() {
+            if let Some((client, runtime)) = crate::bridge::get_todo_client_and_runtime() {
+                self.initialize(client, runtime);
+                tracing::info!("NoteModel auto-initialized from global services");
+            } else {
+                tracing::error!("Cannot auto-initialize NoteModel - global services not ready");
+            }
+        }
+    }
 }
 
 impl qobject::NoteModel {
     pub fn fetch_notes(mut self: Pin<&mut Self>) {
+        // Auto-initialize if needed
+        self.as_mut().rust_mut().ensure_initialized();
+
         let client = match &self.as_ref().rust().client {
             Some(c) => c.clone(),
             None => {
@@ -85,16 +101,21 @@ impl qobject::NoteModel {
         self.as_mut().set_loading(true);
         self.as_mut().set_error_message(QString::from(""));
 
-        runtime.spawn(async move {
-            match client.list_todos().await {
-                Ok(notes) => {
-                    tracing::info!("Successfully fetched {} notes", notes.len());
-                }
-                Err(e) => {
-                    tracing::error!("Failed to fetch notes: {}", e);
-                }
+        // Use block_on to make this synchronous for simplicity
+        // TODO: Implement proper async callbacks with signals
+        match runtime.block_on(async { client.list_todos().await }) {
+            Ok(notes) => {
+                tracing::info!("Successfully fetched {} notes", notes.len());
+                self.as_mut().rust_mut().notes = notes;
+                self.as_mut().set_loading(false);
+                self.notes_changed();
             }
-        });
+            Err(e) => {
+                tracing::error!("Failed to fetch notes: {}", e);
+                self.as_mut().set_error_message(QString::from(format!("Failed to fetch notes: {}", e)));
+                self.as_mut().set_loading(false);
+            }
+        }
     }
 
     pub fn add_note(mut self: Pin<&mut Self>, content: &QString) {
@@ -114,21 +135,23 @@ impl qobject::NoteModel {
         let content_str = content.to_string();
         self.as_mut().set_loading(true);
 
-        runtime.spawn(async move {
-            let request = NoteCreateRequest { content: content_str };
-
-            match client.create_todo(request).await {
-                Ok(note) => {
-                    tracing::info!("Created note: {}", note.id);
-                }
-                Err(e) => {
-                    tracing::error!("Failed to create note: {}", e);
-                }
+        let request = NoteCreateRequest { content: content_str };
+        match runtime.block_on(async { client.create_todo(request).await }) {
+            Ok(note) => {
+                tracing::info!("Created note: {}", note.id);
+                self.as_mut().rust_mut().notes.push(note);
+                self.as_mut().set_loading(false);
+                self.notes_changed();
             }
-        });
+            Err(e) => {
+                tracing::error!("Failed to create note: {}", e);
+                self.as_mut().set_error_message(QString::from(format!("Failed to create note: {}", e)));
+                self.as_mut().set_loading(false);
+            }
+        }
     }
 
-    pub fn toggle_done(self: Pin<&mut Self>, index: i32) {
+    pub fn toggle_done(mut self: Pin<&mut Self>, index: i32) {
         let binding = self.as_ref();
         let notes = &binding.rust().notes;
         if index < 0 || index >= notes.len() as i32 {
@@ -148,24 +171,29 @@ impl qobject::NoteModel {
             None => return,
         };
 
-        runtime.spawn(async move {
-            let request = NoteUpdateRequest {
-                content: None,
-                done: Some(!current_done),
-            };
+        let index_usize = index as usize;
 
-            match client.update_todo(&note_id, request).await {
-                Ok(_) => {
-                    tracing::info!("Toggled note {} done status", note_id);
-                }
-                Err(e) => {
-                    tracing::error!("Failed to update note: {}", e);
+        let request = NoteUpdateRequest {
+            content: None,
+            done: Some(!current_done),
+        };
+
+        match runtime.block_on(async { client.update_todo(&note_id, request).await }) {
+            Ok(_) => {
+                tracing::info!("Toggled note {} done status", note_id);
+                if index_usize < self.rust().notes.len() {
+                    self.as_mut().rust_mut().notes[index_usize].done = !current_done;
+                    self.notes_changed();
                 }
             }
-        });
+            Err(e) => {
+                tracing::error!("Failed to update note: {}", e);
+                self.as_mut().set_error_message(QString::from(format!("Failed to toggle note: {}", e)));
+            }
+        }
     }
 
-    pub fn delete_note(self: Pin<&mut Self>, index: i32) {
+    pub fn delete_note(mut self: Pin<&mut Self>, index: i32) {
         let binding = self.as_ref();
         let notes = &binding.rust().notes;
         if index < 0 || index >= notes.len() as i32 {
@@ -184,16 +212,21 @@ impl qobject::NoteModel {
             None => return,
         };
 
-        runtime.spawn(async move {
-            match client.delete_todo(&note_id).await {
-                Ok(_) => {
-                    tracing::info!("Deleted note {}", note_id);
-                }
-                Err(e) => {
-                    tracing::error!("Failed to delete note: {}", e);
+        let index_usize = index as usize;
+
+        match runtime.block_on(async { client.delete_todo(&note_id).await }) {
+            Ok(_) => {
+                tracing::info!("Deleted note {}", note_id);
+                if index_usize < self.rust().notes.len() {
+                    self.as_mut().rust_mut().notes.remove(index_usize);
+                    self.notes_changed();
                 }
             }
-        });
+            Err(e) => {
+                tracing::error!("Failed to delete note: {}", e);
+                self.as_mut().set_error_message(QString::from(format!("Failed to delete note: {}", e)));
+            }
+        }
     }
 
     pub fn row_count(&self) -> i32 {

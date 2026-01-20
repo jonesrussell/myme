@@ -6,6 +6,9 @@
 // cxx-qt generated bridges
 extern "C" bool cxx_qt_init_crate_myme_ui();
 
+// Rust initialization function
+extern "C" bool initialize_note_model(const char* base_url);
+
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
@@ -20,6 +23,9 @@ int main(int argc, char *argv[])
 
     // Initialize cxx-qt types (this also registers QML types)
     cxx_qt_init_crate_myme_ui();
+
+    // Initialize global services (TodoClient, etc.)
+    initialize_note_model("http://localhost:8080");
 
     QQmlApplicationEngine engine;
 

@@ -1,4 +1,5 @@
 pub mod models;
+pub mod bridge;
 
 // Re-export cxx-qt generated types
 pub use models::note_model::qobject::NoteModel;

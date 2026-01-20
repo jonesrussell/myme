@@ -1,162 +1,239 @@
 import QtQuick
-import QtQuick.Controls as Controls
+import QtQuick.Controls
 import QtQuick.Layouts
-import org.kde.kirigami as Kirigami
-import com.myme 1.0
 
-Kirigami.ScrollablePage {
-    id: todoPage
+Page {
+    id: notePage
     title: "Notes"
 
-    actions: [
-        Kirigami.Action {
-            text: "Refresh"
-            icon.name: "view-refresh"
-            onTriggered: todoModel.fetchNotes()
-        },
-        Kirigami.Action {
-            text: "Add Note"
-            icon.name: "list-add"
-            onTriggered: addDialog.open()
-        }
-    ]
+    header: ToolBar {
+        RowLayout {
+            anchors.fill: parent
+            spacing: 10
 
-    NoteModel {
-        id: todoModel
-        Component.onCompleted: {
-            fetchNotes()
+            ToolButton {
+                text: "\u21BB"  // Refresh symbol
+                font.pixelSize: 20
+                onClicked: noteModel.fetch_notes()
+                ToolTip.text: "Refresh notes"
+                ToolTip.visible: hovered
+            }
+
+            Label {
+                text: "Notes"
+                font.pixelSize: 18
+                font.bold: true
+                Layout.fillWidth: true
+            }
+
+            ToolButton {
+                text: "+"
+                font.pixelSize: 24
+                onClicked: addDialog.open()
+                ToolTip.text: "Add new note"
+                ToolTip.visible: hovered
+            }
         }
     }
 
-    ListView {
-        id: todoList
+    // Main content
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: 10
+        spacing: 10
 
-        model: todoModel.rowCount()
-
-        delegate: Kirigami.SwipeListItem {
-            id: todoItem
-
-            required property int index
+        // Error message banner
+        Rectangle {
+            visible: noteModel.error_message.length > 0
+            Layout.fillWidth: true
+            Layout.preferredHeight: 60
+            color: "#FFE6E6"
+            border.color: "#FF4444"
+            border.width: 1
+            radius: 4
 
             RowLayout {
-                spacing: Kirigami.Units.largeSpacing
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 10
 
-                // Status indicator (checkmark)
-                Kirigami.Icon {
-                    source: todoModel.getDone(todoItem.index) ? "checkmark" : "empty"
-                    width: 24
-                    height: 24
-                    color: todoModel.getDone(todoItem.index) ?
-                           Kirigami.Theme.positiveTextColor :
-                           Kirigami.Theme.disabledTextColor
+                Label {
+                    text: "\u26A0"  // Warning symbol
+                    font.pixelSize: 20
+                    color: "#FF4444"
                 }
 
-                // Note content
-                ColumnLayout {
+                Label {
+                    text: noteModel.error_message
+                    color: "#CC0000"
                     Layout.fillWidth: true
-                    spacing: Kirigami.Units.smallSpacing
+                    wrapMode: Text.WordWrap
+                }
 
-                    Controls.Label {
-                        text: todoModel.getContent(todoItem.index)
-                        font.weight: Font.Normal
-                        font.strikeout: todoModel.getDone(todoItem.index)
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        opacity: todoModel.getDone(todoItem.index) ? 0.6 : 1.0
-                    }
-
-                    Controls.Label {
-                        text: todoModel.getCreatedAt(todoItem.index)
-                        font: Kirigami.Theme.smallFont
-                        color: Kirigami.Theme.disabledTextColor
-                        Layout.fillWidth: true
-                        visible: text.length > 0
-                    }
-
-                    Controls.Label {
-                        text: todoModel.getDone(todoItem.index) ? "Completed" : "Pending"
-                        font: Kirigami.Theme.smallFont
-                        color: todoModel.getDone(todoItem.index) ?
-                               Kirigami.Theme.positiveTextColor :
-                               Kirigami.Theme.neutralTextColor
+                Button {
+                    text: "Retry"
+                    onClicked: {
+                        noteModel.fetch_notes()
                     }
                 }
-            }
-
-            actions: [
-                Kirigami.Action {
-                    text: todoModel.getDone(todoItem.index) ? "Mark Undone" : "Mark Done"
-                    icon.name: todoModel.getDone(todoItem.index) ? "dialog-cancel" : "dialog-ok"
-                    onTriggered: todoModel.toggleDone(todoItem.index)
-                },
-                Kirigami.Action {
-                    text: "Delete"
-                    icon.name: "delete"
-                    onTriggered: todoModel.deleteNote(todoItem.index)
-                }
-            ]
-
-            // Click to toggle done status
-            onClicked: {
-                todoModel.toggleDone(todoItem.index)
             }
         }
 
-        Kirigami.PlaceholderMessage {
-            anchors.centerIn: parent
-            width: parent.width - (Kirigami.Units.largeSpacing * 4)
-            visible: !todoModel.loading && todoModel.rowCount() === 0
+        // Notes list
+        ScrollView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
 
-            icon.name: "view-task"
-            text: "No notes yet"
-            explanation: "Add your first note to get started with Godo"
+            ListView {
+                id: notesList
+                anchors.fill: parent
+                spacing: 5
 
-            helpfulAction: Kirigami.Action {
-                text: "Add Note"
-                icon.name: "list-add"
-                onTriggered: addDialog.open()
-            }
-        }
-    }
+                model: noteModel.row_count()
 
-    Controls.BusyIndicator {
-        anchors.centerIn: parent
-        running: todoModel.loading
-        visible: running
-    }
+                delegate: Rectangle {
+                    required property int index
 
-    // Error message
-    Kirigami.InlineMessage {
-        Layout.fillWidth: true
-        visible: todoModel.errorMessage.length > 0
-        type: Kirigami.MessageType.Error
-        text: todoModel.errorMessage
+                    width: notesList.width
+                    height: noteContent.height + 20
+                    color: index % 2 === 0 ? "#F9F9F9" : "#FFFFFF"
+                    border.color: "#E0E0E0"
+                    border.width: 1
+                    radius: 4
 
-        actions: [
-            Kirigami.Action {
-                text: "Retry"
-                icon.name: "view-refresh"
-                onTriggered: {
-                    todoModel.errorMessage = ""
-                    todoModel.fetchNotes()
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: noteModel.toggle_done(parent.index)
+                        cursorShape: Qt.PointingHandCursor
+                    }
+
+                    RowLayout {
+                        id: noteContent
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 10
+
+                        // Status checkbox
+                        CheckBox {
+                            checked: noteModel.get_done(parent.parent.index)
+                            onClicked: noteModel.toggle_done(parent.parent.parent.index)
+                        }
+
+                        // Note text and metadata
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 5
+
+                            Label {
+                                text: noteModel.get_content(parent.parent.parent.index)
+                                font.pixelSize: 14
+                                font.strikeout: noteModel.get_done(parent.parent.parent.index)
+                                opacity: noteModel.get_done(parent.parent.parent.index) ? 0.6 : 1.0
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                            }
+
+                            Label {
+                                text: noteModel.get_created_at(parent.parent.parent.index)
+                                font.pixelSize: 11
+                                color: "#888888"
+                            }
+
+                            Label {
+                                text: noteModel.get_done(parent.parent.parent.index) ? "✓ Completed" : "○ Pending"
+                                font.pixelSize: 11
+                                color: noteModel.get_done(parent.parent.parent.index) ? "#4CAF50" : "#FFA726"
+                            }
+                        }
+
+                        // Action buttons
+                        ColumnLayout {
+                            spacing: 5
+
+                            Button {
+                                text: noteModel.get_done(parent.parent.parent.index) ? "Undo" : "Done"
+                                onClicked: noteModel.toggle_done(parent.parent.parent.parent.index)
+                            }
+
+                            Button {
+                                text: "Delete"
+                                onClicked: noteModel.delete_note(parent.parent.parent.parent.index)
+                            }
+                        }
+                    }
+                }
+
+                // Empty state
+                Label {
+                    visible: !noteModel.loading && noteModel.row_count() === 0
+                    anchors.centerIn: parent
+                    text: "No notes yet\n\nClick + to add your first note"
+                    font.pixelSize: 16
+                    color: "#888888"
+                    horizontalAlignment: Text.AlignHCenter
                 }
             }
-        ]
+        }
+
+        // Loading indicator
+        BusyIndicator {
+            visible: noteModel.loading
+            running: noteModel.loading
+            Layout.alignment: Qt.AlignHCenter
+        }
+
+        // Footer with statistics
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 40
+            color: "#F0F0F0"
+            border.color: "#E0E0E0"
+            border.width: 1
+            radius: 4
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 10
+
+                Label {
+                    text: {
+                        var total = noteModel.row_count()
+                        var done = 0
+                        for (var i = 0; i < total; i++) {
+                            if (noteModel.get_done(i)) done++
+                        }
+                        return total + " notes (" + done + " done, " + (total - done) + " pending)"
+                    }
+                    font.pixelSize: 12
+                }
+
+                Item { Layout.fillWidth: true }
+
+                Label {
+                    text: "● Godo API Connected"
+                    font.pixelSize: 11
+                    color: "#4CAF50"
+                }
+            }
+        }
     }
 
     // Add note dialog
-    Controls.Dialog {
+    Dialog {
         id: addDialog
         title: "Add New Note"
-        standardButtons: Controls.Dialog.Ok | Controls.Dialog.Cancel
+        standardButtons: Dialog.Ok | Dialog.Cancel
         modal: true
 
         anchors.centerIn: parent
         width: Math.min(parent.width * 0.8, 500)
+        height: 300
 
         onAccepted: {
             if (contentField.text.trim().length > 0) {
-                todoModel.addNote(contentField.text)
+                noteModel.add_note(contentField.text)
                 contentField.text = ""
             }
         }
@@ -166,80 +243,44 @@ Kirigami.ScrollablePage {
         }
 
         ColumnLayout {
-            width: parent.width
-            spacing: Kirigami.Units.largeSpacing
+            anchors.fill: parent
+            spacing: 10
 
-            Controls.Label {
+            Label {
                 text: "Note content:"
             }
 
-            Controls.TextArea {
-                id: contentField
+            ScrollView {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 150
-                placeholderText: "Enter note content (1-1000 characters)..."
-                wrapMode: TextEdit.Wrap
+                Layout.fillHeight: true
 
-                // Character count
-                background: Rectangle {
-                    color: Kirigami.Theme.backgroundColor
-                    border.color: Kirigami.Theme.disabledTextColor
-                    border.width: 1
-                    radius: 3
+                TextArea {
+                    id: contentField
+                    placeholderText: "Enter note content (1-1000 characters)..."
+                    wrapMode: TextEdit.Wrap
                 }
             }
 
-            Controls.Label {
+            Label {
                 text: contentField.text.length + " / 1000 characters"
-                font: Kirigami.Theme.smallFont
-                color: contentField.text.length > 1000 ?
-                       Kirigami.Theme.negativeTextColor :
-                       Kirigami.Theme.disabledTextColor
+                font.pixelSize: 11
+                color: contentField.text.length > 1000 ? "#FF4444" : "#888888"
             }
 
-            Controls.Label {
+            Label {
                 text: "Tip: Press Ctrl+Enter to save quickly"
-                font: Kirigami.Theme.smallFont
-                color: Kirigami.Theme.disabledTextColor
-                Layout.fillWidth: true
+                font.pixelSize: 10
+                color: "#888888"
             }
         }
 
-        // Allow Ctrl+Enter to accept
         Shortcut {
             sequence: "Ctrl+Return"
             onActivated: addDialog.accept()
         }
     }
 
-    // Footer with statistics
-    footer: Controls.ToolBar {
-        RowLayout {
-            anchors.fill: parent
-            spacing: Kirigami.Units.largeSpacing
-
-            Controls.Label {
-                text: {
-                    var total = todoModel.rowCount()
-                    var done = 0
-                    for (var i = 0; i < total; i++) {
-                        if (todoModel.getDone(i)) done++
-                    }
-                    return total + " notes (" + done + " done, " + (total - done) + " pending)"
-                }
-                font: Kirigami.Theme.smallFont
-            }
-
-            Item { Layout.fillWidth: true }
-
-            Controls.ToolButton {
-                text: "Godo API"
-                icon.name: "network-connect"
-                display: Controls.AbstractButton.IconOnly
-                Controls.ToolTip.text: "Connected to Godo API"
-                Controls.ToolTip.visible: hovered
-                flat: true
-            }
-        }
+    Component.onCompleted: {
+        noteModel.fetch_notes()
     }
 }

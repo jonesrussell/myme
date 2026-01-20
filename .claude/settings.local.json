@@ -37,7 +37,9 @@
       "Bash(set Qt6_DIR=C:Qt6.10.1msvc2022_64libcmakeQt6)",
       "Bash(\"C:\\\\Users\\\\jones\\\\dev\\\\myme\\\\build-qt\\\\Release\\\\myme-qt.exe\")",
       "Bash(dir:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(Select-String -Pattern \"\\(error|warning:.*myme-ui\\)\")",
+      "Bash(Select-Object -Last 30)"
     ]
   }
 }

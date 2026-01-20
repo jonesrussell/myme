@@ -30,6 +30,7 @@ ApplicationWindow {
             Button {
                 text: "Notes"
                 Layout.fillWidth: true
+                enabled: true
                 onClicked: {
                     stackView.replace("pages/NotePage.qml")
                     drawer.close()
