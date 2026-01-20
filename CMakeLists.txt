@@ -35,8 +35,7 @@ else()
     set(RUST_LIB_OUTPUT "${RUST_LIB_DIR}/libmyme_ui.a")
 endif()
 
-add_custom_command(
-    OUTPUT ${RUST_LIB_OUTPUT}
+add_custom_target(rust_myme_ui ALL
     COMMAND ${CMAKE_COMMAND} -E env
         "QMAKE=${QMAKE_PATH}"
         "CMAKE_PREFIX_PATH=${QT_PATH}"
@@ -45,9 +44,8 @@ add_custom_command(
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Building Rust myme-ui library with cxx-qt..."
     VERBATIM
+    BYPRODUCTS ${RUST_LIB_OUTPUT}
 )
-
-add_custom_target(rust_myme_ui DEPENDS ${RUST_LIB_OUTPUT})
 
 # Main executable
 add_executable(myme-qt
