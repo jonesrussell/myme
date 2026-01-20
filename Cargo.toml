@@ -28,8 +28,9 @@ reqwest = { version = "0.12", features = ["json"] }
 url = "2.5"
 
 # cxx-qt
-cxx-qt = "0.7"
-cxx-qt-lib = "0.7"
+cxx = "1.0"
+cxx-qt = "0.8"
+cxx-qt-lib = { version = "0.8", features = ["qt_full"] }
 
 [package]
 name = "myme"

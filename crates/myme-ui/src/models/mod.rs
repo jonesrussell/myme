@@ -1,1 +1,1 @@
-pub mod todo_model;
+pub mod note_model;

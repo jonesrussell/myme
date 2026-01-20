@@ -3,7 +3,23 @@
     "allow": [
       "Bash(cargo check:*)",
       "Bash(powershell -ExecutionPolicy Bypass -File verify-architecture.ps1)",
-      "Bash(powershell -ExecutionPolicy Bypass -File check-files.ps1)"
+      "Bash(powershell -ExecutionPolicy Bypass -File check-files.ps1)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\jones\\\\dev\\\\myme\\\\fix-linker.ps1\")",
+      "Bash(powershell.exe:*)",
+      "Bash(cargo build:*)",
+      "Bash(cargo clean:*)",
+      "Bash(rustc:*)",
+      "Bash(cargo --version:*)",
+      "Bash(rustup toolchain:*)",
+      "Bash(rustup show:*)",
+      "Bash(rustup update:*)",
+      "Bash(export CMAKE_PREFIX_PATH:*)",
+      "Bash(export Qt6_DIR=\"C:/Qt/6.10.1/msvc2022_64/lib/cmake/Qt6\")",
+      "Bash(export QMAKE=\"C:/Qt/6.10.1/msvc2022_64/bin/qmake.exe\")",
+      "Bash(export RUST_BACKTRACE=1)",
+      "Bash(cargo expand:*)",
+      "Bash(cargo install:*)",
+      "Bash(env)"
     ]
   }
 }

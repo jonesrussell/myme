@@ -1,8 +1,9 @@
 use core::pin::Pin;
 use std::sync::Arc;
+use cxx_qt::CxxQtType;
 use cxx_qt_lib::QString;
 
-use myme_services::{Todo, TodoClient, TodoCreateRequest, TodoUpdateRequest};
+use myme_services::{Todo as Note, TodoClient as NoteClient, TodoCreateRequest as NoteCreateRequest, TodoUpdateRequest as NoteUpdateRequest};
 
 #[cxx_qt::bridge]
 pub mod qobject {
@@ -16,58 +17,58 @@ pub mod qobject {
         #[qml_element]
         #[qproperty(bool, loading)]
         #[qproperty(QString, error_message)]
-        type TodoModel = super::TodoModelRust;
+        type NoteModel = super::NoteModelRust;
 
         #[qinvokable]
-        fn fetch_todos(self: Pin<&mut TodoModel>);
+        fn fetch_notes(self: Pin<&mut NoteModel>);
 
         #[qinvokable]
-        fn add_todo(self: Pin<&mut TodoModel>, content: &QString);
+        fn add_note(self: Pin<&mut NoteModel>, content: &QString);
 
         #[qinvokable]
-        fn toggle_done(self: Pin<&mut TodoModel>, index: i32);
+        fn toggle_done(self: Pin<&mut NoteModel>, index: i32);
 
         #[qinvokable]
-        fn delete_todo(self: Pin<&mut TodoModel>, index: i32);
+        fn delete_note(self: Pin<&mut NoteModel>, index: i32);
 
         #[qinvokable]
-        fn row_count(self: &TodoModel) -> i32;
+        fn row_count(self: &NoteModel) -> i32;
 
         #[qinvokable]
-        fn get_content(self: &TodoModel, index: i32) -> QString;
+        fn get_content(self: &NoteModel, index: i32) -> QString;
 
         #[qinvokable]
-        fn get_done(self: &TodoModel, index: i32) -> bool;
+        fn get_done(self: &NoteModel, index: i32) -> bool;
 
         #[qinvokable]
-        fn get_id(self: &TodoModel, index: i32) -> QString;
+        fn get_id(self: &NoteModel, index: i32) -> QString;
 
         #[qinvokable]
-        fn get_created_at(self: &TodoModel, index: i32) -> QString;
+        fn get_created_at(self: &NoteModel, index: i32) -> QString;
 
         #[qsignal]
-        fn todos_changed(self: Pin<&mut TodoModel>);
+        fn notes_changed(self: Pin<&mut NoteModel>);
     }
 }
 
 #[derive(Default)]
-pub struct TodoModelRust {
+pub struct NoteModelRust {
     loading: bool,
     error_message: QString,
-    todos: Vec<Todo>,
-    client: Option<Arc<TodoClient>>,
+    notes: Vec<Note>,
+    client: Option<Arc<NoteClient>>,
     runtime: Option<tokio::runtime::Handle>,
 }
 
-impl TodoModelRust {
-    pub fn initialize(&mut self, client: Arc<TodoClient>, runtime: tokio::runtime::Handle) {
+impl NoteModelRust {
+    pub fn initialize(&mut self, client: Arc<NoteClient>, runtime: tokio::runtime::Handle) {
         self.client = Some(client);
         self.runtime = Some(runtime);
     }
 }
 
-impl qobject::TodoModel {
-    pub fn fetch_todos(mut self: Pin<&mut Self>) {
+impl qobject::NoteModel {
+    pub fn fetch_notes(mut self: Pin<&mut Self>) {
         let client = match &self.as_ref().rust().client {
             Some(c) => c.clone(),
             None => {
@@ -86,8 +87,8 @@ impl qobject::TodoModel {
 
         runtime.spawn(async move {
             match client.list_todos().await {
-                Ok(todos) => {
-                    tracing::info!("Successfully fetched {} notes", todos.len());
+                Ok(notes) => {
+                    tracing::info!("Successfully fetched {} notes", notes.len());
                 }
                 Err(e) => {
                     tracing::error!("Failed to fetch notes: {}", e);
@@ -96,7 +97,7 @@ impl qobject::TodoModel {
         });
     }
 
-    pub fn add_todo(mut self: Pin<&mut Self>, content: &QString) {
+    pub fn add_note(mut self: Pin<&mut Self>, content: &QString) {
         let client = match &self.as_ref().rust().client {
             Some(c) => c.clone(),
             None => {
@@ -114,11 +115,11 @@ impl qobject::TodoModel {
         self.as_mut().set_loading(true);
 
         runtime.spawn(async move {
-            let request = TodoCreateRequest { content: content_str };
+            let request = NoteCreateRequest { content: content_str };
 
             match client.create_todo(request).await {
-                Ok(todo) => {
-                    tracing::info!("Created note: {}", todo.id);
+                Ok(note) => {
+                    tracing::info!("Created note: {}", note.id);
                 }
                 Err(e) => {
                     tracing::error!("Failed to create note: {}", e);
@@ -128,13 +129,14 @@ impl qobject::TodoModel {
     }
 
     pub fn toggle_done(mut self: Pin<&mut Self>, index: i32) {
-        let todos = &self.as_ref().rust().todos;
-        if index < 0 || index >= todos.len() as i32 {
+        let binding = self.as_ref();
+        let notes = &binding.rust().notes;
+        if index < 0 || index >= notes.len() as i32 {
             return;
         }
 
-        let note_id = todos[index as usize].id.clone();
-        let current_done = todos[index as usize].done;
+        let note_id = notes[index as usize].id.clone();
+        let current_done = notes[index as usize].done;
 
         let client = match &self.as_ref().rust().client {
             Some(c) => c.clone(),
@@ -147,7 +149,7 @@ impl qobject::TodoModel {
         };
 
         runtime.spawn(async move {
-            let request = TodoUpdateRequest {
+            let request = NoteUpdateRequest {
                 content: None,
                 done: Some(!current_done),
             };
@@ -163,13 +165,14 @@ impl qobject::TodoModel {
         });
     }
 
-    pub fn delete_todo(mut self: Pin<&mut Self>, index: i32) {
-        let todos = &self.as_ref().rust().todos;
-        if index < 0 || index >= todos.len() as i32 {
+    pub fn delete_note(mut self: Pin<&mut Self>, index: i32) {
+        let binding = self.as_ref();
+        let notes = &binding.rust().notes;
+        if index < 0 || index >= notes.len() as i32 {
             return;
         }
 
-        let note_id = todos[index as usize].id.clone();
+        let note_id = notes[index as usize].id.clone();
 
         let client = match &self.as_ref().rust().client {
             Some(c) => c.clone(),
@@ -194,38 +197,38 @@ impl qobject::TodoModel {
     }
 
     pub fn row_count(&self) -> i32 {
-        self.rust().todos.len() as i32
+        self.rust().notes.len() as i32
     }
 
     pub fn get_content(&self, index: i32) -> QString {
-        let todos = &self.rust().todos;
-        if index < 0 || index >= todos.len() as i32 {
+        let notes = &self.rust().notes;
+        if index < 0 || index >= notes.len() as i32 {
             return QString::from("");
         }
-        QString::from(&todos[index as usize].content)
+        QString::from(&notes[index as usize].content)
     }
 
     pub fn get_done(&self, index: i32) -> bool {
-        let todos = &self.rust().todos;
-        if index < 0 || index >= todos.len() as i32 {
+        let notes = &self.rust().notes;
+        if index < 0 || index >= notes.len() as i32 {
             return false;
         }
-        todos[index as usize].done
+        notes[index as usize].done
     }
 
     pub fn get_id(&self, index: i32) -> QString {
-        let todos = &self.rust().todos;
-        if index < 0 || index >= todos.len() as i32 {
+        let notes = &self.rust().notes;
+        if index < 0 || index >= notes.len() as i32 {
             return QString::from("");
         }
-        QString::from(&todos[index as usize].id)
+        QString::from(&notes[index as usize].id)
     }
 
     pub fn get_created_at(&self, index: i32) -> QString {
-        let todos = &self.rust().todos;
-        if index < 0 || index >= todos.len() as i32 {
+        let notes = &self.rust().notes;
+        if index < 0 || index >= notes.len() as i32 {
             return QString::from("");
         }
-        QString::from(todos[index as usize].created_at.format("%Y-%m-%d %H:%M").to_string())
+        QString::from(notes[index as usize].created_at.format("%Y-%m-%d %H:%M").to_string())
     }
 }

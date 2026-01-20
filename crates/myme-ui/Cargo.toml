@@ -10,14 +10,15 @@ anyhow.workspace = true
 tracing.workspace = true
 
 # cxx-qt for Qt/QML integration
+cxx = "1.0"
 cxx-qt.workspace = true
-cxx-qt-lib.workspace = true
+cxx-qt-lib = { workspace = true, features = ["qt_full"] }
 
 # Internal crates
 myme-services = { path = "../myme-services" }
 
 [build-dependencies]
-cxx-qt-build = "0.7"
+cxx-qt-build = { version = "0.8", features = ["link_qt_object_files"] }
 
 [lib]
 crate-type = ["staticlib", "cdylib"]
