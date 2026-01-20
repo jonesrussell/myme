@@ -22,7 +22,16 @@
       "Bash(env)",
       "Bash(powershell:*)",
       "Bash(cargo tree:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(Get-ChildItem \"C:\\\\Users\\\\jones\\\\dev\\\\myme\\\\target\\\\debug\\\\build\" -Filter \"myme-ui-*\")",
+      "Bash(Sort-Object LastWriteTime -Descending)",
+      "Bash(Select-Object -First 1 -ExpandProperty FullName)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(\"C:\\\\Qt\\\\Tools\\\\CMake_64\\\\bin\\\\cmake.exe\" ..)",
+      "Bash(\"C:\\\\Qt\\\\Tools\\\\CMake_64\\\\bin\\\\cmake.exe\":*)",
+      "Bash(dumpbin:*)",
+      "Bash(lib:*)"
     ]
   }
 }

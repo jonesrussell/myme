@@ -4,7 +4,7 @@
 #include <QIcon>
 
 // cxx-qt generated bridges
-extern "C" void cxx_qt_ffi_initialize_myme_ui();
+extern "C" bool cxx_qt_init_crate_myme_ui();
 
 int main(int argc, char *argv[])
 {
@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     QIcon::setThemeName("breeze");
 
     // Initialize cxx-qt types
-    cxx_qt_ffi_initialize_myme_ui();
+    cxx_qt_init_crate_myme_ui();
 
     QQmlApplicationEngine engine;
 
