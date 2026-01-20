@@ -12,7 +12,7 @@ Kirigami.ScrollablePage {
         Kirigami.Action {
             text: "Refresh"
             icon.name: "view-refresh"
-            onTriggered: todoModel.fetchTodos()
+            onTriggered: todoModel.fetchNotes()
         },
         Kirigami.Action {
             text: "Add Note"
@@ -21,10 +21,10 @@ Kirigami.ScrollablePage {
         }
     ]
 
-    TodoModel {
+    NoteModel {
         id: todoModel
         Component.onCompleted: {
-            fetchTodos()
+            fetchNotes()
         }
     }
 
@@ -92,7 +92,7 @@ Kirigami.ScrollablePage {
                 Kirigami.Action {
                     text: "Delete"
                     icon.name: "delete"
-                    onTriggered: todoModel.deleteTodo(todoItem.index)
+                    onTriggered: todoModel.deleteNote(todoItem.index)
                 }
             ]
 
@@ -138,7 +138,7 @@ Kirigami.ScrollablePage {
                 icon.name: "view-refresh"
                 onTriggered: {
                     todoModel.errorMessage = ""
-                    todoModel.fetchTodos()
+                    todoModel.fetchNotes()
                 }
             }
         ]
@@ -156,7 +156,7 @@ Kirigami.ScrollablePage {
 
         onAccepted: {
             if (contentField.text.trim().length > 0) {
-                todoModel.addTodo(contentField.text)
+                todoModel.addNote(contentField.text)
                 contentField.text = ""
             }
         }

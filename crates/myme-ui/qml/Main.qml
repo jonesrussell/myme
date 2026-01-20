@@ -17,19 +17,20 @@ Kirigami.ApplicationWindow {
 
         actions: [
             Kirigami.Action {
-                text: "Todos"
+                text: "Notes"
                 icon.name: "view-task"
                 onTriggered: {
                     pageStack.clear()
-                    pageStack.push(Qt.resolvedUrl("pages/TodoPage.qml"))
+                    pageStack.push(Qt.resolvedUrl("pages/NotePage.qml"))
                 }
             },
             Kirigami.Action {
                 text: "Repos"
                 icon.name: "folder-git"
-                enabled: false
+                enabled: true
                 onTriggered: {
-                    // Will be implemented in Phase 2
+                    pageStack.clear()
+                    pageStack.push(Qt.resolvedUrl("pages/RepoPage.qml"))
                 }
             },
             Kirigami.Action {
@@ -85,12 +86,12 @@ Kirigami.ApplicationWindow {
             }
 
             Controls.Button {
-                text: "View Todos"
+                text: "View Notes"
                 icon.name: "view-task"
                 Layout.alignment: Qt.AlignHCenter
                 onClicked: {
                     pageStack.clear()
-                    pageStack.push(Qt.resolvedUrl("pages/TodoPage.qml"))
+                    pageStack.push(Qt.resolvedUrl("pages/NotePage.qml"))
                 }
             }
         }

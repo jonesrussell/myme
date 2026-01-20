@@ -21,7 +21,8 @@
       "Bash(cargo install:*)",
       "Bash(env)",
       "Bash(powershell:*)",
-      "Bash(cargo tree:*)"
+      "Bash(cargo tree:*)",
+      "Bash(test:*)"
     ]
   }
 }

@@ -3,8 +3,8 @@
 #include <QQmlContext>
 #include <QIcon>
 
-// cxx-qt generated bridge (will be available after build)
-// #include "cxxqt/todo_model.h"
+// cxx-qt generated bridges
+extern "C" void cxx_qt_ffi_initialize_myme_ui();
 
 int main(int argc, char *argv[])
 {
@@ -18,11 +18,10 @@ int main(int argc, char *argv[])
     // Set icon theme (for Kirigami icons)
     QIcon::setThemeName("breeze");
 
-    QQmlApplicationEngine engine;
+    // Initialize cxx-qt types
+    cxx_qt_ffi_initialize_myme_ui();
 
-    // Register cxx-qt types
-    // This will be uncommented once cxx-qt bridge is built
-    // qmlRegisterType<TodoModel>("com.myme", 1, 0, "TodoModel");
+    QQmlApplicationEngine engine;
 
     // Add QML import paths
     engine.addImportPath(":/qt/qml");
