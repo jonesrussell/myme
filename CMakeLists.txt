@@ -11,43 +11,69 @@ set(CMAKE_AUTORCC ON)
 # Find Qt
 find_package(Qt6 REQUIRED COMPONENTS Core Quick QuickControls2)
 
-# Add Rust library
-# The cxx-qt build will generate the necessary bridge code
+# Resolve Qt path automatically from the found installation
+get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION)
+get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
+get_filename_component(QT_PATH "${QT_BIN_DIR}" DIRECTORY)
+
+message(STATUS "Using Qt from: ${QT_PATH}")
+message(STATUS "qmake: ${QT_QMAKE_EXECUTABLE}")
+
+# Rust target directory
 set(RUST_TARGET_DIR "${CMAKE_SOURCE_DIR}/target")
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(RUST_LIB_DIR "${RUST_TARGET_DIR}/debug")
-    set(CARGO_BUILD_TYPE "")
+# Handle multi-config generators (MSVC) vs single-config (Makefiles)
+get_property(IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+
+if(IS_MULTI_CONFIG)
+    # Multi-config: use generator expressions
+    set(RUST_LIB_DIR_DEBUG "${RUST_TARGET_DIR}/debug")
+    set(RUST_LIB_DIR_RELEASE "${RUST_TARGET_DIR}/release")
+    set(RUST_LIB_DIR "$<IF:$<CONFIG:Debug>,${RUST_LIB_DIR_DEBUG},${RUST_LIB_DIR_RELEASE}>")
+    set(CARGO_BUILD_TYPE "$<IF:$<CONFIG:Debug>,,--release>")
 else()
-    set(RUST_LIB_DIR "${RUST_TARGET_DIR}/release")
-    set(CARGO_BUILD_TYPE "--release")
+    # Single-config: use CMAKE_BUILD_TYPE
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(RUST_LIB_DIR "${RUST_TARGET_DIR}/debug")
+        set(CARGO_BUILD_TYPE "")
+    else()
+        set(RUST_LIB_DIR "${RUST_TARGET_DIR}/release")
+        set(CARGO_BUILD_TYPE "--release")
+    endif()
 endif()
 
-# Set Qt path for cxx-qt build
-set(QT_PATH "C:/Qt/6.10.1/msvc2022_64")
+# Platform-specific library names
 if(WIN32)
-    set(QMAKE_PATH "${QT_PATH}/bin/qmake.exe")
+    set(RUST_LIB_NAME "myme_ui.lib")
+    set(CXX_QT_GEN_PATTERN "myme-ui-cxxqt-generated.lib")
+    set(CXX_QT_INIT_PATTERN "cxx-qt-call-init-crate_myme_ui.lib")
 else()
-    set(QMAKE_PATH "${QT_PATH}/bin/qmake")
+    set(RUST_LIB_NAME "libmyme_ui.a")
+    set(CXX_QT_GEN_PATTERN "libmyme-ui-cxxqt-generated.a")
+    set(CXX_QT_INIT_PATTERN "libcxx-qt-call-init-crate_myme_ui.a")
+endif()
+
+# For multi-config, we need concrete paths for BYPRODUCTS
+if(IS_MULTI_CONFIG)
+    set(RUST_LIB_OUTPUT_DEBUG "${RUST_LIB_DIR_DEBUG}/${RUST_LIB_NAME}")
+    set(RUST_LIB_OUTPUT_RELEASE "${RUST_LIB_DIR_RELEASE}/${RUST_LIB_NAME}")
+    set(RUST_BYPRODUCTS ${RUST_LIB_OUTPUT_DEBUG} ${RUST_LIB_OUTPUT_RELEASE})
+else()
+    set(RUST_LIB_OUTPUT "${RUST_LIB_DIR}/${RUST_LIB_NAME}")
+    set(RUST_BYPRODUCTS ${RUST_LIB_OUTPUT})
 endif()
 
 # Build Rust library with Qt environment
-if(WIN32)
-    set(RUST_LIB_OUTPUT "${RUST_LIB_DIR}/myme_ui.lib")
-else()
-    set(RUST_LIB_OUTPUT "${RUST_LIB_DIR}/libmyme_ui.a")
-endif()
-
 add_custom_target(rust_myme_ui ALL
     COMMAND ${CMAKE_COMMAND} -E env
-        "QMAKE=${QMAKE_PATH}"
+        "QMAKE=${QT_QMAKE_EXECUTABLE}"
         "CMAKE_PREFIX_PATH=${QT_PATH}"
         "Qt6_DIR=${QT_PATH}/lib/cmake/Qt6"
         cargo build -p myme-ui ${CARGO_BUILD_TYPE}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Building Rust myme-ui library with cxx-qt..."
     VERBATIM
-    BYPRODUCTS ${RUST_LIB_OUTPUT}
+    BYPRODUCTS ${RUST_BYPRODUCTS}
 )
 
 # Main executable with QML resources
@@ -66,32 +92,16 @@ target_link_libraries(myme-qt PRIVATE
     Qt6::QuickControls2
 )
 
-# Link Rust static library (after cargo build)
-# On Windows, the extension is .lib not .a
-if(WIN32)
-    target_link_libraries(myme-qt PRIVATE
-        "${RUST_LIB_DIR}/myme_ui.lib"
-        # Windows system libraries required by Rust dependencies
-        ntdll
-        Shlwapi
-        ws2_32
-        userenv
-        bcrypt
-        secur32
-        crypt32
-    )
+# Determine which Rust lib dir to search based on generator type
+if(IS_MULTI_CONFIG)
+    # For multi-config, search release first (more common for actual builds)
+    set(RUST_SEARCH_DIR "${RUST_LIB_DIR_RELEASE}")
 else()
-    target_link_libraries(myme-qt PRIVATE
-        "${RUST_LIB_DIR}/libmyme_ui.a"
-    )
+    set(RUST_SEARCH_DIR "${RUST_LIB_DIR}")
 endif()
 
-# Find cxx-qt generated files by looking for the generated library
-if(WIN32)
-    file(GLOB_RECURSE CXX_QT_GEN_LIB "${RUST_LIB_DIR}/build/myme-ui-*/out/myme-ui-cxxqt-generated.lib")
-else()
-    file(GLOB_RECURSE CXX_QT_GEN_LIB "${RUST_LIB_DIR}/build/myme-ui-*/out/libmyme-ui-cxxqt-generated.a")
-endif()
+# Find cxx-qt generated files
+file(GLOB_RECURSE CXX_QT_GEN_LIB "${RUST_SEARCH_DIR}/build/myme-ui-*/out/${CXX_QT_GEN_PATTERN}")
 
 if(CXX_QT_GEN_LIB)
     list(GET CXX_QT_GEN_LIB 0 CXX_QT_GEN_LIB)
@@ -105,24 +115,36 @@ if(CXX_QT_GEN_LIB)
     get_filename_component(CXX_QT_BUILD_DIR "${CXX_QT_OUT_DIR}" DIRECTORY)
     target_include_directories(myme-qt PRIVATE "${CXX_QT_BUILD_DIR}/out/cxxqtgen")
 
-    # Link cxx-qt generated libraries
+    # Link Rust static library and cxx-qt generated libraries
     if(WIN32)
         target_link_libraries(myme-qt PRIVATE
-            "${CXX_QT_OUT_DIR}/myme-ui-cxxqt-generated.lib"
-            "${CXX_QT_OUT_DIR}/cxx-qt-call-init-crate_myme_ui.lib"
+            "${RUST_SEARCH_DIR}/${RUST_LIB_NAME}"
+            "${CXX_QT_OUT_DIR}/${CXX_QT_GEN_PATTERN}"
+            "${CXX_QT_OUT_DIR}/${CXX_QT_INIT_PATTERN}"
+            # Windows system libraries required by Rust dependencies
+            ntdll
+            ws2_32
+            userenv
+            advapi32
+            bcrypt
+            crypt32
+            secur32
+            Shlwapi
         )
     else()
         target_link_libraries(myme-qt PRIVATE
-            "${CXX_QT_OUT_DIR}/libmyme-ui-cxxqt-generated.a"
-            "${CXX_QT_OUT_DIR}/libcxx-qt-call-init-crate_myme_ui.a"
+            "${RUST_SEARCH_DIR}/${RUST_LIB_NAME}"
+            "${CXX_QT_OUT_DIR}/${CXX_QT_GEN_PATTERN}"
+            "${CXX_QT_OUT_DIR}/${CXX_QT_INIT_PATTERN}"
         )
     endif()
 else()
-    message(FATAL_ERROR "Could not find cxx-qt generated libraries. Did cargo build succeed?")
+    message(FATAL_ERROR "Could not find cxx-qt generated libraries. Run 'cargo build -p myme-ui --release' first.")
 endif()
 
-# Set QML import path
+# Set QML import paths
 set(QML_IMPORT_PATH "${CMAKE_SOURCE_DIR}/crates/myme-ui/qml" CACHE STRING "" FORCE)
+set(QML2_IMPORT_PATH "${CMAKE_SOURCE_DIR}/crates/myme-ui/qml" CACHE STRING "" FORCE)
 
 # Qt properties
 set_target_properties(myme-qt PROPERTIES

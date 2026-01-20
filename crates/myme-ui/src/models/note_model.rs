@@ -1,6 +1,7 @@
 use core::pin::Pin;
 use std::sync::Arc;
 
+use cxx_qt::CxxQtType;
 use cxx_qt_lib::QString;
 use myme_services::{Todo as Note, TodoClient as NoteClient, TodoCreateRequest as NoteCreateRequest, TodoUpdateRequest as NoteUpdateRequest};
 

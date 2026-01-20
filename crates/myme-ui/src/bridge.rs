@@ -60,7 +60,7 @@ pub extern "C" fn initialize_note_model(base_url: *const c_char) -> bool {
     };
 
     // Get or initialize tokio runtime
-    let runtime = get_or_init_runtime();
+    let _runtime = get_or_init_runtime();
 
     // Store client globally so NoteModels can use it
     if TODO_CLIENT.set(client).is_err() {

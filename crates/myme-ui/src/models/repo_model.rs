@@ -1,6 +1,7 @@
 use core::pin::Pin;
 use std::sync::Arc;
 
+use cxx_qt::CxxQtType;
 use cxx_qt_lib::QString;
 use myme_auth::{GitHubAuth, OAuth2Provider};
 use myme_integrations::{GitHubClient, Repository};
