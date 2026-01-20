@@ -1,6 +1,43 @@
+[workspace]
+members = [
+    "crates/myme-core",
+    "crates/myme-ui",
+    "crates/myme-services",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["MyMe Contributors"]
+
+[workspace.dependencies]
+# Core
+tokio = { version = "1.42", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# HTTP & Services
+reqwest = { version = "0.12", features = ["json"] }
+url = "2.5"
+
+# cxx-qt
+cxx-qt = "0.7"
+cxx-qt-lib = "0.7"
+
 [package]
 name = "myme"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
+myme-core = { path = "crates/myme-core" }
+myme-ui = { path = "crates/myme-ui" }
+tokio.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

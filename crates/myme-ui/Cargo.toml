@@ -1,0 +1,23 @@
+[package]
+name = "myme-ui"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+# Workspace dependencies
+tokio.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+
+# cxx-qt for Qt/QML integration
+cxx-qt.workspace = true
+cxx-qt-lib.workspace = true
+
+# Internal crates
+myme-services = { path = "../myme-services" }
+
+[build-dependencies]
+cxx-qt-build = "0.7"
+
+[lib]
+crate-type = ["staticlib", "cdylib"]

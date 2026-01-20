@@ -1,1 +1,25 @@
+# Rust build artifacts
 /target
+Cargo.lock
+
+# CMake build artifacts
+/build
+/cmake-build-*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Qt Creator
+*.user
+*.autosave
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Config (should be user-specific)
+*.local.toml
