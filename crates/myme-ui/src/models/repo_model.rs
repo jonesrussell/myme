@@ -1,10 +1,10 @@
 use core::pin::Pin;
 use std::sync::Arc;
+
 use cxx_qt::CxxQtType;
 use cxx_qt_lib::QString;
-
-use myme_integrations::{GitHubClient, Repository};
 use myme_auth::{GitHubAuth, OAuth2Provider};
+use myme_integrations::{GitHubClient, Repository};
 
 #[cxx_qt::bridge]
 pub mod qobject {
@@ -91,25 +91,26 @@ impl RepoModelRust {
         runtime: tokio::runtime::Handle,
     ) {
         let auth = Arc::new(GitHubAuth::new(client_id, client_secret));
-
-        // Check if already authenticated
         let authenticated = auth.is_authenticated();
 
-        // Create client if authenticated
-        let client = if authenticated {
-            if let Some(token) = auth.get_token() {
-                Some(Arc::new(GitHubClient::new(token.access_token)))
-            } else {
-                None
-            }
-        } else {
-            None
-        };
+        // Create client if authenticated and token is available
+        let client = auth
+            .get_token()
+            .filter(|_| authenticated)
+            .map(|token| Arc::new(GitHubClient::new(token.access_token)));
 
         self.github_auth = Some(auth);
         self.github_client = client;
         self.runtime = Some(runtime);
         self.authenticated = authenticated;
+    }
+
+    /// Get repository at index if valid, returns None for invalid indices
+    fn get_repo(&self, index: i32) -> Option<&Repository> {
+        if index < 0 {
+            return None;
+        }
+        self.repos.get(index as usize)
     }
 }
 
@@ -249,58 +250,51 @@ impl qobject::RepoModel {
     }
 
     pub fn get_name(&self, index: i32) -> QString {
-        let repos = &self.rust().repos;
-        if index < 0 || index >= repos.len() as i32 {
-            return QString::from("");
-        }
-        QString::from(&repos[index as usize].name)
+        self.rust()
+            .get_repo(index)
+            .map(|repo| QString::from(&repo.name))
+            .unwrap_or_else(|| QString::from(""))
     }
 
     pub fn get_full_name(&self, index: i32) -> QString {
-        let repos = &self.rust().repos;
-        if index < 0 || index >= repos.len() as i32 {
-            return QString::from("");
-        }
-        QString::from(&repos[index as usize].full_name)
+        self.rust()
+            .get_repo(index)
+            .map(|repo| QString::from(&repo.full_name))
+            .unwrap_or_else(|| QString::from(""))
     }
 
     pub fn get_description(&self, index: i32) -> QString {
-        let repos = &self.rust().repos;
-        if index < 0 || index >= repos.len() as i32 {
-            return QString::from("");
-        }
-        QString::from(repos[index as usize].description.as_deref().unwrap_or(""))
+        self.rust()
+            .get_repo(index)
+            .map(|repo| QString::from(repo.description.as_deref().unwrap_or("")))
+            .unwrap_or_else(|| QString::from(""))
     }
 
     pub fn get_url(&self, index: i32) -> QString {
-        let repos = &self.rust().repos;
-        if index < 0 || index >= repos.len() as i32 {
-            return QString::from("");
-        }
-        QString::from(&repos[index as usize].html_url)
+        self.rust()
+            .get_repo(index)
+            .map(|repo| QString::from(&repo.html_url))
+            .unwrap_or_else(|| QString::from(""))
     }
 
     pub fn get_clone_url(&self, index: i32) -> QString {
-        let repos = &self.rust().repos;
-        if index < 0 || index >= repos.len() as i32 {
-            return QString::from("");
-        }
-        QString::from(&repos[index as usize].clone_url)
+        self.rust()
+            .get_repo(index)
+            .map(|repo| QString::from(&repo.clone_url))
+            .unwrap_or_else(|| QString::from(""))
     }
 
     pub fn get_stars(&self, index: i32) -> i32 {
-        let repos = &self.rust().repos;
-        if index < 0 || index >= repos.len() as i32 {
-            return 0;
-        }
-        repos[index as usize].stargazers_count as i32
+        self.rust()
+            .get_repo(index)
+            .map(|repo| repo.stargazers_count as i32)
+            .unwrap_or(0)
     }
 
     pub fn get_is_private(&self, index: i32) -> bool {
-        let repos = &self.rust().repos;
-        if index < 0 || index >= repos.len() as i32 {
-            return false;
-        }
-        repos[index as usize].private
+        self.rust()
+            .get_repo(index)
+            .map(|repo| repo.private)
+            .unwrap_or(false)
     }
 }

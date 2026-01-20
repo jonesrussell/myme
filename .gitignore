@@ -24,3 +24,5 @@ Thumbs.db
 # Config (should be user-specific)
 *.local.toml
 build-qt/
+
+settings.local.json

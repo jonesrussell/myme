@@ -1,10 +1,7 @@
-use std::sync::{Arc, OnceLock, Mutex};
 use std::ffi::CStr;
 use std::os::raw::c_char;
-use core::pin::Pin;
+use std::sync::{Arc, OnceLock};
 
-use crate::models::note_model::qobject::NoteModel;
-use crate::models::note_model::NoteModelRust;
 use myme_services::TodoClient;
 
 // Static tokio runtime that lives for the duration of the application
@@ -63,7 +60,7 @@ pub extern "C" fn initialize_note_model(base_url: *const c_char) -> bool {
     };
 
     // Get or initialize tokio runtime
-    let runtime = get_or_init_runtime();
+    let _runtime = get_or_init_runtime();
 
     // Store client globally so NoteModels can use it
     if TODO_CLIENT.set(client).is_err() {
