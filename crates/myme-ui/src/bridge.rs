@@ -1,10 +1,7 @@
-use std::sync::{Arc, OnceLock, Mutex};
 use std::ffi::CStr;
 use std::os::raw::c_char;
-use core::pin::Pin;
+use std::sync::{Arc, OnceLock};
 
-use crate::models::note_model::qobject::NoteModel;
-use crate::models::note_model::NoteModelRust;
 use myme_services::TodoClient;
 
 // Static tokio runtime that lives for the duration of the application

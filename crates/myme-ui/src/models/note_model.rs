@@ -1,10 +1,8 @@
 use core::pin::Pin;
 use std::sync::Arc;
-use cxx_qt::CxxQtType;
-use cxx_qt_lib::QString;
 
+use cxx_qt_lib::QString;
 use myme_services::{Todo as Note, TodoClient as NoteClient, TodoCreateRequest as NoteCreateRequest, TodoUpdateRequest as NoteUpdateRequest};
-use std::sync::Mutex;
 
 #[cxx_qt::bridge]
 pub mod qobject {
@@ -69,14 +67,27 @@ impl NoteModelRust {
 
     /// Auto-initialize from global services if not already initialized
     fn ensure_initialized(&mut self) {
-        if self.client.is_none() || self.runtime.is_none() {
-            if let Some((client, runtime)) = crate::bridge::get_todo_client_and_runtime() {
+        if self.client.is_some() && self.runtime.is_some() {
+            return;
+        }
+
+        match crate::bridge::get_todo_client_and_runtime() {
+            Some((client, runtime)) => {
                 self.initialize(client, runtime);
                 tracing::info!("NoteModel auto-initialized from global services");
-            } else {
+            }
+            None => {
                 tracing::error!("Cannot auto-initialize NoteModel - global services not ready");
             }
         }
+    }
+
+    /// Get note at index if valid, returns None for invalid indices
+    fn get_note(&self, index: i32) -> Option<&Note> {
+        if index < 0 {
+            return None;
+        }
+        self.notes.get(index as usize)
     }
 }
 
@@ -234,34 +245,30 @@ impl qobject::NoteModel {
     }
 
     pub fn get_content(&self, index: i32) -> QString {
-        let notes = &self.rust().notes;
-        if index < 0 || index >= notes.len() as i32 {
-            return QString::from("");
-        }
-        QString::from(&notes[index as usize].content)
+        self.rust()
+            .get_note(index)
+            .map(|note| QString::from(&note.content))
+            .unwrap_or_else(|| QString::from(""))
     }
 
     pub fn get_done(&self, index: i32) -> bool {
-        let notes = &self.rust().notes;
-        if index < 0 || index >= notes.len() as i32 {
-            return false;
-        }
-        notes[index as usize].done
+        self.rust()
+            .get_note(index)
+            .map(|note| note.done)
+            .unwrap_or(false)
     }
 
     pub fn get_id(&self, index: i32) -> QString {
-        let notes = &self.rust().notes;
-        if index < 0 || index >= notes.len() as i32 {
-            return QString::from("");
-        }
-        QString::from(&notes[index as usize].id)
+        self.rust()
+            .get_note(index)
+            .map(|note| QString::from(&note.id))
+            .unwrap_or_else(|| QString::from(""))
     }
 
     pub fn get_created_at(&self, index: i32) -> QString {
-        let notes = &self.rust().notes;
-        if index < 0 || index >= notes.len() as i32 {
-            return QString::from("");
-        }
-        QString::from(notes[index as usize].created_at.format("%Y-%m-%d %H:%M").to_string())
+        self.rust()
+            .get_note(index)
+            .map(|note| QString::from(note.created_at.format("%Y-%m-%d %H:%M").to_string()))
+            .unwrap_or_else(|| QString::from(""))
     }
 }

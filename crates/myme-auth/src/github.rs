@@ -1,50 +1,39 @@
 use crate::oauth::{OAuth2Config, OAuth2Provider};
 
+const GITHUB_AUTH_URL: &str = "https://github.com/login/oauth/authorize";
+const GITHUB_TOKEN_URL: &str = "https://github.com/login/oauth/access_token";
+const DEFAULT_REDIRECT_URI: &str = "http://localhost:8080/callback";
+
 /// GitHub OAuth2 authentication provider
 pub struct GitHubAuth {
     config: OAuth2Config,
 }
 
 impl GitHubAuth {
-    /// Create a new GitHub authentication provider
+    /// Create a new GitHub authentication provider with default scopes
     ///
-    /// # Arguments
-    /// * `client_id` - GitHub OAuth App client ID
-    /// * `client_secret` - GitHub OAuth App client secret
+    /// Default scopes: repo, read:user, user:email
     pub fn new(client_id: String, client_secret: String) -> Self {
-        let config = OAuth2Config {
-            client_id,
-            client_secret,
-            auth_url: "https://github.com/login/oauth/authorize".to_string(),
-            token_url: "https://github.com/login/oauth/access_token".to_string(),
-            redirect_uri: "http://localhost:8080/callback".to_string(),
-            scopes: vec![
-                "repo".to_string(),       // Full control of private repositories
-                "read:user".to_string(),  // Read user profile data
-                "user:email".to_string(), // Access user email addresses
-            ],
-        };
-
-        Self { config }
+        let default_scopes = vec![
+            "repo".to_string(),       // Full control of private repositories
+            "read:user".to_string(),  // Read user profile data
+            "user:email".to_string(), // Access user email addresses
+        ];
+        Self::with_scopes(client_id, client_secret, default_scopes)
     }
 
     /// Create with custom scopes
-    ///
-    /// # Arguments
-    /// * `client_id` - GitHub OAuth App client ID
-    /// * `client_secret` - GitHub OAuth App client secret
-    /// * `scopes` - Custom scopes to request
     pub fn with_scopes(client_id: String, client_secret: String, scopes: Vec<String>) -> Self {
-        let config = OAuth2Config {
-            client_id,
-            client_secret,
-            auth_url: "https://github.com/login/oauth/authorize".to_string(),
-            token_url: "https://github.com/login/oauth/access_token".to_string(),
-            redirect_uri: "http://localhost:8080/callback".to_string(),
-            scopes,
-        };
-
-        Self { config }
+        Self {
+            config: OAuth2Config {
+                client_id,
+                client_secret,
+                auth_url: GITHUB_AUTH_URL.to_string(),
+                token_url: GITHUB_TOKEN_URL.to_string(),
+                redirect_uri: DEFAULT_REDIRECT_URI.to_string(),
+                scopes,
+            },
+        }
     }
 }
 
