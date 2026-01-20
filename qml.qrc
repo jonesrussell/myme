@@ -1,0 +1,8 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/">
+        <file>crates/myme-ui/qml/Main.qml</file>
+        <file>crates/myme-ui/qml/pages/NotePage.qml</file>
+        <file>crates/myme-ui/qml/pages/RepoPage.qml</file>
+    </qresource>
+</RCC>

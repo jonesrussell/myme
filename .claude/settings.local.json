@@ -34,7 +34,8 @@
       "Bash(lib:*)",
       "Bash(set QMAKE=C:Qt6.10.1msvc2022_64binqmake.exe)",
       "Bash(set CMAKE_PREFIX_PATH=C:Qt6.10.1msvc2022_64)",
-      "Bash(set Qt6_DIR=C:Qt6.10.1msvc2022_64libcmakeQt6)"
+      "Bash(set Qt6_DIR=C:Qt6.10.1msvc2022_64libcmakeQt6)",
+      "Bash(\"C:\\\\Users\\\\jones\\\\dev\\\\myme\\\\build-qt\\\\Release\\\\myme-qt.exe\")"
     ]
   }
 }

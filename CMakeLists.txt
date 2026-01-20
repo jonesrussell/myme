@@ -47,9 +47,10 @@ add_custom_target(rust_myme_ui ALL
     BYPRODUCTS ${RUST_LIB_OUTPUT}
 )
 
-# Main executable
+# Main executable with QML resources
 add_executable(myme-qt
     qt-main/main.cpp
+    qml.qrc
 )
 
 # Make sure Rust library is built before linking
