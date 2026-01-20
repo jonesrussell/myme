@@ -68,14 +68,35 @@ Write-Host "`nStep 4: Building Qt application..." -ForegroundColor Yellow
 
 Pop-Location
 
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "`n==================================" -ForegroundColor Cyan
-    Write-Host "QT BUILD SUCCESS!" -ForegroundColor Green
-    Write-Host "==================================" -ForegroundColor Cyan
-    Write-Host "`nExecutable location: $buildDir\Release\myme-qt.exe`n" -ForegroundColor Green
-} else {
+if ($LASTEXITCODE -ne 0) {
     Write-Host "`n==================================" -ForegroundColor Cyan
     Write-Host "QT BUILD FAILED" -ForegroundColor Red
     Write-Host "==================================" -ForegroundColor Cyan
     exit 1
 }
+
+Write-Host "`nStep 5: Deploying Qt dependencies..." -ForegroundColor Yellow
+
+# Deploy Qt DLLs and plugins
+$windeployqt = "$qtPath\bin\windeployqt.exe"
+$exePath = "$buildDir\Release\myme-qt.exe"
+$qmlDir = "$PSScriptRoot\crates\myme-ui\qml"
+
+if (-not (Test-Path $windeployqt)) {
+    Write-Host "WARNING: windeployqt not found at $windeployqt" -ForegroundColor Yellow
+    Write-Host "Qt dependencies will need to be deployed manually." -ForegroundColor Yellow
+} else {
+    & $windeployqt $exePath --qmldir $qmlDir --release --no-translations
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Qt dependencies deployed successfully." -ForegroundColor Green
+    } else {
+        Write-Host "WARNING: windeployqt failed. Application may not run standalone." -ForegroundColor Yellow
+    }
+}
+
+Write-Host "`n==================================" -ForegroundColor Cyan
+Write-Host "BUILD COMPLETE!" -ForegroundColor Green
+Write-Host "==================================" -ForegroundColor Cyan
+Write-Host "`nExecutable location: $buildDir\Release\myme-qt.exe" -ForegroundColor Green
+Write-Host "You can now run the application directly.`n" -ForegroundColor Green
