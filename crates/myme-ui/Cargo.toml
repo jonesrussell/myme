@@ -29,6 +29,30 @@ serde_json = "1"
 # Path utilities
 dirs = "5.0"
 
+# Encoding tools
+base64 = "0.22"
+hex = "0.4"
+percent-encoding = "2.3"
+
+# UUID generation
+uuid = { version = "1.11", features = ["v1", "v4", "v5", "v7"] }
+
+# JSON/YAML/TOML conversion
+serde_yaml = "0.9"
+toml = "0.8"
+jsonpath-rust = "0.7"
+
+# Hashing
+md-5 = "0.10"
+sha1 = "0.10"
+sha2 = "0.10"
+hmac = "0.12"
+digest = "0.10"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
+
 [build-dependencies]
 cxx-qt-build = { version = "0.8", features = ["link_qt_object_files"] }
 
