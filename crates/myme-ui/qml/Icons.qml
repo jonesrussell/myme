@@ -57,6 +57,17 @@ QtObject {
     readonly property string moon: "\uebfe"
     readonly property string circleHalf: "\uea39"
 
+    // Weather
+    readonly property string cloud: "\uea55"
+    readonly property string cloud_sun: "\uea5e"
+    readonly property string cloud_fog: "\uea57"
+    readonly property string cloud_rain: "\uea5a"
+    readonly property string cloud_snow: "\uea5c"
+    readonly property string cloud_lightning: "\uea59"
+    readonly property string thermometer: "\ued57"
+    readonly property string drop: "\ueab4"
+    readonly property string wind: "\uedcb"
+
     // Status
     readonly property string warning: "\uedbf"
     readonly property string info: "\ueba7"

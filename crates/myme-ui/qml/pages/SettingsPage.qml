@@ -254,6 +254,196 @@ Page {
                 }
             }
 
+            // Weather Section
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: weatherContent.implicitHeight + Theme.spacingMd * 2
+                color: Theme.surface
+                border.color: Theme.border
+                border.width: 1
+                radius: Theme.cardRadius
+
+                property string temperatureUnit: "auto"
+
+                ColumnLayout {
+                    id: weatherContent
+                    anchors.fill: parent
+                    anchors.margins: Theme.spacingMd
+                    spacing: Theme.spacingMd
+
+                    Label {
+                        text: "Weather"
+                        font.pixelSize: Theme.fontSizeMedium
+                        font.bold: true
+                        color: Theme.text
+                    }
+
+                    Label {
+                        text: "Configure how weather information is displayed."
+                        font.pixelSize: Theme.fontSizeNormal
+                        color: Theme.textSecondary
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+
+                    // Temperature unit label
+                    Label {
+                        text: "Temperature Unit"
+                        font.pixelSize: Theme.fontSizeNormal
+                        color: Theme.text
+                        Layout.topMargin: Theme.spacingSm
+                    }
+
+                    // Temperature unit selection
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Theme.spacingMd
+
+                        // Auto option
+                        Rectangle {
+                            Layout.preferredWidth: 100
+                            Layout.preferredHeight: 70
+                            radius: Theme.cardRadius
+                            color: parent.parent.parent.temperatureUnit === "auto" ? Theme.primary + "20" : Theme.surfaceAlt
+                            border.color: parent.parent.parent.temperatureUnit === "auto" ? Theme.primary : Theme.border
+                            border.width: parent.parent.parent.temperatureUnit === "auto" ? 2 : 1
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: parent.parent.parent.parent.temperatureUnit = "auto"
+                            }
+
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                spacing: Theme.spacingXs
+
+                                Text {
+                                    text: Icons.circleHalf
+                                    font.family: Icons.family
+                                    font.pixelSize: 20
+                                    color: Theme.textSecondary
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+
+                                Label {
+                                    text: "Auto"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.bold: parent.parent.parent.parent.parent.temperatureUnit === "auto"
+                                    color: Theme.text
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+                            }
+                        }
+
+                        // Celsius option
+                        Rectangle {
+                            Layout.preferredWidth: 100
+                            Layout.preferredHeight: 70
+                            radius: Theme.cardRadius
+                            color: parent.parent.parent.temperatureUnit === "celsius" ? Theme.primary + "20" : Theme.surfaceAlt
+                            border.color: parent.parent.parent.temperatureUnit === "celsius" ? Theme.primary : Theme.border
+                            border.width: parent.parent.parent.temperatureUnit === "celsius" ? 2 : 1
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: parent.parent.parent.parent.temperatureUnit = "celsius"
+                            }
+
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                spacing: Theme.spacingXs
+
+                                Label {
+                                    text: "°C"
+                                    font.pixelSize: 20
+                                    font.bold: true
+                                    color: Theme.textSecondary
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+
+                                Label {
+                                    text: "Celsius"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.bold: parent.parent.parent.parent.parent.temperatureUnit === "celsius"
+                                    color: Theme.text
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+                            }
+                        }
+
+                        // Fahrenheit option
+                        Rectangle {
+                            Layout.preferredWidth: 100
+                            Layout.preferredHeight: 70
+                            radius: Theme.cardRadius
+                            color: parent.parent.parent.temperatureUnit === "fahrenheit" ? Theme.primary + "20" : Theme.surfaceAlt
+                            border.color: parent.parent.parent.temperatureUnit === "fahrenheit" ? Theme.primary : Theme.border
+                            border.width: parent.parent.parent.temperatureUnit === "fahrenheit" ? 2 : 1
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: parent.parent.parent.parent.temperatureUnit = "fahrenheit"
+                            }
+
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                spacing: Theme.spacingXs
+
+                                Label {
+                                    text: "°F"
+                                    font.pixelSize: 20
+                                    font.bold: true
+                                    color: Theme.textSecondary
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+
+                                Label {
+                                    text: "Fahrenheit"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.bold: parent.parent.parent.parent.parent.temperatureUnit === "fahrenheit"
+                                    color: Theme.text
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+                            }
+                        }
+
+                        Item {
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    // Info text
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Theme.spacingSm
+                        height: 40
+                        radius: Theme.inputRadius
+                        color: Theme.surfaceAlt
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: Theme.spacingSm
+
+                            Text {
+                                text: Icons.info
+                                font.family: Icons.family
+                                font.pixelSize: Theme.fontSizeNormal
+                                color: Theme.textMuted
+                            }
+
+                            Label {
+                                text: "Auto detects your preferred unit from system locale"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.textSecondary
+                            }
+                        }
+                    }
+                }
+            }
+
             // About Section
             Rectangle {
                 Layout.fillWidth: true

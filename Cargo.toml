@@ -5,6 +5,7 @@ members = [
     "crates/myme-services",
     "crates/myme-auth",
     "crates/myme-integrations",
+    "crates/myme-weather",
 ]
 resolver = "2"
 
@@ -24,7 +25,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # HTTP & Services
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "native-tls"] }
 url = "2.5"
 
 # cxx-qt

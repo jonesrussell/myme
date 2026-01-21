@@ -1,0 +1,31 @@
+[package]
+name = "myme-weather"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+reqwest.workspace = true
+
+# Date/time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Platform-specific location
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = [
+    "Devices_Geolocation",
+    "Foundation",
+] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = { version = "4", default-features = false, features = ["tokio"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+wiremock = "0.6"
+tempfile = "3"

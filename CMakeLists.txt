@@ -137,6 +137,8 @@ if(CXX_QT_GEN_LIB)
             crypt32
             secur32
             Shlwapi
+            # Windows Runtime library for WinRT APIs (Geolocation, etc.)
+            runtimeobject
         )
     else()
         target_link_libraries(myme-qt PRIVATE

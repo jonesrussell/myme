@@ -12,6 +12,10 @@ pub struct Config {
 
     /// UI preferences
     pub ui: UiConfig,
+
+    /// Weather settings
+    #[serde(default)]
+    pub weather: WeatherConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,6 +39,34 @@ pub struct UiConfig {
     pub dark_mode: bool,
 }
 
+/// Temperature unit preference
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum TemperatureUnit {
+    #[default]
+    Auto,
+    Celsius,
+    Fahrenheit,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WeatherConfig {
+    /// Temperature unit preference
+    pub temperature_unit: TemperatureUnit,
+
+    /// Refresh interval in minutes
+    pub refresh_minutes: u32,
+}
+
+impl Default for WeatherConfig {
+    fn default() -> Self {
+        Self {
+            temperature_unit: TemperatureUnit::Auto,
+            refresh_minutes: 15,
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         let config_dir = dirs::config_dir()
@@ -52,6 +84,7 @@ impl Default for Config {
                 window_height: 800,
                 dark_mode: false,
             },
+            weather: WeatherConfig::default(),
         }
     }
 }

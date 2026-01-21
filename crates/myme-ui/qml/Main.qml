@@ -1,7 +1,9 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import myme_ui
 import "."
+import "components"
 
 ApplicationWindow {
     id: root
@@ -15,6 +17,12 @@ ApplicationWindow {
     property int sidebarExpandedWidth: 200
     property int sidebarCollapsedWidth: 56
     property string currentPage: "welcome"
+
+    // Global weather model for sidebar and dashboard
+    WeatherModel {
+        id: weatherModel
+        Component.onCompleted: refresh()
+    }
 
     // Apply theme background
     color: Theme.background
@@ -154,6 +162,12 @@ ApplicationWindow {
                             enabled: false
                         },
                         {
+                            id: "weather",
+                            icon: Icons.sun,
+                            label: "Weather",
+                            enabled: true
+                        },
+                        {
                             id: "devtools",
                             icon: Icons.wrench,
                             label: "Dev Tools",
@@ -186,6 +200,8 @@ ApplicationWindow {
                                         stackView.replace("pages/NotePage.qml");
                                     else if (modelData.id === "repos")
                                         stackView.replace("pages/RepoPage.qml");
+                                    else if (modelData.id === "weather")
+                                        stackView.replace("pages/WeatherPage.qml");
                                     else if (modelData.id === "devtools")
                                         stackView.replace("pages/DevToolsPage.qml");
                                 }
@@ -232,6 +248,28 @@ ApplicationWindow {
 
                 Item {
                     Layout.fillHeight: true
+                }
+
+                // Weather compact widget in sidebar footer
+                WeatherCompact {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: sidebarCollapsed ? 40 : 48
+                    expanded: !sidebarCollapsed
+                    loading: weatherModel.loading
+                    hasData: weatherModel.has_data
+                    isStale: weatherModel.is_stale
+                    temperature: weatherModel.temperature
+                    condition: weatherModel.condition
+                    conditionIcon: weatherModel.condition_icon
+
+                    onClicked: {
+                        currentPage = "weather";
+                        stackView.replace("pages/WeatherPage.qml");
+                    }
+
+                    ToolTip.visible: sidebarCollapsed && !loading
+                    ToolTip.text: hasData ? `${Math.round(temperature)}° ${condition}` : "Weather"
+                    ToolTip.delay: 500
                 }
 
                 Rectangle {
@@ -703,6 +741,34 @@ ApplicationWindow {
                                     }
                                 }
                             }
+                        }
+
+                        // Weather widget dashboard card
+                        WeatherWidget {
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.topMargin: Theme.spacingLg
+                            loading: weatherModel.loading
+                            hasData: weatherModel.has_data
+                            isStale: weatherModel.is_stale
+                            temperature: weatherModel.temperature
+                            feelsLike: weatherModel.feels_like
+                            humidity: weatherModel.humidity
+                            windSpeed: weatherModel.wind_speed
+                            condition: weatherModel.condition
+                            conditionIcon: weatherModel.condition_icon
+                            locationName: weatherModel.location_name
+                            todayHigh: weatherModel.today_high
+                            todayLow: weatherModel.today_low
+                            precipChance: weatherModel.precipitation_chance
+                            sunrise: weatherModel.sunrise
+                            sunset: weatherModel.sunset
+
+                            onClicked: {
+                                currentPage = "weather";
+                                stackView.replace("pages/WeatherPage.qml");
+                            }
+
+                            onRefreshRequested: weatherModel.refresh()
                         }
                     }
                 }
