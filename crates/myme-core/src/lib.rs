@@ -3,7 +3,7 @@ pub mod config;
 pub mod plugin;
 
 pub use app::App;
-pub use config::Config;
+pub use config::{Config, TemperatureUnit, WeatherConfig};
 pub use plugin::{PluginContext, PluginProvider, UiComponent};
 
 use anyhow::Result;
