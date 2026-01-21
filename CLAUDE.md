@@ -198,6 +198,35 @@ Default config is created automatically on first run. Configuration is loaded us
 3. Pass tokens to service clients via bearer authentication
 4. Add auth flow UI in QML if needed
 
+## QML UI Patterns
+
+### Theme System
+- `Theme.qml` singleton in `crates/myme-ui/qml/` provides centralized colors/spacing
+- Pages import theme with `import ".."` to access `Theme.background`, `Theme.text`, etc.
+- Theme supports `light`, `dark`, `auto` modes via `Theme.mode` property
+- New QML files must be added to `qml.qrc` for bundling
+
+### Navigation Best Practices
+- Sidebar should be outside StackView (sibling in RowLayout) to prevent reload on page changes
+- Use `stackView.replace()` with `clip: true` and fade transitions to avoid visual glitches
+- Track current page with a property (e.g., `currentPage: "notes"`) for sidebar highlighting
+
+### QML-Only Changes
+- QML changes don't require rebuild - just restart the application
+- Only Rust bridge changes (cxx-qt) require `cargo build` + CMake rebuild
+
+### QML JavaScript
+- Qt 6.x QML supports modern ES6+ JavaScript: arrow functions, template literals, `let`/`const`, destructuring, etc.
+- Use modern syntax for cleaner, more readable code
+
+### QML Formatting
+- qmlformat location: `/mnt/c/Qt/6.10.1/msvc2022_64/bin/qmlformat.exe -i <file>`
+
+### QML Singletons
+- Theme/Icons defined in `crates/myme-ui/qml/Theme.qml` and `Icons.qml`
+- Registered in `crates/myme-ui/qml/qmldir`
+- Phosphor Icons font used for UI icons (`crates/myme-ui/qml/fonts/Phosphor.ttf`)
+
 ## Important Files
 
 - [Cargo.toml](Cargo.toml) - Workspace configuration with shared dependencies

@@ -1,9 +1,15 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
     <qresource prefix="/">
+        <file>assets/icon.png</file>
         <file>crates/myme-ui/qml/Main.qml</file>
+        <file>crates/myme-ui/qml/Theme.qml</file>
+        <file>crates/myme-ui/qml/Icons.qml</file>
+        <file>crates/myme-ui/qml/qmldir</file>
+        <file>crates/myme-ui/qml/fonts/Phosphor.ttf</file>
         <file>crates/myme-ui/qml/pages/DevToolsPage.qml</file>
         <file>crates/myme-ui/qml/pages/NotePage.qml</file>
         <file>crates/myme-ui/qml/pages/RepoPage.qml</file>
+        <file>crates/myme-ui/qml/pages/SettingsPage.qml</file>
     </qresource>
 </RCC>
