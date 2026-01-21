@@ -99,7 +99,7 @@ mod windows_impl {
             .Position()
             .map_err(|e| LocationError::Other(e.to_string()))?;
 
-        let accuracy = coord.Accuracy().ok().and_then(|a| a.GetDouble().ok());
+        let accuracy = coord.Accuracy().ok();
 
         Ok(Location {
             latitude: pos.Latitude,
