@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     cxx_qt_init_crate_myme_ui();
 
     // Initialize global services (TodoClient, etc.)
-    initialize_note_model("http://localhost:8080");
+    initialize_note_model("http://localhost:8008");
 
     QQmlApplicationEngine engine;
 

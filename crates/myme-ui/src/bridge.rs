@@ -50,8 +50,28 @@ pub extern "C" fn initialize_note_model(base_url: *const c_char) -> bool {
 
     tracing::info!("Initializing NoteModel with base_url: {}", base_url_str);
 
+    // Get JWT token from config file or environment variable
+    let jwt_token = match myme_core::Config::load() {
+        Ok(config) => {
+            if let Some(token) = config.services.jwt_token {
+                tracing::info!("Using JWT token from config file");
+                Some(token)
+            } else if let Ok(token) = std::env::var("GODO_JWT_TOKEN") {
+                tracing::info!("Using JWT token from GODO_JWT_TOKEN environment variable");
+                Some(token)
+            } else {
+                tracing::warn!("No JWT token configured - API calls may fail if authentication is required");
+                None
+            }
+        }
+        Err(e) => {
+            tracing::warn!("Failed to load config: {}. Checking environment variable.", e);
+            std::env::var("GODO_JWT_TOKEN").ok()
+        }
+    };
+
     // Create the TodoClient
-    let client = match TodoClient::new(base_url_str, None) {
+    let client = match TodoClient::new(base_url_str, jwt_token) {
         Ok(c) => Arc::new(c),
         Err(e) => {
             tracing::error!("Failed to create TodoClient: {}", e);

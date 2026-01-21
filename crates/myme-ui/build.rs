@@ -1,5 +1,8 @@
+use cxx_qt_build::{CxxQtBuilder, QmlModule};
+
 fn main() {
-    cxx_qt_build::CxxQtBuilder::new()
+    CxxQtBuilder::new_qml_module(QmlModule::new("myme_ui"))
+        .file("src/models/jwt_model.rs")
         .file("src/models/note_model.rs")
         .file("src/models/repo_model.rs")
         .build();
