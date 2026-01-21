@@ -12,6 +12,7 @@ ApplicationWindow {
     property bool sidebarCollapsed: false
     property int sidebarExpandedWidth: 200
     property int sidebarCollapsedWidth: 50
+    property string currentPage: "welcome"
 
     header: ToolBar {
         RowLayout {
@@ -64,7 +65,11 @@ ApplicationWindow {
                     text: sidebarCollapsed ? "📝" : "Notes"
                     Layout.fillWidth: true
                     flat: true
-                    onClicked: stackView.replace("pages/NotePage.qml")
+                    highlighted: currentPage === "notes"
+                    onClicked: {
+                        currentPage = "notes"
+                        stackView.replace("pages/NotePage.qml")
+                    }
 
                     ToolTip.visible: sidebarCollapsed && hovered
                     ToolTip.text: "Notes"
@@ -75,7 +80,11 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     flat: true
                     enabled: false
-                    onClicked: stackView.replace("pages/RepoPage.qml")
+                    highlighted: currentPage === "repos"
+                    onClicked: {
+                        currentPage = "repos"
+                        stackView.replace("pages/RepoPage.qml")
+                    }
 
                     ToolTip.visible: sidebarCollapsed && hovered
                     ToolTip.text: "Repos"
@@ -85,7 +94,11 @@ ApplicationWindow {
                     text: sidebarCollapsed ? "🔧" : "Dev Tools"
                     Layout.fillWidth: true
                     flat: true
-                    onClicked: stackView.replace("pages/DevToolsPage.qml")
+                    highlighted: currentPage === "devtools"
+                    onClicked: {
+                        currentPage = "devtools"
+                        stackView.replace("pages/DevToolsPage.qml")
+                    }
 
                     ToolTip.visible: sidebarCollapsed && hovered
                     ToolTip.text: "Dev Tools"
@@ -107,6 +120,24 @@ ApplicationWindow {
             id: stackView
             Layout.fillWidth: true
             Layout.fillHeight: true
+            clip: true
+
+            replaceEnter: Transition {
+                PropertyAnimation {
+                    property: "opacity"
+                    from: 0
+                    to: 1
+                    duration: 150
+                }
+            }
+            replaceExit: Transition {
+                PropertyAnimation {
+                    property: "opacity"
+                    from: 1
+                    to: 0
+                    duration: 150
+                }
+            }
 
             initialItem: Page {
                 title: "Welcome"
@@ -131,7 +162,10 @@ ApplicationWindow {
                     Button {
                         text: "View Notes"
                         Layout.alignment: Qt.AlignHCenter
-                        onClicked: stackView.replace("pages/NotePage.qml")
+                        onClicked: {
+                            currentPage = "notes"
+                            stackView.replace("pages/NotePage.qml")
+                        }
                     }
                 }
             }
