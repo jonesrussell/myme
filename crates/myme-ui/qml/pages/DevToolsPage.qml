@@ -22,12 +22,11 @@ Page {
             category: "Security"
         },
         {
-            id: "base64",
-            name: "Base64 Encoder",
-            description: "Encode and decode Base64 strings",
+            id: "encoding",
+            name: "Encoding Hub",
+            description: "Encode and decode Base64, Hex, and URL strings",
             icon: Icons.code,
-            category: "Encoding",
-            comingSoon: true
+            category: "Encoding"
         },
         {
             id: "uuid",
@@ -85,6 +84,12 @@ Page {
         id: jwtModel
         payload: '{\n  "sub": "user123",\n  "name": "John Doe",\n  "iat": 1234567890\n}'
         algorithm: "HS256"
+    }
+
+    // Instantiate the EncodingModel from Rust
+    EncodingModel {
+        id: encodingModel
+        encoding_type: "base64"
     }
 
     header: ToolBar {
@@ -374,6 +379,7 @@ Page {
             active: currentTool !== "index"
             sourceComponent: {
                 if (currentTool === "jwt") return jwtToolComponent;
+                if (currentTool === "encoding") return encodingToolComponent;
                 return null;
             }
         }
@@ -729,6 +735,301 @@ Page {
                 Item {
                     Layout.fillHeight: true
                 }
+            }
+        }
+    }
+
+    // Encoding Hub Component
+    Component {
+        id: encodingToolComponent
+
+        ScrollView {
+            anchors.fill: parent
+            anchors.margins: Theme.spacingLg
+            clip: true
+
+            ColumnLayout {
+                width: parent.width
+                spacing: Theme.spacingLg
+
+                // Encoding type selector
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: encodingTypeRow.implicitHeight + Theme.spacingMd * 2
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.cardRadius
+
+                    RowLayout {
+                        id: encodingTypeRow
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingMd
+                        spacing: Theme.spacingSm
+
+                        Label {
+                            text: "Type:"
+                            color: Theme.text
+                            font.bold: true
+                        }
+
+                        Repeater {
+                            model: [
+                                { id: "base64", label: "Base64" },
+                                { id: "base64url", label: "Base64 URL" },
+                                { id: "hex", label: "Hex" },
+                                { id: "url", label: "URL" }
+                            ]
+
+                            Button {
+                                text: modelData.label
+                                checkable: true
+                                checked: encodingModel.encoding_type === modelData.id
+                                onClicked: encodingModel.encoding_type = modelData.id
+
+                                background: Rectangle {
+                                    radius: Theme.buttonRadius
+                                    color: parent.checked ? Theme.primary : (parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt)
+                                }
+
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: parent.checked ? Theme.primaryText : Theme.text
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Error banner
+                Rectangle {
+                    visible: encodingModel.error_message.length > 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 50
+                    color: Theme.errorBg
+                    border.color: Theme.error
+                    radius: Theme.cardRadius
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingMd
+                        spacing: Theme.spacingMd
+
+                        Label {
+                            text: Icons.warning
+                            font.family: Icons.family
+                            font.pixelSize: 20
+                            color: Theme.error
+                        }
+
+                        Label {
+                            text: encodingModel.error_message
+                            color: Theme.error
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+                }
+
+                // Input section
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 200
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingMd
+                        spacing: Theme.spacingSm
+
+                        Label {
+                            text: "Input"
+                            font.bold: true
+                            color: Theme.text
+                        }
+
+                        ScrollView {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+
+                            TextArea {
+                                id: encodingInput
+                                text: encodingModel.input
+                                placeholderText: "Enter text to encode or decode..."
+                                wrapMode: TextEdit.Wrap
+                                font.family: "Consolas, Monaco, monospace"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.text
+                                placeholderTextColor: Theme.textMuted
+                                onTextChanged: encodingModel.input = text
+
+                                background: Rectangle {
+                                    color: Theme.inputBg
+                                    radius: Theme.inputRadius
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Action buttons
+                RowLayout {
+                    Layout.alignment: Qt.AlignHCenter
+                    spacing: Theme.spacingMd
+
+                    Button {
+                        text: Icons.arrowDown + " Encode"
+                        font.family: Icons.family
+                        onClicked: encodingModel.encode()
+
+                        background: Rectangle {
+                            radius: Theme.buttonRadius
+                            color: parent.hovered ? Theme.primaryHover : Theme.primary
+                        }
+
+                        contentItem: Text {
+                            text: parent.text
+                            color: Theme.primaryText
+                            font.pixelSize: Theme.fontSizeNormal
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+
+                    Button {
+                        text: Icons.arrowUp + " Decode"
+                        font.family: Icons.family
+                        onClicked: encodingModel.decode()
+
+                        background: Rectangle {
+                            radius: Theme.buttonRadius
+                            color: parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt
+                            border.color: Theme.border
+                        }
+
+                        contentItem: Text {
+                            text: parent.text
+                            color: Theme.text
+                            font.pixelSize: Theme.fontSizeNormal
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+
+                    Button {
+                        text: Icons.arrowsClockwise + " Swap"
+                        font.family: Icons.family
+                        onClicked: encodingModel.swap()
+
+                        background: Rectangle {
+                            radius: Theme.buttonRadius
+                            color: parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt
+                            border.color: Theme.border
+                        }
+
+                        contentItem: Text {
+                            text: parent.text
+                            color: Theme.text
+                            font.pixelSize: Theme.fontSizeNormal
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+
+                    Button {
+                        text: "Clear"
+                        onClicked: {
+                            encodingModel.clear()
+                            encodingInput.text = ""
+                        }
+
+                        background: Rectangle {
+                            radius: Theme.buttonRadius
+                            color: parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt
+                            border.color: Theme.border
+                        }
+
+                        contentItem: Text {
+                            text: parent.text
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontSizeNormal
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+                }
+
+                // Output section
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 200
+                    color: Theme.surface
+                    border.color: encodingModel.output.length > 0 ? Theme.success : Theme.border
+                    border.width: encodingModel.output.length > 0 ? 2 : 1
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingMd
+                        spacing: Theme.spacingSm
+
+                        RowLayout {
+                            Layout.fillWidth: true
+
+                            Label {
+                                text: "Output"
+                                font.bold: true
+                                color: Theme.text
+                                Layout.fillWidth: true
+                            }
+
+                            Button {
+                                visible: encodingModel.output.length > 0
+                                text: "Copy"
+                                onClicked: {
+                                    encodingOutput.selectAll()
+                                    encodingOutput.copy()
+                                    encodingOutput.deselect()
+                                }
+
+                                background: Rectangle {
+                                    radius: Theme.buttonRadius
+                                    color: parent.hovered ? Theme.surfaceHover : "transparent"
+                                }
+
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: Theme.primary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                }
+                            }
+                        }
+
+                        ScrollView {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+
+                            TextArea {
+                                id: encodingOutput
+                                text: encodingModel.output
+                                readOnly: true
+                                wrapMode: TextEdit.WrapAnywhere
+                                font.family: "Consolas, Monaco, monospace"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.text
+                                selectByMouse: true
+
+                                background: Rectangle {
+                                    color: Theme.inputBg
+                                    radius: Theme.inputRadius
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
             }
         }
     }
