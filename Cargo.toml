@@ -5,6 +5,7 @@ members = [
     "crates/myme-services",
     "crates/myme-auth",
     "crates/myme-integrations",
+    "crates/myme-weather",
 ]
 resolver = "2"
 
