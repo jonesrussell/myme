@@ -182,22 +182,31 @@ impl qobject::WeatherModel {
             None => return,
         };
 
-        // Check cache first
-        if let Some(cache) = &self.as_ref().rust().cache {
-            if !cache.is_expired() {
-                if let Some(cached_data) = cache.get() {
-                    tracing::info!("Using cached weather data");
-                    self.as_mut().rust_mut().update_from_data(cached_data);
-                    self.as_mut().set_is_stale(cache.is_stale());
-                    self.weather_changed();
-
-                    // If not stale, we're done
-                    if !cache.is_stale() {
-                        return;
-                    }
-                    // Otherwise, continue to refresh in background
+        // Check cache first - extract data to avoid borrow conflicts
+        let cache_result: Option<(WeatherData, bool, bool)> = self
+            .as_ref()
+            .rust()
+            .cache
+            .as_ref()
+            .and_then(|cache| {
+                if !cache.is_expired() {
+                    cache.get().map(|data| (data.clone(), cache.is_stale(), cache.is_expired()))
+                } else {
+                    None
                 }
+            });
+
+        if let Some((cached_data, is_stale, _)) = cache_result {
+            tracing::info!("Using cached weather data");
+            self.as_mut().rust_mut().update_from_data(&cached_data);
+            self.as_mut().set_is_stale(is_stale);
+            self.as_mut().weather_changed();
+
+            // If not stale, we're done
+            if !is_stale {
+                return;
             }
+            // Otherwise, continue to refresh in background
         }
 
         self.as_mut().set_loading(true);
@@ -229,7 +238,7 @@ impl qobject::WeatherModel {
                 self.as_mut().rust_mut().update_from_data(&data);
                 self.as_mut().set_loading(false);
                 self.as_mut().set_is_stale(false);
-                self.weather_changed();
+                self.as_mut().weather_changed();
             }
             Err(e) => {
                 tracing::error!("Failed to fetch weather: {}", e);
@@ -252,10 +261,12 @@ impl qobject::WeatherModel {
             _ => TemperatureUnit::Auto,
         };
 
-        if let Some(provider) = &self.as_ref().rust().provider {
+        // Check if provider exists
+        let has_provider = self.as_ref().rust().provider.is_some();
+
+        if has_provider {
             // Create new provider with updated unit
-            if let Ok(mut new_provider) = WeatherProvider::new(unit_enum) {
-                new_provider.set_unit(unit_enum);
+            if let Ok(new_provider) = WeatherProvider::new(unit_enum) {
                 self.as_mut().rust_mut().provider = Some(Arc::new(new_provider));
                 // Refresh to get data in new unit
                 self.refresh();
