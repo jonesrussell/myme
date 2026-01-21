@@ -37,11 +37,10 @@ Page {
         },
         {
             id: "json",
-            name: "JSON Formatter",
-            description: "Format, validate, and minify JSON data",
+            name: "JSON Toolkit",
+            description: "Format, validate, minify, convert to YAML/TOML, and query with JSONPath",
             icon: Icons.terminalWindow,
-            category: "Formatting",
-            comingSoon: true
+            category: "Formatting"
         },
         {
             id: "hash",
@@ -102,6 +101,11 @@ Page {
     // Instantiate the TimeModel from Rust
     TimeModel {
         id: timeModel
+    }
+
+    // Instantiate the JsonModel from Rust
+    JsonModel {
+        id: jsonModel
     }
 
     header: ToolBar {
@@ -395,6 +399,7 @@ Page {
                 if (currentTool === "uuid") return uuidToolComponent;
                 if (currentTool === "hash") return hashToolComponent;
                 if (currentTool === "timestamp") return timeToolComponent;
+                if (currentTool === "json") return jsonToolComponent;
                 return null;
             }
         }
@@ -2558,6 +2563,604 @@ Page {
                                 color: Theme.successBg
                                 border.color: Theme.success
                                 radius: Theme.inputRadius
+                            }
+                        }
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
+            }
+        }
+    }
+
+    // JSON Toolkit Component
+    Component {
+        id: jsonToolComponent
+
+        ScrollView {
+            anchors.fill: parent
+            anchors.margins: Theme.spacingLg
+            clip: true
+
+            ColumnLayout {
+                width: parent.width
+                spacing: Theme.spacingLg
+
+                // Input section
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 250
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingLg
+                        spacing: Theme.spacingMd
+
+                        RowLayout {
+                            Layout.fillWidth: true
+
+                            Label {
+                                text: "JSON Input"
+                                font.bold: true
+                                color: Theme.text
+                                Layout.fillWidth: true
+                            }
+
+                            Button {
+                                text: "Clear"
+                                onClicked: {
+                                    jsonModel.clear()
+                                    jsonInputField.text = ""
+                                }
+
+                                background: Rectangle {
+                                    radius: Theme.buttonRadius
+                                    color: parent.hovered ? Theme.surfaceHover : "transparent"
+                                }
+
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                }
+                            }
+                        }
+
+                        ScrollView {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+
+                            TextArea {
+                                id: jsonInputField
+                                text: jsonModel.input
+                                placeholderText: '{\n  "key": "value"\n}'
+                                wrapMode: TextEdit.Wrap
+                                font.family: "Consolas, Monaco, monospace"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.text
+                                placeholderTextColor: Theme.textMuted
+                                onTextChanged: jsonModel.input = text
+
+                                background: Rectangle {
+                                    color: Theme.inputBg
+                                    radius: Theme.inputRadius
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Error banner
+                Rectangle {
+                    visible: jsonModel.error_message.length > 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 50
+                    color: Theme.errorBg
+                    border.color: Theme.error
+                    radius: Theme.cardRadius
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingMd
+                        spacing: Theme.spacingMd
+
+                        Label {
+                            text: Icons.warning
+                            font.family: Icons.family
+                            font.pixelSize: 20
+                            color: Theme.error
+                        }
+
+                        Label {
+                            text: jsonModel.error_message
+                            color: Theme.error
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+                }
+
+                // Action buttons
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: actionButtonsRow.implicitHeight + Theme.spacingMd * 2
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.cardRadius
+
+                    RowLayout {
+                        id: actionButtonsRow
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingMd
+                        spacing: Theme.spacingMd
+
+                        Button {
+                            text: "Format"
+                            onClicked: jsonModel.format_json()
+
+                            background: Rectangle {
+                                radius: Theme.buttonRadius
+                                color: parent.hovered ? Theme.primaryHover : Theme.primary
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                color: Theme.primaryText
+                                font.pixelSize: Theme.fontSizeNormal
+                                font.bold: true
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+                        }
+
+                        Button {
+                            text: "Minify"
+                            onClicked: jsonModel.minify_json()
+
+                            background: Rectangle {
+                                radius: Theme.buttonRadius
+                                color: parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt
+                                border.color: Theme.border
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                color: Theme.text
+                                font.pixelSize: Theme.fontSizeNormal
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+                        }
+
+                        Button {
+                            text: "Validate"
+                            onClicked: jsonModel.validate_json()
+
+                            background: Rectangle {
+                                radius: Theme.buttonRadius
+                                color: parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt
+                                border.color: Theme.border
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                color: Theme.text
+                                font.pixelSize: Theme.fontSizeNormal
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        // Validation indicator
+                        Rectangle {
+                            visible: jsonModel.validation_message.length > 0
+                            Layout.preferredWidth: validationLabel.implicitWidth + 20
+                            Layout.preferredHeight: 30
+                            radius: Theme.buttonRadius
+                            color: jsonModel.is_valid ? Theme.successBg : Theme.errorBg
+                            border.color: jsonModel.is_valid ? Theme.success : Theme.error
+
+                            Label {
+                                id: validationLabel
+                                anchors.centerIn: parent
+                                text: jsonModel.is_valid ? Icons.check + " Valid" : Icons.x + " Invalid"
+                                font.family: Icons.family
+                                color: jsonModel.is_valid ? Theme.success : Theme.error
+                                font.pixelSize: Theme.fontSizeSmall
+                            }
+                        }
+                    }
+                }
+
+                // Output section
+                Rectangle {
+                    visible: jsonModel.output.length > 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 200
+                    color: Theme.surface
+                    border.color: Theme.success
+                    border.width: 2
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingLg
+                        spacing: Theme.spacingSm
+
+                        RowLayout {
+                            Layout.fillWidth: true
+
+                            Label {
+                                text: "Output"
+                                font.bold: true
+                                color: Theme.text
+                                Layout.fillWidth: true
+                            }
+
+                            Button {
+                                text: "Copy"
+                                onClicked: {
+                                    jsonOutputField.selectAll()
+                                    jsonOutputField.copy()
+                                    jsonOutputField.deselect()
+                                }
+
+                                background: Rectangle {
+                                    radius: Theme.buttonRadius
+                                    color: parent.hovered ? Theme.surfaceHover : "transparent"
+                                }
+
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: Theme.primary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                }
+                            }
+                        }
+
+                        ScrollView {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+
+                            TextArea {
+                                id: jsonOutputField
+                                text: jsonModel.output
+                                readOnly: true
+                                wrapMode: TextEdit.Wrap
+                                font.family: "Consolas, Monaco, monospace"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.text
+                                selectByMouse: true
+
+                                background: Rectangle {
+                                    color: Theme.inputBg
+                                    radius: Theme.inputRadius
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // JSONPath Query section
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: jsonpathColumn.implicitHeight + Theme.spacingLg * 2
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        id: jsonpathColumn
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingLg
+                        spacing: Theme.spacingMd
+
+                        Label {
+                            text: "JSONPath Query"
+                            font.bold: true
+                            color: Theme.text
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.spacingMd
+
+                            TextField {
+                                Layout.fillWidth: true
+                                text: jsonModel.jsonpath_query
+                                placeholderText: "$ (root), $.key, $..items[*].name"
+                                color: Theme.text
+                                placeholderTextColor: Theme.textMuted
+                                font.family: "Consolas, Monaco, monospace"
+                                onTextChanged: jsonModel.jsonpath_query = text
+
+                                background: Rectangle {
+                                    color: Theme.inputBg
+                                    border.color: Theme.inputBorder
+                                    radius: Theme.inputRadius
+                                }
+                            }
+
+                            Button {
+                                text: "Query"
+                                onClicked: jsonModel.query_jsonpath()
+
+                                background: Rectangle {
+                                    radius: Theme.buttonRadius
+                                    color: parent.hovered ? Theme.primaryHover : Theme.primary
+                                }
+
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: Theme.primaryText
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+                            }
+                        }
+
+                        ScrollView {
+                            visible: jsonModel.jsonpath_result.length > 0
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 100
+
+                            TextArea {
+                                text: jsonModel.jsonpath_result
+                                readOnly: true
+                                wrapMode: TextEdit.Wrap
+                                font.family: "Consolas, Monaco, monospace"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.text
+                                selectByMouse: true
+
+                                background: Rectangle {
+                                    color: Theme.infoBg
+                                    border.color: Theme.info
+                                    radius: Theme.inputRadius
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Convert to format section
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: convertColumn.implicitHeight + Theme.spacingLg * 2
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        id: convertColumn
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingLg
+                        spacing: Theme.spacingMd
+
+                        Label {
+                            text: "Convert to Format"
+                            font.bold: true
+                            color: Theme.text
+                        }
+
+                        RowLayout {
+                            spacing: Theme.spacingMd
+
+                            Repeater {
+                                model: [
+                                    { id: "yaml", label: "YAML" },
+                                    { id: "toml", label: "TOML" }
+                                ]
+
+                                Button {
+                                    text: modelData.label
+                                    checkable: true
+                                    checked: jsonModel.convert_format === modelData.id
+                                    onClicked: jsonModel.convert_format = modelData.id
+
+                                    background: Rectangle {
+                                        radius: Theme.buttonRadius
+                                        color: parent.checked ? Theme.info : (parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt)
+                                    }
+
+                                    contentItem: Text {
+                                        text: parent.text
+                                        color: parent.checked ? Theme.primaryText : Theme.text
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        horizontalAlignment: Text.AlignHCenter
+                                    }
+                                }
+                            }
+
+                            Button {
+                                text: "Convert"
+                                onClicked: jsonModel.convert_to_format()
+
+                                background: Rectangle {
+                                    radius: Theme.buttonRadius
+                                    color: parent.hovered ? Theme.primaryHover : Theme.primary
+                                }
+
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: Theme.primaryText
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+                            }
+                        }
+
+                        ScrollView {
+                            visible: jsonModel.converted_output.length > 0
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 150
+
+                            TextArea {
+                                text: jsonModel.converted_output
+                                readOnly: true
+                                wrapMode: TextEdit.Wrap
+                                font.family: "Consolas, Monaco, monospace"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.text
+                                selectByMouse: true
+
+                                background: Rectangle {
+                                    color: Theme.successBg
+                                    border.color: Theme.success
+                                    radius: Theme.inputRadius
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // JSON Compare section
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: compareColumn.implicitHeight + Theme.spacingLg * 2
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        id: compareColumn
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingLg
+                        spacing: Theme.spacingMd
+
+                        Label {
+                            text: "Compare JSON"
+                            font.bold: true
+                            color: Theme.text
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.spacingMd
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: Theme.spacingSm
+
+                                Label {
+                                    text: "JSON A"
+                                    color: Theme.textSecondary
+                                }
+
+                                ScrollView {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 100
+
+                                    TextArea {
+                                        text: jsonModel.diff_input_a
+                                        placeholderText: "First JSON..."
+                                        wrapMode: TextEdit.Wrap
+                                        font.family: "Consolas, Monaco, monospace"
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        color: Theme.text
+                                        placeholderTextColor: Theme.textMuted
+                                        onTextChanged: jsonModel.diff_input_a = text
+
+                                        background: Rectangle {
+                                            color: Theme.inputBg
+                                            radius: Theme.inputRadius
+                                        }
+                                    }
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: Theme.spacingSm
+
+                                Label {
+                                    text: "JSON B"
+                                    color: Theme.textSecondary
+                                }
+
+                                ScrollView {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 100
+
+                                    TextArea {
+                                        text: jsonModel.diff_input_b
+                                        placeholderText: "Second JSON..."
+                                        wrapMode: TextEdit.Wrap
+                                        font.family: "Consolas, Monaco, monospace"
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        color: Theme.text
+                                        placeholderTextColor: Theme.textMuted
+                                        onTextChanged: jsonModel.diff_input_b = text
+
+                                        background: Rectangle {
+                                            color: Theme.inputBg
+                                            radius: Theme.inputRadius
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Button {
+                            text: "Compare"
+                            onClicked: jsonModel.compare_json()
+
+                            background: Rectangle {
+                                radius: Theme.buttonRadius
+                                color: parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt
+                                border.color: Theme.border
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                color: Theme.text
+                                font.pixelSize: Theme.fontSizeNormal
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+                        }
+
+                        Rectangle {
+                            visible: jsonModel.diff_result.length > 0
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: diffResultColumn.implicitHeight + Theme.spacingMd * 2
+                            color: jsonModel.diff_result.startsWith("identical") ? Theme.successBg : Theme.warningBg
+                            border.color: jsonModel.diff_result.startsWith("identical") ? Theme.success : Theme.warning
+                            radius: Theme.cardRadius
+
+                            ColumnLayout {
+                                id: diffResultColumn
+                                anchors.fill: parent
+                                anchors.margins: Theme.spacingMd
+                                spacing: Theme.spacingSm
+
+                                RowLayout {
+                                    spacing: Theme.spacingMd
+
+                                    Label {
+                                        text: jsonModel.diff_result.startsWith("identical") ? Icons.check : Icons.warning
+                                        font.family: Icons.family
+                                        font.pixelSize: 20
+                                        color: jsonModel.diff_result.startsWith("identical") ? Theme.success : Theme.warning
+                                    }
+
+                                    Label {
+                                        text: jsonModel.diff_result.startsWith("identical") ? "Documents are identical" : "Documents differ"
+                                        font.bold: true
+                                        color: jsonModel.diff_result.startsWith("identical") ? Theme.success : Theme.warning
+                                    }
+                                }
+
+                                Label {
+                                    visible: jsonModel.diff_result.startsWith("different:")
+                                    text: jsonModel.diff_result.substring(10)
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
+                                    font.family: "Consolas, Monaco, monospace"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Theme.text
+                                }
                             }
                         }
                     }
