@@ -198,8 +198,14 @@ Page {
                                     radius: 20
                                     gradient: Gradient {
                                         orientation: Gradient.Horizontal
-                                        GradientStop { position: 0.0; color: "#f8f9fa" }
-                                        GradientStop { position: 1.0; color: "#1a1a2e" }
+                                        GradientStop {
+                                            position: 0.0
+                                            color: "#f8f9fa"
+                                        }
+                                        GradientStop {
+                                            position: 1.0
+                                            color: "#1a1a2e"
+                                        }
                                     }
                                     border.color: "#888"
                                     border.width: 1
@@ -221,7 +227,9 @@ Page {
                             }
                         }
 
-                        Item { Layout.fillWidth: true }
+                        Item {
+                            Layout.fillWidth: true
+                        }
                     }
 
                     // Current theme indicator
@@ -237,9 +245,7 @@ Page {
                             anchors.margins: Theme.spacingSm
 
                             Label {
-                                text: Theme.mode === "auto"
-                                    ? "Currently using " + (Theme.isDark ? "dark" : "light") + " theme (synced with system)"
-                                    : "Using " + Theme.mode + " theme"
+                                text: Theme.mode === "auto" ? "Currently using " + (Theme.isDark ? "dark" : "light") + " theme (synced with system)" : "Using " + Theme.mode + " theme"
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.textSecondary
                             }
@@ -326,7 +332,9 @@ Page {
                 }
             }
 
-            Item { Layout.fillHeight: true }
+            Item {
+                Layout.fillHeight: true
+            }
         }
     }
 }

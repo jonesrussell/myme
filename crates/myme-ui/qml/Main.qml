@@ -34,7 +34,10 @@ ApplicationWindow {
             color: Theme.sidebarBg
 
             Behavior on Layout.preferredWidth {
-                NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
+                NumberAnimation {
+                    duration: 150
+                    easing.type: Easing.OutQuad
+                }
             }
 
             ColumnLayout {
@@ -52,21 +55,21 @@ ApplicationWindow {
                         anchors.fill: parent
                         property point clickPos
 
-                        onPressed: (mouse) => {
-                            clickPos = Qt.point(mouse.x, mouse.y)
+                        onPressed: mouse => {
+                            clickPos = Qt.point(mouse.x, mouse.y);
                         }
-                        onPositionChanged: (mouse) => {
+                        onPositionChanged: mouse => {
                             if (pressed) {
-                                var delta = Qt.point(mouse.x - clickPos.x, mouse.y - clickPos.y)
-                                root.x += delta.x
-                                root.y += delta.y
+                                var delta = Qt.point(mouse.x - clickPos.x, mouse.y - clickPos.y);
+                                root.x += delta.x;
+                                root.y += delta.y;
                             }
                         }
                         onDoubleClicked: {
                             if (root.visibility === Window.Maximized) {
-                                root.showNormal()
+                                root.showNormal();
                             } else {
-                                root.showMaximized()
+                                root.showMaximized();
                             }
                         }
                     }
@@ -113,21 +116,37 @@ ApplicationWindow {
                 // Navigation items
                 Repeater {
                     model: [
-                        { id: "notes", icon: "📝", label: "Notes", enabled: true },
-                        { id: "repos", icon: "📁", label: "Repos", enabled: false },
-                        { id: "devtools", icon: "🔧", label: "Dev Tools", enabled: true }
+                        {
+                            id: "notes",
+                            icon: "📝",
+                            label: "Notes",
+                            enabled: true
+                        },
+                        {
+                            id: "repos",
+                            icon: "📁",
+                            label: "Repos",
+                            enabled: false
+                        },
+                        {
+                            id: "devtools",
+                            icon: "🔧",
+                            label: "Dev Tools",
+                            enabled: true
+                        }
                     ]
 
                     delegate: Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 40
                         radius: Theme.buttonRadius
-                        color: currentPage === modelData.id ? Theme.sidebarActive :
-                               navMouseArea.containsMouse ? Theme.sidebarHover : "transparent"
+                        color: currentPage === modelData.id ? Theme.sidebarActive : navMouseArea.containsMouse ? Theme.sidebarHover : "transparent"
                         opacity: modelData.enabled ? 1.0 : 0.5
 
                         Behavior on color {
-                            ColorAnimation { duration: 100 }
+                            ColorAnimation {
+                                duration: 100
+                            }
                         }
 
                         MouseArea {
@@ -137,10 +156,13 @@ ApplicationWindow {
                             cursorShape: modelData.enabled ? Qt.PointingHandCursor : Qt.ForbiddenCursor
                             onClicked: {
                                 if (modelData.enabled) {
-                                    currentPage = modelData.id
-                                    if (modelData.id === "notes") stackView.replace("pages/NotePage.qml")
-                                    else if (modelData.id === "repos") stackView.replace("pages/RepoPage.qml")
-                                    else if (modelData.id === "devtools") stackView.replace("pages/DevToolsPage.qml")
+                                    currentPage = modelData.id;
+                                    if (modelData.id === "notes")
+                                        stackView.replace("pages/NotePage.qml");
+                                    else if (modelData.id === "repos")
+                                        stackView.replace("pages/RepoPage.qml");
+                                    else if (modelData.id === "devtools")
+                                        stackView.replace("pages/DevToolsPage.qml");
                                 }
                             }
                         }
@@ -181,7 +203,9 @@ ApplicationWindow {
                     }
                 }
 
-                Item { Layout.fillHeight: true }
+                Item {
+                    Layout.fillHeight: true
+                }
 
                 Rectangle {
                     Layout.fillWidth: true
@@ -196,11 +220,12 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 40
                     radius: Theme.buttonRadius
-                    color: currentPage === "settings" ? Theme.sidebarActive :
-                           settingsMouseArea.containsMouse ? Theme.sidebarHover : "transparent"
+                    color: currentPage === "settings" ? Theme.sidebarActive : settingsMouseArea.containsMouse ? Theme.sidebarHover : "transparent"
 
                     Behavior on color {
-                        ColorAnimation { duration: 100 }
+                        ColorAnimation {
+                            duration: 100
+                        }
                     }
 
                     MouseArea {
@@ -209,8 +234,8 @@ ApplicationWindow {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            currentPage = "settings"
-                            stackView.replace("pages/SettingsPage.qml")
+                            currentPage = "settings";
+                            stackView.replace("pages/SettingsPage.qml");
                         }
                     }
 
@@ -256,7 +281,9 @@ ApplicationWindow {
                     color: collapseMouseArea.containsMouse ? Theme.sidebarHover : "transparent"
 
                     Behavior on color {
-                        ColorAnimation { duration: 100 }
+                        ColorAnimation {
+                            duration: 100
+                        }
                     }
 
                     MouseArea {
@@ -327,21 +354,21 @@ ApplicationWindow {
                     anchors.fill: parent
                     property point clickPos
 
-                    onPressed: (mouse) => {
-                        clickPos = Qt.point(mouse.x, mouse.y)
+                    onPressed: mouse => {
+                        clickPos = Qt.point(mouse.x, mouse.y);
                     }
-                    onPositionChanged: (mouse) => {
+                    onPositionChanged: mouse => {
                         if (pressed) {
-                            var delta = Qt.point(mouse.x - clickPos.x, mouse.y - clickPos.y)
-                            root.x += delta.x
-                            root.y += delta.y
+                            var delta = Qt.point(mouse.x - clickPos.x, mouse.y - clickPos.y);
+                            root.x += delta.x;
+                            root.y += delta.y;
                         }
                     }
                     onDoubleClicked: {
                         if (root.visibility === Window.Maximized) {
-                            root.showNormal()
+                            root.showNormal();
                         } else {
-                            root.showMaximized()
+                            root.showMaximized();
                         }
                     }
                 }
@@ -397,9 +424,9 @@ ApplicationWindow {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 if (root.visibility === Window.Maximized) {
-                                    root.showNormal()
+                                    root.showNormal();
                                 } else {
-                                    root.showMaximized()
+                                    root.showMaximized();
                                 }
                             }
                         }
@@ -454,184 +481,192 @@ ApplicationWindow {
                 }
 
                 initialItem: Page {
-                title: "Welcome"
+                    title: "Welcome"
 
-                background: Rectangle {
-                    color: Theme.background
-                }
+                    background: Rectangle {
+                        color: Theme.background
+                    }
 
-                ColumnLayout {
-                    anchors.centerIn: parent
-                    spacing: Theme.spacingLg
+                    ColumnLayout {
+                        anchors.centerIn: parent
+                        spacing: Theme.spacingLg
 
-                    Rectangle {
-                        Layout.alignment: Qt.AlignHCenter
-                        width: 80
-                        height: 80
-                        radius: 16
-                        color: Theme.primary
+                        Rectangle {
+                            Layout.alignment: Qt.AlignHCenter
+                            width: 80
+                            height: 80
+                            radius: 16
+                            color: Theme.primary
+
+                            Label {
+                                anchors.centerIn: parent
+                                text: "M"
+                                font.pixelSize: 40
+                                font.bold: true
+                                color: Theme.primaryText
+                            }
+                        }
 
                         Label {
-                            anchors.centerIn: parent
-                            text: "M"
-                            font.pixelSize: 40
+                            text: "Welcome to MyMe"
+                            font.pixelSize: Theme.fontSizeTitle
                             font.bold: true
-                            color: Theme.primaryText
-                        }
-                    }
-
-                    Label {
-                        text: "Welcome to MyMe"
-                        font.pixelSize: Theme.fontSizeTitle
-                        font.bold: true
-                        color: Theme.text
-                        Layout.alignment: Qt.AlignHCenter
-                    }
-
-                    Label {
-                        text: "Your Personal Productivity & Dev Hub"
-                        font.pixelSize: Theme.fontSizeMedium
-                        color: Theme.textSecondary
-                        Layout.alignment: Qt.AlignHCenter
-                    }
-
-                    Item { height: Theme.spacingMd }
-
-                    RowLayout {
-                        Layout.alignment: Qt.AlignHCenter
-                        spacing: Theme.spacingMd
-
-                        Rectangle {
-                            width: 140
-                            height: 100
-                            radius: Theme.cardRadius
-                            color: Theme.surface
-                            border.color: notesCardMouse.containsMouse ? Theme.primary : Theme.border
-                            border.width: 1
-
-                            Behavior on border.color {
-                                ColorAnimation { duration: 100 }
-                            }
-
-                            MouseArea {
-                                id: notesCardMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    currentPage = "notes"
-                                    stackView.replace("pages/NotePage.qml")
-                                }
-                            }
-
-                            ColumnLayout {
-                                anchors.centerIn: parent
-                                spacing: Theme.spacingSm
-
-                                Label {
-                                    text: "📝"
-                                    font.pixelSize: 28
-                                    Layout.alignment: Qt.AlignHCenter
-                                }
-
-                                Label {
-                                    text: "Notes"
-                                    font.pixelSize: Theme.fontSizeNormal
-                                    font.bold: true
-                                    color: Theme.text
-                                    Layout.alignment: Qt.AlignHCenter
-                                }
-                            }
+                            color: Theme.text
+                            Layout.alignment: Qt.AlignHCenter
                         }
 
-                        Rectangle {
-                            width: 140
-                            height: 100
-                            radius: Theme.cardRadius
-                            color: Theme.surface
-                            border.color: devtoolsCardMouse.containsMouse ? Theme.primary : Theme.border
-                            border.width: 1
-
-                            Behavior on border.color {
-                                ColorAnimation { duration: 100 }
-                            }
-
-                            MouseArea {
-                                id: devtoolsCardMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    currentPage = "devtools"
-                                    stackView.replace("pages/DevToolsPage.qml")
-                                }
-                            }
-
-                            ColumnLayout {
-                                anchors.centerIn: parent
-                                spacing: Theme.spacingSm
-
-                                Label {
-                                    text: "🔧"
-                                    font.pixelSize: 28
-                                    Layout.alignment: Qt.AlignHCenter
-                                }
-
-                                Label {
-                                    text: "Dev Tools"
-                                    font.pixelSize: Theme.fontSizeNormal
-                                    font.bold: true
-                                    color: Theme.text
-                                    Layout.alignment: Qt.AlignHCenter
-                                }
-                            }
+                        Label {
+                            text: "Your Personal Productivity & Dev Hub"
+                            font.pixelSize: Theme.fontSizeMedium
+                            color: Theme.textSecondary
+                            Layout.alignment: Qt.AlignHCenter
                         }
 
-                        Rectangle {
-                            width: 140
-                            height: 100
-                            radius: Theme.cardRadius
-                            color: Theme.surface
-                            border.color: settingsCardMouse.containsMouse ? Theme.primary : Theme.border
-                            border.width: 1
+                        Item {
+                            height: Theme.spacingMd
+                        }
 
-                            Behavior on border.color {
-                                ColorAnimation { duration: 100 }
-                            }
+                        RowLayout {
+                            Layout.alignment: Qt.AlignHCenter
+                            spacing: Theme.spacingMd
 
-                            MouseArea {
-                                id: settingsCardMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    currentPage = "settings"
-                                    stackView.replace("pages/SettingsPage.qml")
+                            Rectangle {
+                                width: 140
+                                height: 100
+                                radius: Theme.cardRadius
+                                color: Theme.surface
+                                border.color: notesCardMouse.containsMouse ? Theme.primary : Theme.border
+                                border.width: 1
+
+                                Behavior on border.color {
+                                    ColorAnimation {
+                                        duration: 100
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: notesCardMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        currentPage = "notes";
+                                        stackView.replace("pages/NotePage.qml");
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    anchors.centerIn: parent
+                                    spacing: Theme.spacingSm
+
+                                    Label {
+                                        text: "📝"
+                                        font.pixelSize: 28
+                                        Layout.alignment: Qt.AlignHCenter
+                                    }
+
+                                    Label {
+                                        text: "Notes"
+                                        font.pixelSize: Theme.fontSizeNormal
+                                        font.bold: true
+                                        color: Theme.text
+                                        Layout.alignment: Qt.AlignHCenter
+                                    }
                                 }
                             }
 
-                            ColumnLayout {
-                                anchors.centerIn: parent
-                                spacing: Theme.spacingSm
+                            Rectangle {
+                                width: 140
+                                height: 100
+                                radius: Theme.cardRadius
+                                color: Theme.surface
+                                border.color: devtoolsCardMouse.containsMouse ? Theme.primary : Theme.border
+                                border.width: 1
 
-                                Label {
-                                    text: "⚙️"
-                                    font.pixelSize: 28
-                                    Layout.alignment: Qt.AlignHCenter
+                                Behavior on border.color {
+                                    ColorAnimation {
+                                        duration: 100
+                                    }
                                 }
 
-                                Label {
-                                    text: "Settings"
-                                    font.pixelSize: Theme.fontSizeNormal
-                                    font.bold: true
-                                    color: Theme.text
-                                    Layout.alignment: Qt.AlignHCenter
+                                MouseArea {
+                                    id: devtoolsCardMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        currentPage = "devtools";
+                                        stackView.replace("pages/DevToolsPage.qml");
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    anchors.centerIn: parent
+                                    spacing: Theme.spacingSm
+
+                                    Label {
+                                        text: "🔧"
+                                        font.pixelSize: 28
+                                        Layout.alignment: Qt.AlignHCenter
+                                    }
+
+                                    Label {
+                                        text: "Dev Tools"
+                                        font.pixelSize: Theme.fontSizeNormal
+                                        font.bold: true
+                                        color: Theme.text
+                                        Layout.alignment: Qt.AlignHCenter
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                width: 140
+                                height: 100
+                                radius: Theme.cardRadius
+                                color: Theme.surface
+                                border.color: settingsCardMouse.containsMouse ? Theme.primary : Theme.border
+                                border.width: 1
+
+                                Behavior on border.color {
+                                    ColorAnimation {
+                                        duration: 100
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: settingsCardMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        currentPage = "settings";
+                                        stackView.replace("pages/SettingsPage.qml");
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    anchors.centerIn: parent
+                                    spacing: Theme.spacingSm
+
+                                    Label {
+                                        text: "⚙️"
+                                        font.pixelSize: 28
+                                        Layout.alignment: Qt.AlignHCenter
+                                    }
+
+                                    Label {
+                                        text: "Settings"
+                                        font.pixelSize: Theme.fontSizeNormal
+                                        font.bold: true
+                                        color: Theme.text
+                                        Layout.alignment: Qt.AlignHCenter
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
             }
         }
     }

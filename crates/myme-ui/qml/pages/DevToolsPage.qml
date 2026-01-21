@@ -140,7 +140,9 @@ Page {
                         radius: Theme.inputRadius
 
                         Behavior on border.color {
-                            ColorAnimation { duration: 100 }
+                            ColorAnimation {
+                                duration: 100
+                            }
                         }
 
                         ScrollView {
@@ -186,7 +188,9 @@ Page {
                             radius: Theme.inputRadius
 
                             Behavior on border.color {
-                                ColorAnimation { duration: 100 }
+                                ColorAnimation {
+                                    duration: 100
+                                }
                             }
 
                             TextField {
@@ -232,10 +236,12 @@ Page {
                         Layout.preferredWidth: 200
                         model: ["HS256", "HS384", "HS512"]
                         currentIndex: {
-                            var alg = jwtModel.algorithm
-                            if (alg === "HS384") return 1
-                            if (alg === "HS512") return 2
-                            return 0
+                            var alg = jwtModel.algorithm;
+                            if (alg === "HS384")
+                                return 1;
+                            if (alg === "HS512")
+                                return 2;
+                            return 0;
                         }
                         onCurrentTextChanged: jwtModel.algorithm = currentText
                     }
@@ -309,11 +315,11 @@ Page {
                         Button {
                             text: "Copy to Clipboard"
                             onClicked: {
-                                tokenOutput.selectAll()
-                                tokenOutput.copy()
-                                tokenOutput.deselect()
-                                copyFeedback.visible = true
-                                copyFeedbackTimer.start()
+                                tokenOutput.selectAll();
+                                tokenOutput.copy();
+                                tokenOutput.deselect();
+                                copyFeedback.visible = true;
+                                copyFeedbackTimer.start();
                             }
 
                             background: Rectangle {

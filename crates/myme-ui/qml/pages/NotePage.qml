@@ -25,7 +25,7 @@ Page {
         target: noteModel
         function onLoadingChanged() {
             if (!noteModel.loading) {
-                notePage.noteCount = noteModel.row_count()
+                notePage.noteCount = noteModel.row_count();
             }
         }
     }
@@ -175,7 +175,9 @@ Page {
                     radius: Theme.cardRadius
 
                     Behavior on color {
-                        ColorAnimation { duration: 100 }
+                        ColorAnimation {
+                            duration: 100
+                        }
                     }
 
                     MouseArea {
@@ -338,18 +340,21 @@ Page {
 
                 Label {
                     text: {
-                        var total = noteModel.row_count()
-                        var done = 0
+                        var total = noteModel.row_count();
+                        var done = 0;
                         for (var i = 0; i < total; i++) {
-                            if (noteModel.get_done(i)) done++
+                            if (noteModel.get_done(i))
+                                done++;
                         }
-                        return total + " notes (" + done + " done, " + (total - done) + " pending)"
+                        return total + " notes (" + done + " done, " + (total - done) + " pending)";
                     }
                     font.pixelSize: Theme.fontSizeSmall
                     color: Theme.textSecondary
                 }
 
-                Item { Layout.fillWidth: true }
+                Item {
+                    Layout.fillWidth: true
+                }
 
                 Rectangle {
                     width: connectedLabel.implicitWidth + Theme.spacingMd
@@ -411,13 +416,13 @@ Page {
 
         onAccepted: {
             if (contentField.text.trim().length > 0) {
-                noteModel.add_note(contentField.text)
-                contentField.text = ""
+                noteModel.add_note(contentField.text);
+                contentField.text = "";
             }
         }
 
         onRejected: {
-            contentField.text = ""
+            contentField.text = "";
         }
 
         ColumnLayout {
@@ -439,7 +444,9 @@ Page {
                 radius: Theme.inputRadius
 
                 Behavior on border.color {
-                    ColorAnimation { duration: 100 }
+                    ColorAnimation {
+                        duration: 100
+                    }
                 }
 
                 ScrollView {
@@ -469,7 +476,9 @@ Page {
                     color: contentField.text.length > 1000 ? Theme.error : Theme.textMuted
                 }
 
-                Item { Layout.fillWidth: true }
+                Item {
+                    Layout.fillWidth: true
+                }
 
                 Label {
                     text: "Ctrl+Enter to save"
@@ -486,6 +495,6 @@ Page {
     }
 
     Component.onCompleted: {
-        noteModel.fetch_notes()
+        noteModel.fetch_notes();
     }
 }

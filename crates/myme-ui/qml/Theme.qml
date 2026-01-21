@@ -79,12 +79,44 @@ QtObject {
     property int spacingXl: 32
 
     // Behavior for smooth color transitions
-    Behavior on background { ColorAnimation { duration: transitionDuration } }
-    Behavior on surface { ColorAnimation { duration: transitionDuration } }
-    Behavior on surfaceAlt { ColorAnimation { duration: transitionDuration } }
-    Behavior on text { ColorAnimation { duration: transitionDuration } }
-    Behavior on textSecondary { ColorAnimation { duration: transitionDuration } }
-    Behavior on border { ColorAnimation { duration: transitionDuration } }
-    Behavior on sidebarBg { ColorAnimation { duration: transitionDuration } }
-    Behavior on primary { ColorAnimation { duration: transitionDuration } }
+    Behavior on background {
+        ColorAnimation {
+            duration: transitionDuration
+        }
+    }
+    Behavior on surface {
+        ColorAnimation {
+            duration: transitionDuration
+        }
+    }
+    Behavior on surfaceAlt {
+        ColorAnimation {
+            duration: transitionDuration
+        }
+    }
+    Behavior on text {
+        ColorAnimation {
+            duration: transitionDuration
+        }
+    }
+    Behavior on textSecondary {
+        ColorAnimation {
+            duration: transitionDuration
+        }
+    }
+    Behavior on border {
+        ColorAnimation {
+            duration: transitionDuration
+        }
+    }
+    Behavior on sidebarBg {
+        ColorAnimation {
+            duration: transitionDuration
+        }
+    }
+    Behavior on primary {
+        ColorAnimation {
+            duration: transitionDuration
+        }
+    }
 }
