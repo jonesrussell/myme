@@ -7,9 +7,22 @@ Page {
     id: notePage
     title: "Notes"
 
+    // Track note count for ListView model
+    property int noteCount: 0
+
     // Instantiate the NoteModel from Rust
     NoteModel {
         id: noteModel
+    }
+
+    // Update note count when loading state changes
+    Connections {
+        target: noteModel
+        function onLoadingChanged() {
+            if (!noteModel.loading) {
+                notePage.noteCount = noteModel.row_count()
+            }
+        }
     }
 
     header: ToolBar {
@@ -96,13 +109,14 @@ Page {
                 anchors.fill: parent
                 spacing: 5
 
-                model: noteModel.row_count()
+                model: notePage.noteCount
 
                 delegate: Rectangle {
+                    id: noteDelegate
                     required property int index
 
                     width: notesList.width
-                    height: noteContent.height + 20
+                    height: noteContent.implicitHeight + 20
                     color: index % 2 === 0 ? "#F9F9F9" : "#FFFFFF"
                     border.color: "#E0E0E0"
                     border.width: 1
@@ -110,20 +124,22 @@ Page {
 
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: noteModel.toggle_done(parent.index)
+                        onClicked: noteModel.toggle_done(noteDelegate.index)
                         cursorShape: Qt.PointingHandCursor
                     }
 
                     RowLayout {
                         id: noteContent
-                        anchors.fill: parent
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
                         anchors.margins: 10
                         spacing: 10
 
                         // Status checkbox
                         CheckBox {
-                            checked: noteModel.get_done(parent.parent.index)
-                            onClicked: noteModel.toggle_done(parent.parent.parent.index)
+                            checked: noteModel.get_done(noteDelegate.index)
+                            onClicked: noteModel.toggle_done(noteDelegate.index)
                         }
 
                         // Note text and metadata
@@ -132,24 +148,24 @@ Page {
                             spacing: 5
 
                             Label {
-                                text: noteModel.get_content(parent.parent.parent.index)
+                                text: noteModel.get_content(noteDelegate.index)
                                 font.pixelSize: 14
-                                font.strikeout: noteModel.get_done(parent.parent.parent.index)
-                                opacity: noteModel.get_done(parent.parent.parent.index) ? 0.6 : 1.0
+                                font.strikeout: noteModel.get_done(noteDelegate.index)
+                                opacity: noteModel.get_done(noteDelegate.index) ? 0.6 : 1.0
                                 Layout.fillWidth: true
                                 wrapMode: Text.WordWrap
                             }
 
                             Label {
-                                text: noteModel.get_created_at(parent.parent.parent.index)
+                                text: noteModel.get_created_at(noteDelegate.index)
                                 font.pixelSize: 11
                                 color: "#888888"
                             }
 
                             Label {
-                                text: noteModel.get_done(parent.parent.parent.index) ? "✓ Completed" : "○ Pending"
+                                text: noteModel.get_done(noteDelegate.index) ? "Completed" : "Pending"
                                 font.pixelSize: 11
-                                color: noteModel.get_done(parent.parent.parent.index) ? "#4CAF50" : "#FFA726"
+                                color: noteModel.get_done(noteDelegate.index) ? "#4CAF50" : "#FFA726"
                             }
                         }
 
@@ -158,13 +174,13 @@ Page {
                             spacing: 5
 
                             Button {
-                                text: noteModel.get_done(parent.parent.parent.index) ? "Undo" : "Done"
-                                onClicked: noteModel.toggle_done(parent.parent.parent.parent.index)
+                                text: noteModel.get_done(noteDelegate.index) ? "Undo" : "Done"
+                                onClicked: noteModel.toggle_done(noteDelegate.index)
                             }
 
                             Button {
                                 text: "Delete"
-                                onClicked: noteModel.delete_note(parent.parent.parent.parent.index)
+                                onClicked: noteModel.delete_note(noteDelegate.index)
                             }
                         }
                     }

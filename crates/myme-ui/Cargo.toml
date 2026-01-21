@@ -16,6 +16,7 @@ cxx-qt.workspace = true
 cxx-qt-lib = { workspace = true, features = ["qt_full"] }
 
 # Internal crates
+myme-core = { path = "../myme-core" }
 myme-services = { path = "../myme-services" }
 myme-auth = { path = "../myme-auth" }
 myme-integrations = { path = "../myme-integrations" }

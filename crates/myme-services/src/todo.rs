@@ -15,6 +15,12 @@ pub struct Todo {
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
+/// Wrapper for list response from Godo API
+#[derive(Debug, Clone, Deserialize)]
+struct NotesResponse {
+    notes: Vec<Todo>,
+}
+
 /// Request to create a new note
 #[derive(Debug, Clone, Serialize)]
 pub struct TodoCreateRequest {
@@ -89,13 +95,13 @@ impl TodoClient {
             anyhow::bail!("API request failed with status {}: {}", status, error_text);
         }
 
-        let todos = response
-            .json::<Vec<Todo>>()
+        let notes_response = response
+            .json::<NotesResponse>()
             .await
             .context("Failed to parse response")?;
 
-        tracing::debug!("Fetched {} notes", todos.len());
-        Ok(todos)
+        tracing::debug!("Fetched {} notes", notes_response.notes.len());
+        Ok(notes_response.notes)
     }
 
     /// Get a specific note by ID
