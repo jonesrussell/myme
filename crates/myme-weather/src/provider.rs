@@ -5,7 +5,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 const OPEN_METEO_BASE_URL: &str = "https://api.open-meteo.com/v1/forecast";
-const REQUEST_TIMEOUT_SECS: u64 = 10;
+const REQUEST_TIMEOUT_SECS: u64 = 30;
+const USER_AGENT: &str = "MyMe/0.1.0";
 
 /// Open-Meteo API response structures
 mod api {
@@ -59,6 +60,7 @@ impl WeatherProvider {
     pub fn new(unit: TemperatureUnit) -> Result<Self, WeatherError> {
         let client = Client::builder()
             .timeout(Duration::from_secs(REQUEST_TIMEOUT_SECS))
+            .user_agent(USER_AGENT)
             .build()?;
 
         Ok(Self {

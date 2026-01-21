@@ -89,9 +89,9 @@ Rectangle {
                 Text {
                     font.pixelSize: Theme.fontSizeSmall
                     font.weight: Font.Medium
+                    font.letterSpacing: 1
                     text: "WEATHER"
                     color: Theme.textMuted
-                    letterSpacing: 1
                 }
 
                 Text {
@@ -150,7 +150,7 @@ Rectangle {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: {
+                    onClicked: mouse => {
                         mouse.accepted = true;
                         root.refreshRequested();
                     }

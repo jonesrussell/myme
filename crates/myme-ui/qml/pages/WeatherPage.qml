@@ -1,13 +1,16 @@
 import QtQuick
-import QtQuick.Controls as Controls
+import QtQuick.Controls
 import QtQuick.Layouts
-import org.kde.kirigami as Kirigami
 import myme_ui
 import ".."
 
-Kirigami.ScrollablePage {
+Page {
     id: weatherPage
-    title: "Weather Forecast"
+    title: "Weather"
+
+    background: Rectangle {
+        color: Theme.background
+    }
 
     WeatherModel {
         id: weatherModel
@@ -28,390 +31,595 @@ Kirigami.ScrollablePage {
         return iconMap[iconName] || Icons.sun;
     }
 
-    actions: [
-        Kirigami.Action {
-            text: "Refresh"
-            icon.name: "view-refresh"
-            enabled: !weatherModel.loading
-            onTriggered: weatherModel.refresh()
-        }
-    ]
-
-    ColumnLayout {
-        width: parent.width
-        spacing: Kirigami.Units.largeSpacing
-
-        // Error message
-        Kirigami.InlineMessage {
-            Layout.fillWidth: true
-            visible: weatherModel.error_message !== ""
-            type: Kirigami.MessageType.Warning
-            text: weatherModel.error_message
+    header: ToolBar {
+        background: Rectangle {
+            color: "transparent"
         }
 
-        // Stale data warning
-        Kirigami.InlineMessage {
-            Layout.fillWidth: true
-            visible: weatherModel.is_stale && weatherModel.has_data
-            type: Kirigami.MessageType.Information
-            text: "Weather data may be outdated. Pull to refresh."
-        }
+        RowLayout {
+            anchors.fill: parent
+            spacing: Theme.spacingMd
 
-        // Loading indicator
-        Controls.BusyIndicator {
-            Layout.alignment: Qt.AlignHCenter
-            visible: weatherModel.loading && !weatherModel.has_data
-            running: weatherModel.loading
-        }
+            Label {
+                text: "Weather"
+                font.pixelSize: Theme.fontSizeLarge
+                font.bold: true
+                color: Theme.text
+                Layout.fillWidth: true
+                leftPadding: Theme.spacingMd
+            }
 
-        // Current conditions card
-        Kirigami.Card {
-            Layout.fillWidth: true
-            visible: weatherModel.has_data
+            // Refresh button
+            Rectangle {
+                width: 36
+                height: 36
+                radius: Theme.buttonRadius
+                color: refreshMouseArea.containsMouse ? Theme.surfaceHover : "transparent"
 
-            header: RowLayout {
-                Kirigami.Heading {
-                    text: weatherModel.location_name || "Current Location"
-                    level: 3
-                    Layout.fillWidth: true
+                Label {
+                    anchors.centerIn: parent
+                    text: Icons.arrowsClockwise
+                    font.family: Icons.family
+                    font.pixelSize: 18
+                    color: Theme.text
                 }
-                Controls.Label {
-                    text: weatherModel.is_stale ? "Cached" : "Live"
-                    color: weatherModel.is_stale ?
-                        Kirigami.Theme.neutralTextColor :
-                        Kirigami.Theme.positiveTextColor
-                    font.pixelSize: Theme.fontSizeSmall
+
+                MouseArea {
+                    id: refreshMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    enabled: !weatherModel.loading
+                    onClicked: weatherModel.refresh()
+                }
+
+                ToolTip.visible: refreshMouseArea.containsMouse
+                ToolTip.text: "Refresh weather"
+                ToolTip.delay: 500
+            }
+
+            Item { width: Theme.spacingMd }
+        }
+    }
+
+    ScrollView {
+        anchors.fill: parent
+        anchors.margins: Theme.spacingLg
+        clip: true
+
+        ColumnLayout {
+            width: parent.width
+            spacing: Theme.spacingLg
+
+            // Error message
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: errorContent.implicitHeight + Theme.spacingMd * 2
+                color: Theme.error + "20"
+                border.color: Theme.error
+                border.width: 1
+                radius: Theme.cardRadius
+                visible: weatherModel.error_message !== ""
+
+                RowLayout {
+                    id: errorContent
+                    anchors.fill: parent
+                    anchors.margins: Theme.spacingMd
+                    spacing: Theme.spacingSm
+
+                    Text {
+                        text: Icons.warning
+                        font.family: Icons.family
+                        font.pixelSize: Theme.fontSizeMedium
+                        color: Theme.error
+                    }
+
+                    Label {
+                        text: weatherModel.error_message
+                        font.pixelSize: Theme.fontSizeNormal
+                        color: Theme.text
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
                 }
             }
 
-            contentItem: ColumnLayout {
-                spacing: Kirigami.Units.largeSpacing
+            // Stale data warning
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: staleContent.implicitHeight + Theme.spacingMd * 2
+                color: Theme.warning + "20"
+                border.color: Theme.warning
+                border.width: 1
+                radius: Theme.cardRadius
+                visible: weatherModel.is_stale && weatherModel.has_data
 
-                // Main temperature display
                 RowLayout {
-                    spacing: Kirigami.Units.largeSpacing
+                    id: staleContent
+                    anchors.fill: parent
+                    anchors.margins: Theme.spacingMd
+                    spacing: Theme.spacingSm
 
-                    // Weather icon
                     Text {
+                        text: Icons.info
                         font.family: Icons.family
-                        font.pixelSize: 64
-                        text: getWeatherIcon(weatherModel.condition_icon)
-                        color: Kirigami.Theme.highlightColor
+                        font.pixelSize: Theme.fontSizeMedium
+                        color: Theme.warning
                     }
 
-                    ColumnLayout {
-                        spacing: 4
+                    Label {
+                        text: "Weather data may be outdated. Click refresh to update."
+                        font.pixelSize: Theme.fontSizeNormal
+                        color: Theme.text
+                        Layout.fillWidth: true
+                    }
+                }
+            }
 
-                        // Temperature
-                        Controls.Label {
-                            text: `${Math.round(weatherModel.temperature)}°`
-                            font.pixelSize: 48
-                            font.weight: Font.Bold
+            // Loading indicator
+            BusyIndicator {
+                Layout.alignment: Qt.AlignHCenter
+                visible: weatherModel.loading && !weatherModel.has_data
+                running: weatherModel.loading
+            }
+
+            // Current conditions card
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: currentContent.implicitHeight + Theme.spacingMd * 2
+                color: Theme.surface
+                border.color: Theme.border
+                border.width: 1
+                radius: Theme.cardRadius
+                visible: weatherModel.has_data
+
+                ColumnLayout {
+                    id: currentContent
+                    anchors.fill: parent
+                    anchors.margins: Theme.spacingMd
+                    spacing: Theme.spacingMd
+
+                    // Header
+                    RowLayout {
+                        Layout.fillWidth: true
+
+                        Label {
+                            text: weatherModel.location_name || "Current Location"
+                            font.pixelSize: Theme.fontSizeMedium
+                            font.bold: true
+                            color: Theme.text
+                            Layout.fillWidth: true
+                        }
+
+                        Rectangle {
+                            width: statusLabel.implicitWidth + Theme.spacingSm * 2
+                            height: statusLabel.implicitHeight + Theme.spacingXs * 2
+                            radius: Theme.buttonRadius
+                            color: weatherModel.is_stale ? Theme.warning + "30" : Theme.success + "30"
+
+                            Label {
+                                id: statusLabel
+                                anchors.centerIn: parent
+                                text: weatherModel.is_stale ? "Cached" : "Live"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: weatherModel.is_stale ? Theme.warning : Theme.success
+                            }
+                        }
+                    }
+
+                    // Main temperature display
+                    RowLayout {
+                        spacing: Theme.spacingLg
+
+                        // Weather icon
+                        Text {
+                            font.family: Icons.family
+                            font.pixelSize: 64
+                            text: getWeatherIcon(weatherModel.condition_icon)
+                            color: Theme.primary
+                        }
+
+                        ColumnLayout {
+                            spacing: 4
+
+                            // Temperature
+                            Label {
+                                text: `${Math.round(weatherModel.temperature)}°`
+                                font.pixelSize: 48
+                                font.weight: Font.Bold
+                                color: Theme.text
+                            }
+
+                            // Condition
+                            Label {
+                                text: weatherModel.condition
+                                font.pixelSize: Theme.fontSizeLarge
+                                color: Theme.textSecondary
+                            }
+
+                            // Feels like
+                            Label {
+                                text: `Feels like ${Math.round(weatherModel.feels_like)}°`
+                                font.pixelSize: Theme.fontSizeNormal
+                                color: Theme.textMuted
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        // High/Low column
+                        ColumnLayout {
+                            spacing: Theme.spacingSm
+
+                            RowLayout {
+                                spacing: 4
+                                Text {
+                                    font.family: Icons.family
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    text: Icons.caretUp
+                                    color: Theme.error
+                                }
+                                Label {
+                                    text: `${Math.round(weatherModel.today_high)}°`
+                                    font.pixelSize: Theme.fontSizeLarge
+                                    color: Theme.text
+                                }
+                            }
+
+                            RowLayout {
+                                spacing: 4
+                                Text {
+                                    font.family: Icons.family
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    text: Icons.caretDown
+                                    color: Theme.primary
+                                }
+                                Label {
+                                    text: `${Math.round(weatherModel.today_low)}°`
+                                    font.pixelSize: Theme.fontSizeLarge
+                                    color: Theme.text
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 1
+                        color: Theme.border
+                    }
+
+                    // Details grid
+                    GridLayout {
+                        columns: 4
+                        rowSpacing: Theme.spacingSm
+                        columnSpacing: Theme.spacingLg
+
+                        // Humidity
+                        Text {
+                            font.family: Icons.family
+                            font.pixelSize: Theme.fontSizeMedium
+                            text: Icons.drop
+                            color: Theme.primary
+                        }
+                        Label {
+                            text: `${weatherModel.humidity}%`
+                            color: Theme.text
+                            Layout.rightMargin: Theme.spacingLg
+                        }
+
+                        // Wind
+                        Text {
+                            font.family: Icons.family
+                            font.pixelSize: Theme.fontSizeMedium
+                            text: Icons.wind
+                            color: Theme.textSecondary
+                        }
+                        Label {
+                            text: `${Math.round(weatherModel.wind_speed)} mph`
+                            color: Theme.text
+                        }
+
+                        // Precipitation
+                        Text {
+                            font.family: Icons.family
+                            font.pixelSize: Theme.fontSizeMedium
+                            text: Icons.cloud_rain
+                            color: Theme.textSecondary
+                        }
+                        Label {
+                            text: `${weatherModel.precipitation_chance}%`
+                            color: Theme.text
+                            Layout.rightMargin: Theme.spacingLg
+                        }
+
+                        // Sunrise
+                        Text {
+                            font.family: Icons.family
+                            font.pixelSize: Theme.fontSizeMedium
+                            text: Icons.sun
+                            color: Theme.warning
+                        }
+                        Label {
+                            text: weatherModel.sunrise
+                            color: Theme.text
+                        }
+
+                        // Empty spacer
+                        Item { width: 1 }
+                        Item { width: 1 }
+
+                        // Sunset
+                        Text {
+                            font.family: Icons.family
+                            font.pixelSize: Theme.fontSizeMedium
+                            text: Icons.moon
+                            color: Theme.textMuted
+                        }
+                        Label {
+                            text: weatherModel.sunset
+                            color: Theme.text
+                        }
+                    }
+                }
+            }
+
+            // 7-Day Forecast heading
+            Label {
+                text: "7-Day Forecast"
+                font.pixelSize: Theme.fontSizeMedium
+                font.bold: true
+                color: Theme.text
+                visible: weatherModel.has_data
+                Layout.topMargin: Theme.spacingSm
+            }
+
+            // Forecast cards
+            Repeater {
+                model: weatherModel.forecast_count()
+
+                delegate: Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 56
+                    color: Theme.surface
+                    border.color: Theme.border
+                    border.width: 1
+                    radius: Theme.cardRadius
+
+                    property int dayIndex: index
+                    property bool isToday: index === 0
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingMd
+                        spacing: Theme.spacingMd
+
+                        // Day name
+                        Label {
+                            text: isToday ? "Today" : weatherModel.get_forecast_day(dayIndex)
+                            font.weight: isToday ? Font.Bold : Font.Normal
+                            font.pixelSize: Theme.fontSizeNormal
+                            color: Theme.text
+                            Layout.preferredWidth: 60
+                        }
+
+                        // Weather icon
+                        Text {
+                            font.family: Icons.family
+                            font.pixelSize: Theme.fontSizeLarge
+                            text: getWeatherIcon(weatherModel.get_forecast_icon(dayIndex))
+                            color: Theme.primary
                         }
 
                         // Condition
-                        Controls.Label {
-                            text: weatherModel.condition
-                            font.pixelSize: Theme.fontSizeLarge
-                            color: Kirigami.Theme.disabledTextColor
-                        }
-
-                        // Feels like
-                        Controls.Label {
-                            text: `Feels like ${Math.round(weatherModel.feels_like)}°`
+                        Label {
+                            text: weatherModel.get_forecast_condition(dayIndex)
                             font.pixelSize: Theme.fontSizeNormal
-                            color: Kirigami.Theme.disabledTextColor
+                            color: Theme.textSecondary
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
                         }
-                    }
 
-                    Item { Layout.fillWidth: true }
-
-                    // High/Low column
-                    ColumnLayout {
-                        spacing: Kirigami.Units.smallSpacing
-
+                        // Precipitation chance
                         RowLayout {
                             spacing: 4
+                            visible: weatherModel.get_forecast_precip(dayIndex) > 0
+
                             Text {
                                 font.family: Icons.family
-                                font.pixelSize: Theme.fontSizeNormal
-                                text: Icons.caretUp
-                                color: Kirigami.Theme.negativeTextColor
-                            }
-                            Controls.Label {
-                                text: `${Math.round(weatherModel.today_high)}°`
-                                font.pixelSize: Theme.fontSizeLarge
-                            }
-                        }
-
-                        RowLayout {
-                            spacing: 4
-                            Text {
-                                font.family: Icons.family
-                                font.pixelSize: Theme.fontSizeNormal
-                                text: Icons.caretDown
-                                color: Kirigami.Theme.highlightColor
-                            }
-                            Controls.Label {
-                                text: `${Math.round(weatherModel.today_low)}°`
-                                font.pixelSize: Theme.fontSizeLarge
-                            }
-                        }
-                    }
-                }
-
-                // Details grid
-                GridLayout {
-                    columns: 4
-                    rowSpacing: Kirigami.Units.smallSpacing
-                    columnSpacing: Kirigami.Units.largeSpacing
-
-                    // Humidity
-                    Text {
-                        font.family: Icons.family
-                        font.pixelSize: Theme.fontSizeMedium
-                        text: Icons.drop
-                        color: Kirigami.Theme.highlightColor
-                    }
-                    Controls.Label {
-                        text: `${weatherModel.humidity}%`
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
-                    }
-
-                    // Wind
-                    Text {
-                        font.family: Icons.family
-                        font.pixelSize: Theme.fontSizeMedium
-                        text: Icons.wind
-                        color: Kirigami.Theme.disabledTextColor
-                    }
-                    Controls.Label {
-                        text: `${Math.round(weatherModel.wind_speed)} mph`
-                    }
-
-                    // Precipitation
-                    Text {
-                        font.family: Icons.family
-                        font.pixelSize: Theme.fontSizeMedium
-                        text: Icons.cloud_rain
-                        color: Kirigami.Theme.disabledTextColor
-                    }
-                    Controls.Label {
-                        text: `${weatherModel.precipitation_chance}%`
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
-                    }
-
-                    // Sunrise
-                    Text {
-                        font.family: Icons.family
-                        font.pixelSize: Theme.fontSizeMedium
-                        text: Icons.sun
-                        color: Kirigami.Theme.neutralTextColor
-                    }
-                    Controls.Label {
-                        text: weatherModel.sunrise
-                    }
-
-                    // Empty spacer
-                    Item { width: 1 }
-                    Item { width: 1 }
-
-                    // Sunset
-                    Text {
-                        font.family: Icons.family
-                        font.pixelSize: Theme.fontSizeMedium
-                        text: Icons.moon
-                        color: Kirigami.Theme.disabledTextColor
-                    }
-                    Controls.Label {
-                        text: weatherModel.sunset
-                    }
-                }
-            }
-        }
-
-        // 7-Day Forecast
-        Kirigami.Heading {
-            text: "7-Day Forecast"
-            level: 2
-            visible: weatherModel.has_data
-        }
-
-        // Forecast cards
-        Repeater {
-            model: weatherModel.forecast_count()
-
-            delegate: Kirigami.Card {
-                Layout.fillWidth: true
-
-                property int dayIndex: index
-                property bool isToday: index === 0
-
-                contentItem: RowLayout {
-                    spacing: Kirigami.Units.largeSpacing
-
-                    // Day name
-                    Controls.Label {
-                        text: isToday ? "Today" : weatherModel.get_forecast_day(dayIndex)
-                        font.weight: isToday ? Font.Bold : Font.Normal
-                        Layout.preferredWidth: 60
-                    }
-
-                    // Weather icon
-                    Text {
-                        font.family: Icons.family
-                        font.pixelSize: Theme.fontSizeLarge
-                        text: getWeatherIcon(weatherModel.get_forecast_icon(dayIndex))
-                        color: Kirigami.Theme.highlightColor
-                    }
-
-                    // Condition
-                    Controls.Label {
-                        text: weatherModel.get_forecast_condition(dayIndex)
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                        color: Kirigami.Theme.disabledTextColor
-                    }
-
-                    // Precipitation chance
-                    RowLayout {
-                        spacing: 4
-                        visible: weatherModel.get_forecast_precip(dayIndex) > 0
-
-                        Text {
-                            font.family: Icons.family
-                            font.pixelSize: Theme.fontSizeSmall
-                            text: Icons.drop
-                            color: Kirigami.Theme.highlightColor
-                        }
-                        Controls.Label {
-                            text: `${weatherModel.get_forecast_precip(dayIndex)}%`
-                            font.pixelSize: Theme.fontSizeSmall
-                            color: Kirigami.Theme.disabledTextColor
-                        }
-                    }
-
-                    // High temp
-                    Controls.Label {
-                        text: `${Math.round(weatherModel.get_forecast_high(dayIndex))}°`
-                        font.weight: Font.Bold
-                        horizontalAlignment: Text.AlignRight
-                        Layout.preferredWidth: 40
-                    }
-
-                    // Low temp
-                    Controls.Label {
-                        text: `${Math.round(weatherModel.get_forecast_low(dayIndex))}°`
-                        color: Kirigami.Theme.disabledTextColor
-                        horizontalAlignment: Text.AlignRight
-                        Layout.preferredWidth: 40
-                    }
-                }
-            }
-        }
-
-        // Hourly forecast for today
-        Kirigami.Heading {
-            text: "Today's Hourly Forecast"
-            level: 2
-            visible: weatherModel.has_data && weatherModel.hourly_count(0) > 0
-            Layout.topMargin: Kirigami.Units.largeSpacing
-        }
-
-        // Horizontal scrollable hourly forecast
-        Controls.ScrollView {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 100
-            visible: weatherModel.has_data && weatherModel.hourly_count(0) > 0
-            Controls.ScrollBar.horizontal.policy: Controls.ScrollBar.AsNeeded
-            Controls.ScrollBar.vertical.policy: Controls.ScrollBar.AlwaysOff
-
-            RowLayout {
-                spacing: Kirigami.Units.smallSpacing
-
-                Repeater {
-                    model: weatherModel.hourly_count(0)
-
-                    delegate: Rectangle {
-                        width: 60
-                        height: 90
-                        radius: Theme.cardRadius
-                        color: Kirigami.Theme.backgroundColor
-                        border.color: Kirigami.Theme.separatorColor
-                        border.width: 1
-
-                        property int hourIndex: index
-
-                        ColumnLayout {
-                            anchors.centerIn: parent
-                            spacing: 4
-
-                            // Time
-                            Controls.Label {
-                                text: weatherModel.get_hourly_time(0, hourIndex)
                                 font.pixelSize: Theme.fontSizeSmall
-                                Layout.alignment: Qt.AlignHCenter
+                                text: Icons.drop
+                                color: Theme.primary
                             }
-
-                            // Icon
-                            Text {
-                                font.family: Icons.family
-                                font.pixelSize: Theme.fontSizeMedium
-                                text: getWeatherIcon(weatherModel.get_hourly_icon(0, hourIndex))
-                                color: Kirigami.Theme.highlightColor
-                                Layout.alignment: Qt.AlignHCenter
+                            Label {
+                                text: `${weatherModel.get_forecast_precip(dayIndex)}%`
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.textSecondary
                             }
+                        }
 
-                            // Temperature
-                            Controls.Label {
-                                text: `${Math.round(weatherModel.get_hourly_temp(0, hourIndex))}°`
-                                font.weight: Font.Medium
-                                Layout.alignment: Qt.AlignHCenter
-                            }
+                        // High temp
+                        Label {
+                            text: `${Math.round(weatherModel.get_forecast_high(dayIndex))}°`
+                            font.weight: Font.Bold
+                            font.pixelSize: Theme.fontSizeNormal
+                            color: Theme.text
+                            horizontalAlignment: Text.AlignRight
+                            Layout.preferredWidth: 40
+                        }
 
-                            // Precipitation
-                            RowLayout {
-                                Layout.alignment: Qt.AlignHCenter
-                                spacing: 2
-                                visible: weatherModel.get_hourly_precip(0, hourIndex) > 0
+                        // Low temp
+                        Label {
+                            text: `${Math.round(weatherModel.get_forecast_low(dayIndex))}°`
+                            font.pixelSize: Theme.fontSizeNormal
+                            color: Theme.textMuted
+                            horizontalAlignment: Text.AlignRight
+                            Layout.preferredWidth: 40
+                        }
+                    }
+                }
+            }
 
+            // Hourly forecast heading
+            Label {
+                text: "Today's Hourly Forecast"
+                font.pixelSize: Theme.fontSizeMedium
+                font.bold: true
+                color: Theme.text
+                visible: weatherModel.has_data && weatherModel.hourly_count(0) > 0
+                Layout.topMargin: Theme.spacingMd
+            }
+
+            // Horizontal scrollable hourly forecast
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 100
+                visible: weatherModel.has_data && weatherModel.hourly_count(0) > 0
+                ScrollBar.horizontal.policy: ScrollBar.AsNeeded
+                ScrollBar.vertical.policy: ScrollBar.AlwaysOff
+
+                RowLayout {
+                    spacing: Theme.spacingSm
+
+                    Repeater {
+                        model: weatherModel.hourly_count(0)
+
+                        delegate: Rectangle {
+                            width: 60
+                            height: 90
+                            radius: Theme.cardRadius
+                            color: Theme.surface
+                            border.color: Theme.border
+                            border.width: 1
+
+                            property int hourIndex: index
+
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                spacing: 4
+
+                                // Time
+                                Label {
+                                    text: weatherModel.get_hourly_time(0, hourIndex)
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Theme.textSecondary
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+
+                                // Icon
                                 Text {
                                     font.family: Icons.family
-                                    font.pixelSize: 10
-                                    text: Icons.drop
-                                    color: Kirigami.Theme.highlightColor
+                                    font.pixelSize: Theme.fontSizeMedium
+                                    text: getWeatherIcon(weatherModel.get_hourly_icon(0, hourIndex))
+                                    color: Theme.primary
+                                    Layout.alignment: Qt.AlignHCenter
                                 }
-                                Controls.Label {
-                                    text: `${weatherModel.get_hourly_precip(0, hourIndex)}%`
-                                    font.pixelSize: 10
-                                    color: Kirigami.Theme.disabledTextColor
-                                }
-                            }
 
-                            // Spacer if no precip
-                            Item {
-                                height: 14
-                                visible: weatherModel.get_hourly_precip(0, hourIndex) === 0
+                                // Temperature
+                                Label {
+                                    text: `${Math.round(weatherModel.get_hourly_temp(0, hourIndex))}°`
+                                    font.weight: Font.Medium
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    color: Theme.text
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+
+                                // Precipitation
+                                RowLayout {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    spacing: 2
+                                    visible: weatherModel.get_hourly_precip(0, hourIndex) > 0
+
+                                    Text {
+                                        font.family: Icons.family
+                                        font.pixelSize: 10
+                                        text: Icons.drop
+                                        color: Theme.primary
+                                    }
+                                    Label {
+                                        text: `${weatherModel.get_hourly_precip(0, hourIndex)}%`
+                                        font.pixelSize: 10
+                                        color: Theme.textMuted
+                                    }
+                                }
+
+                                // Spacer if no precip
+                                Item {
+                                    height: 14
+                                    visible: weatherModel.get_hourly_precip(0, hourIndex) === 0
+                                }
                             }
                         }
                     }
                 }
             }
-        }
 
-        // Placeholder when no data
-        Kirigami.PlaceholderMessage {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            visible: !weatherModel.has_data && !weatherModel.loading
-            text: "Weather data unavailable"
-            explanation: "Check your location settings and internet connection"
-            icon.name: "weather-none-available"
+            // Placeholder when no data
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 200
+                color: Theme.surface
+                border.color: Theme.border
+                border.width: 1
+                radius: Theme.cardRadius
+                visible: !weatherModel.has_data && !weatherModel.loading
 
-            helpfulAction: Kirigami.Action {
-                text: "Retry"
-                icon.name: "view-refresh"
-                onTriggered: weatherModel.refresh()
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: Theme.spacingMd
+
+                    Text {
+                        text: Icons.cloud
+                        font.family: Icons.family
+                        font.pixelSize: 48
+                        color: Theme.textMuted
+                        Layout.alignment: Qt.AlignHCenter
+                    }
+
+                    Label {
+                        text: "Weather data unavailable"
+                        font.pixelSize: Theme.fontSizeMedium
+                        font.bold: true
+                        color: Theme.text
+                        Layout.alignment: Qt.AlignHCenter
+                    }
+
+                    Label {
+                        text: "Check your location settings and internet connection"
+                        font.pixelSize: Theme.fontSizeNormal
+                        color: Theme.textSecondary
+                        Layout.alignment: Qt.AlignHCenter
+                    }
+
+                    Rectangle {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.topMargin: Theme.spacingSm
+                        width: retryLabel.implicitWidth + Theme.spacingMd * 2
+                        height: retryLabel.implicitHeight + Theme.spacingSm * 2
+                        radius: Theme.buttonRadius
+                        color: retryMouseArea.containsMouse ? Theme.primaryHover : Theme.primary
+
+                        Label {
+                            id: retryLabel
+                            anchors.centerIn: parent
+                            text: "Retry"
+                            font.pixelSize: Theme.fontSizeNormal
+                            color: Theme.primaryText
+                        }
+
+                        MouseArea {
+                            id: retryMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: weatherModel.refresh()
+                        }
+                    }
+                }
+            }
+
+            Item {
+                Layout.fillHeight: true
             }
         }
     }

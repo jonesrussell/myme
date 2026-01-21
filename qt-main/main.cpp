@@ -7,8 +7,9 @@
 // cxx-qt generated bridges
 extern "C" bool cxx_qt_init_crate_myme_ui();
 
-// Rust initialization function
+// Rust initialization functions
 extern "C" bool initialize_note_model(const char* base_url);
+extern "C" bool initialize_weather_services();
 
 int main(int argc, char *argv[])
 {
@@ -33,6 +34,9 @@ int main(int argc, char *argv[])
 
     // Initialize global services (TodoClient, etc.)
     initialize_note_model("http://localhost:8008");
+
+    // Initialize weather services (WeatherProvider, cache)
+    initialize_weather_services();
 
     QQmlApplicationEngine engine;
 

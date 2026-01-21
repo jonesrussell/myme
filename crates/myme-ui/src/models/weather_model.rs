@@ -131,14 +131,23 @@ impl WeatherModelRust {
         }
     }
 
-    fn update_from_data(&mut self, data: &WeatherData) {
-        self.temperature = data.current.temperature;
-        self.feels_like = data.current.feels_like;
-        self.humidity = data.current.humidity as i32;
-        self.wind_speed = data.current.wind_speed;
-        self.condition = QString::from(data.current.condition.description());
-        self.condition_icon = QString::from(data.current.condition.icon_name());
-        self.location_name = data
+    fn store_weather_data(&mut self, data: &WeatherData) {
+        self.weather_data = Some(data.clone());
+    }
+}
+
+impl qobject::WeatherModel {
+    /// Update all properties from weather data using Qt setters for proper notifications
+    fn update_from_data(mut self: Pin<&mut Self>, data: &WeatherData) {
+        // Current weather
+        self.as_mut().set_temperature(data.current.temperature);
+        self.as_mut().set_feels_like(data.current.feels_like);
+        self.as_mut().set_humidity(data.current.humidity as i32);
+        self.as_mut().set_wind_speed(data.current.wind_speed);
+        self.as_mut().set_condition(QString::from(data.current.condition.description()));
+        self.as_mut().set_condition_icon(QString::from(data.current.condition.icon_name()));
+
+        let location_name = data
             .location
             .city_name
             .as_deref()
@@ -149,22 +158,22 @@ impl WeatherModelRust {
                     data.location.latitude, data.location.longitude
                 ))
             });
+        self.as_mut().set_location_name(location_name);
 
         // Today's forecast (first day)
         if let Some(today) = data.forecast.first() {
-            self.today_high = today.high;
-            self.today_low = today.low;
-            self.precipitation_chance = today.precipitation_chance as i32;
-            self.sunrise = QString::from(today.sunrise.format("%H:%M").to_string());
-            self.sunset = QString::from(today.sunset.format("%H:%M").to_string());
+            self.as_mut().set_today_high(today.high);
+            self.as_mut().set_today_low(today.low);
+            self.as_mut().set_precipitation_chance(today.precipitation_chance as i32);
+            self.as_mut().set_sunrise(QString::from(today.sunrise.format("%H:%M").to_string()));
+            self.as_mut().set_sunset(QString::from(today.sunset.format("%H:%M").to_string()));
         }
 
-        self.weather_data = Some(data.clone());
-        self.has_data = true;
+        // Store weather data for forecast methods
+        self.as_mut().rust_mut().store_weather_data(data);
+        self.as_mut().set_has_data(true);
     }
-}
 
-impl qobject::WeatherModel {
     pub fn refresh(mut self: Pin<&mut Self>) {
         self.as_mut().rust_mut().ensure_initialized();
 
@@ -198,7 +207,7 @@ impl qobject::WeatherModel {
 
         if let Some((cached_data, is_stale, _)) = cache_result {
             tracing::info!("Using cached weather data");
-            self.as_mut().rust_mut().update_from_data(&cached_data);
+            self.as_mut().update_from_data(&cached_data);
             self.as_mut().set_is_stale(is_stale);
             self.as_mut().weather_changed();
 
@@ -235,7 +244,7 @@ impl qobject::WeatherModel {
                     }
                 }
 
-                self.as_mut().rust_mut().update_from_data(&data);
+                self.as_mut().update_from_data(&data);
                 self.as_mut().set_loading(false);
                 self.as_mut().set_is_stale(false);
                 self.as_mut().weather_changed();
