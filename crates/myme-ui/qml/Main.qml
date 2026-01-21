@@ -1,37 +1,26 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "."
 
 ApplicationWindow {
     id: root
     width: 1200
     height: 800
     visible: true
-    title: "MyMe - Personal Productivity Hub"
+    title: "MyMe"
+    flags: Qt.Window | Qt.FramelessWindowHint
 
     property bool sidebarCollapsed: false
     property int sidebarExpandedWidth: 200
-    property int sidebarCollapsedWidth: 50
+    property int sidebarCollapsedWidth: 56
     property string currentPage: "welcome"
 
-    header: ToolBar {
-        RowLayout {
-            anchors.fill: parent
+    // Apply theme background
+    color: Theme.background
 
-            ToolButton {
-                text: sidebarCollapsed ? "▶" : "◀"
-                onClicked: sidebarCollapsed = !sidebarCollapsed
-            }
-
-            Label {
-                text: "MyMe"
-                elide: Label.ElideRight
-                horizontalAlignment: Qt.AlignHCenter
-                verticalAlignment: Qt.AlignVCenter
-                Layout.fillWidth: true
-            }
-        }
-    }
+    // Window drag and resize handling
+    property point dragPosition
 
     RowLayout {
         anchors.fill: parent
@@ -42,7 +31,7 @@ ApplicationWindow {
             id: sidebar
             Layout.fillHeight: true
             Layout.preferredWidth: sidebarCollapsed ? sidebarCollapsedWidth : sidebarExpandedWidth
-            color: palette.base
+            color: Theme.sidebarBg
 
             Behavior on Layout.preferredWidth {
                 NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
@@ -50,61 +39,268 @@ ApplicationWindow {
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 5
-                spacing: 5
+                anchors.margins: Theme.spacingSm
+                spacing: Theme.spacingXs
 
-                Label {
-                    text: sidebarCollapsed ? "M" : "MyMe"
-                    font.pixelSize: sidebarCollapsed ? 18 : 24
-                    font.bold: true
+                // Logo area with window drag support
+                Rectangle {
                     Layout.fillWidth: true
-                    horizontalAlignment: sidebarCollapsed ? Text.AlignHCenter : Text.AlignLeft
-                }
+                    Layout.preferredHeight: 48
+                    color: "transparent"
 
-                Button {
-                    text: sidebarCollapsed ? "📝" : "Notes"
-                    Layout.fillWidth: true
-                    flat: true
-                    highlighted: currentPage === "notes"
-                    onClicked: {
-                        currentPage = "notes"
-                        stackView.replace("pages/NotePage.qml")
+                    MouseArea {
+                        anchors.fill: parent
+                        property point clickPos
+
+                        onPressed: (mouse) => {
+                            clickPos = Qt.point(mouse.x, mouse.y)
+                        }
+                        onPositionChanged: (mouse) => {
+                            if (pressed) {
+                                var delta = Qt.point(mouse.x - clickPos.x, mouse.y - clickPos.y)
+                                root.x += delta.x
+                                root.y += delta.y
+                            }
+                        }
+                        onDoubleClicked: {
+                            if (root.visibility === Window.Maximized) {
+                                root.showNormal()
+                            } else {
+                                root.showMaximized()
+                            }
+                        }
                     }
 
-                    ToolTip.visible: sidebarCollapsed && hovered
-                    ToolTip.text: "Notes"
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingXs
+                        spacing: Theme.spacingSm
+
+                        Rectangle {
+                            width: 36
+                            height: 36
+                            radius: 8
+                            color: Theme.primary
+
+                            Label {
+                                anchors.centerIn: parent
+                                text: "M"
+                                font.pixelSize: 18
+                                font.bold: true
+                                color: Theme.primaryText
+                            }
+                        }
+
+                        Label {
+                            visible: !sidebarCollapsed
+                            text: "MyMe"
+                            font.pixelSize: Theme.fontSizeLarge
+                            font.bold: true
+                            color: Theme.text
+                            Layout.fillWidth: true
+                        }
+                    }
                 }
 
-                Button {
-                    text: sidebarCollapsed ? "📁" : "Repos"
+                Rectangle {
                     Layout.fillWidth: true
-                    flat: true
-                    enabled: false
-                    highlighted: currentPage === "repos"
-                    onClicked: {
-                        currentPage = "repos"
-                        stackView.replace("pages/RepoPage.qml")
-                    }
-
-                    ToolTip.visible: sidebarCollapsed && hovered
-                    ToolTip.text: "Repos"
+                    height: 1
+                    color: Theme.sidebarBorder
+                    Layout.topMargin: Theme.spacingXs
+                    Layout.bottomMargin: Theme.spacingXs
                 }
 
-                Button {
-                    text: sidebarCollapsed ? "🔧" : "Dev Tools"
-                    Layout.fillWidth: true
-                    flat: true
-                    highlighted: currentPage === "devtools"
-                    onClicked: {
-                        currentPage = "devtools"
-                        stackView.replace("pages/DevToolsPage.qml")
-                    }
+                // Navigation items
+                Repeater {
+                    model: [
+                        { id: "notes", icon: "📝", label: "Notes", enabled: true },
+                        { id: "repos", icon: "📁", label: "Repos", enabled: false },
+                        { id: "devtools", icon: "🔧", label: "Dev Tools", enabled: true }
+                    ]
 
-                    ToolTip.visible: sidebarCollapsed && hovered
-                    ToolTip.text: "Dev Tools"
+                    delegate: Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 40
+                        radius: Theme.buttonRadius
+                        color: currentPage === modelData.id ? Theme.sidebarActive :
+                               navMouseArea.containsMouse ? Theme.sidebarHover : "transparent"
+                        opacity: modelData.enabled ? 1.0 : 0.5
+
+                        Behavior on color {
+                            ColorAnimation { duration: 100 }
+                        }
+
+                        MouseArea {
+                            id: navMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: modelData.enabled ? Qt.PointingHandCursor : Qt.ForbiddenCursor
+                            onClicked: {
+                                if (modelData.enabled) {
+                                    currentPage = modelData.id
+                                    if (modelData.id === "notes") stackView.replace("pages/NotePage.qml")
+                                    else if (modelData.id === "repos") stackView.replace("pages/RepoPage.qml")
+                                    else if (modelData.id === "devtools") stackView.replace("pages/DevToolsPage.qml")
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: Theme.spacingSm
+                            anchors.rightMargin: Theme.spacingSm
+                            spacing: Theme.spacingSm
+
+                            // Active indicator
+                            Rectangle {
+                                width: 3
+                                height: 20
+                                radius: 2
+                                color: currentPage === modelData.id ? Theme.primary : "transparent"
+                            }
+
+                            Label {
+                                text: modelData.icon
+                                font.pixelSize: 16
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.preferredWidth: 24
+                            }
+
+                            Label {
+                                visible: !sidebarCollapsed
+                                text: modelData.label
+                                font.pixelSize: Theme.fontSizeNormal
+                                color: Theme.text
+                                Layout.fillWidth: true
+                            }
+                        }
+
+                        ToolTip.visible: sidebarCollapsed && navMouseArea.containsMouse
+                        ToolTip.text: modelData.label
+                        ToolTip.delay: 500
+                    }
                 }
 
                 Item { Layout.fillHeight: true }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: Theme.sidebarBorder
+                    Layout.topMargin: Theme.spacingXs
+                    Layout.bottomMargin: Theme.spacingXs
+                }
+
+                // Settings button
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 40
+                    radius: Theme.buttonRadius
+                    color: currentPage === "settings" ? Theme.sidebarActive :
+                           settingsMouseArea.containsMouse ? Theme.sidebarHover : "transparent"
+
+                    Behavior on color {
+                        ColorAnimation { duration: 100 }
+                    }
+
+                    MouseArea {
+                        id: settingsMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            currentPage = "settings"
+                            stackView.replace("pages/SettingsPage.qml")
+                        }
+                    }
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: Theme.spacingSm
+                        anchors.rightMargin: Theme.spacingSm
+                        spacing: Theme.spacingSm
+
+                        Rectangle {
+                            width: 3
+                            height: 20
+                            radius: 2
+                            color: currentPage === "settings" ? Theme.primary : "transparent"
+                        }
+
+                        Label {
+                            text: "⚙️"
+                            font.pixelSize: 16
+                            horizontalAlignment: Text.AlignHCenter
+                            Layout.preferredWidth: 24
+                        }
+
+                        Label {
+                            visible: !sidebarCollapsed
+                            text: "Settings"
+                            font.pixelSize: Theme.fontSizeNormal
+                            color: Theme.text
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    ToolTip.visible: sidebarCollapsed && settingsMouseArea.containsMouse
+                    ToolTip.text: "Settings"
+                    ToolTip.delay: 500
+                }
+
+                // Collapse toggle button
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 40
+                    radius: Theme.buttonRadius
+                    color: collapseMouseArea.containsMouse ? Theme.sidebarHover : "transparent"
+
+                    Behavior on color {
+                        ColorAnimation { duration: 100 }
+                    }
+
+                    MouseArea {
+                        id: collapseMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: sidebarCollapsed = !sidebarCollapsed
+                    }
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: Theme.spacingSm
+                        anchors.rightMargin: Theme.spacingSm
+                        spacing: Theme.spacingSm
+
+                        Rectangle {
+                            width: 3
+                            height: 20
+                            radius: 2
+                            color: "transparent"
+                        }
+
+                        Label {
+                            text: sidebarCollapsed ? "▶" : "◀"
+                            font.pixelSize: 12
+                            horizontalAlignment: Text.AlignHCenter
+                            Layout.preferredWidth: 24
+                            color: Theme.textSecondary
+                        }
+
+                        Label {
+                            visible: !sidebarCollapsed
+                            text: "Collapse"
+                            font.pixelSize: Theme.fontSizeNormal
+                            color: Theme.textSecondary
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    ToolTip.visible: sidebarCollapsed && collapseMouseArea.containsMouse
+                    ToolTip.text: "Expand sidebar"
+                    ToolTip.delay: 500
+                }
             }
         }
 
@@ -112,62 +308,330 @@ ApplicationWindow {
         Rectangle {
             Layout.fillHeight: true
             Layout.preferredWidth: 1
-            color: palette.mid
+            color: Theme.border
         }
 
-        // Main content area
-        StackView {
-            id: stackView
+        // Main content area with window controls
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
+            spacing: 0
 
-            replaceEnter: Transition {
-                PropertyAnimation {
-                    property: "opacity"
-                    from: 0
-                    to: 1
-                    duration: 150
+            // Window title bar / drag area
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 36
+                color: Theme.background
+
+                MouseArea {
+                    anchors.fill: parent
+                    property point clickPos
+
+                    onPressed: (mouse) => {
+                        clickPos = Qt.point(mouse.x, mouse.y)
+                    }
+                    onPositionChanged: (mouse) => {
+                        if (pressed) {
+                            var delta = Qt.point(mouse.x - clickPos.x, mouse.y - clickPos.y)
+                            root.x += delta.x
+                            root.y += delta.y
+                        }
+                    }
+                    onDoubleClicked: {
+                        if (root.visibility === Window.Maximized) {
+                            root.showNormal()
+                        } else {
+                            root.showMaximized()
+                        }
+                    }
+                }
+
+                // Window controls
+                RowLayout {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.rightMargin: Theme.spacingSm
+                    spacing: 2
+
+                    // Minimize button
+                    Rectangle {
+                        width: 32
+                        height: 28
+                        radius: 4
+                        color: minimizeMouseArea.containsMouse ? Theme.surfaceHover : "transparent"
+
+                        Label {
+                            anchors.centerIn: parent
+                            text: "─"
+                            font.pixelSize: 12
+                            color: Theme.textSecondary
+                        }
+
+                        MouseArea {
+                            id: minimizeMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.showMinimized()
+                        }
+                    }
+
+                    // Maximize button
+                    Rectangle {
+                        width: 32
+                        height: 28
+                        radius: 4
+                        color: maximizeMouseArea.containsMouse ? Theme.surfaceHover : "transparent"
+
+                        Label {
+                            anchors.centerIn: parent
+                            text: root.visibility === Window.Maximized ? "❐" : "□"
+                            font.pixelSize: 12
+                            color: Theme.textSecondary
+                        }
+
+                        MouseArea {
+                            id: maximizeMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (root.visibility === Window.Maximized) {
+                                    root.showNormal()
+                                } else {
+                                    root.showMaximized()
+                                }
+                            }
+                        }
+                    }
+
+                    // Close button
+                    Rectangle {
+                        width: 32
+                        height: 28
+                        radius: 4
+                        color: closeMouseArea.containsMouse ? Theme.error : "transparent"
+
+                        Label {
+                            anchors.centerIn: parent
+                            text: "✕"
+                            font.pixelSize: 12
+                            color: closeMouseArea.containsMouse ? "#ffffff" : Theme.textSecondary
+                        }
+
+                        MouseArea {
+                            id: closeMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.close()
+                        }
+                    }
                 }
             }
-            replaceExit: Transition {
-                PropertyAnimation {
-                    property: "opacity"
-                    from: 1
-                    to: 0
-                    duration: 150
-                }
-            }
 
-            initialItem: Page {
+            StackView {
+                id: stackView
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+
+                replaceEnter: Transition {
+                    PropertyAnimation {
+                        property: "opacity"
+                        from: 0
+                        to: 1
+                        duration: 150
+                    }
+                }
+                replaceExit: Transition {
+                    PropertyAnimation {
+                        property: "opacity"
+                        from: 1
+                        to: 0
+                        duration: 150
+                    }
+                }
+
+                initialItem: Page {
                 title: "Welcome"
+
+                background: Rectangle {
+                    color: Theme.background
+                }
 
                 ColumnLayout {
                     anchors.centerIn: parent
-                    spacing: 20
+                    spacing: Theme.spacingLg
+
+                    Rectangle {
+                        Layout.alignment: Qt.AlignHCenter
+                        width: 80
+                        height: 80
+                        radius: 16
+                        color: Theme.primary
+
+                        Label {
+                            anchors.centerIn: parent
+                            text: "M"
+                            font.pixelSize: 40
+                            font.bold: true
+                            color: Theme.primaryText
+                        }
+                    }
 
                     Label {
-                        text: "MyMe"
-                        font.pixelSize: 48
+                        text: "Welcome to MyMe"
+                        font.pixelSize: Theme.fontSizeTitle
                         font.bold: true
+                        color: Theme.text
                         Layout.alignment: Qt.AlignHCenter
                     }
 
                     Label {
                         text: "Your Personal Productivity & Dev Hub"
-                        font.pixelSize: 16
+                        font.pixelSize: Theme.fontSizeMedium
+                        color: Theme.textSecondary
                         Layout.alignment: Qt.AlignHCenter
                     }
 
-                    Button {
-                        text: "View Notes"
+                    Item { height: Theme.spacingMd }
+
+                    RowLayout {
                         Layout.alignment: Qt.AlignHCenter
-                        onClicked: {
-                            currentPage = "notes"
-                            stackView.replace("pages/NotePage.qml")
+                        spacing: Theme.spacingMd
+
+                        Rectangle {
+                            width: 140
+                            height: 100
+                            radius: Theme.cardRadius
+                            color: Theme.surface
+                            border.color: notesCardMouse.containsMouse ? Theme.primary : Theme.border
+                            border.width: 1
+
+                            Behavior on border.color {
+                                ColorAnimation { duration: 100 }
+                            }
+
+                            MouseArea {
+                                id: notesCardMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    currentPage = "notes"
+                                    stackView.replace("pages/NotePage.qml")
+                                }
+                            }
+
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                spacing: Theme.spacingSm
+
+                                Label {
+                                    text: "📝"
+                                    font.pixelSize: 28
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+
+                                Label {
+                                    text: "Notes"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    font.bold: true
+                                    color: Theme.text
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            width: 140
+                            height: 100
+                            radius: Theme.cardRadius
+                            color: Theme.surface
+                            border.color: devtoolsCardMouse.containsMouse ? Theme.primary : Theme.border
+                            border.width: 1
+
+                            Behavior on border.color {
+                                ColorAnimation { duration: 100 }
+                            }
+
+                            MouseArea {
+                                id: devtoolsCardMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    currentPage = "devtools"
+                                    stackView.replace("pages/DevToolsPage.qml")
+                                }
+                            }
+
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                spacing: Theme.spacingSm
+
+                                Label {
+                                    text: "🔧"
+                                    font.pixelSize: 28
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+
+                                Label {
+                                    text: "Dev Tools"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    font.bold: true
+                                    color: Theme.text
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            width: 140
+                            height: 100
+                            radius: Theme.cardRadius
+                            color: Theme.surface
+                            border.color: settingsCardMouse.containsMouse ? Theme.primary : Theme.border
+                            border.width: 1
+
+                            Behavior on border.color {
+                                ColorAnimation { duration: 100 }
+                            }
+
+                            MouseArea {
+                                id: settingsCardMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    currentPage = "settings"
+                                    stackView.replace("pages/SettingsPage.qml")
+                                }
+                            }
+
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                spacing: Theme.spacingSm
+
+                                Label {
+                                    text: "⚙️"
+                                    font.pixelSize: 28
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+
+                                Label {
+                                    text: "Settings"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    font.bold: true
+                                    color: Theme.text
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+                            }
                         }
                     }
                 }
+            }
             }
         }
     }

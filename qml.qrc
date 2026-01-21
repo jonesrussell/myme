@@ -2,8 +2,11 @@
 <RCC version="1.0">
     <qresource prefix="/">
         <file>crates/myme-ui/qml/Main.qml</file>
+        <file>crates/myme-ui/qml/Theme.qml</file>
+        <file>crates/myme-ui/qml/qmldir</file>
         <file>crates/myme-ui/qml/pages/DevToolsPage.qml</file>
         <file>crates/myme-ui/qml/pages/NotePage.qml</file>
         <file>crates/myme-ui/qml/pages/RepoPage.qml</file>
+        <file>crates/myme-ui/qml/pages/SettingsPage.qml</file>
     </qresource>
 </RCC>
