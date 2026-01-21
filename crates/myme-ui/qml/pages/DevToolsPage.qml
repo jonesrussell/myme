@@ -46,10 +46,9 @@ Page {
         {
             id: "hash",
             name: "Hash Generator",
-            description: "Generate MD5, SHA-1, SHA-256 hashes from text",
+            description: "Generate MD5, SHA-1, SHA-256, SHA-512 hashes with HMAC support",
             icon: Icons.lock,
-            category: "Security",
-            comingSoon: true
+            category: "Security"
         },
         {
             id: "timestamp",
@@ -94,6 +93,11 @@ Page {
     // Instantiate the UuidModel from Rust
     UuidModel {
         id: uuidModel
+    }
+
+    // Instantiate the HashModel from Rust
+    HashModel {
+        id: hashModel
     }
 
     header: ToolBar {
@@ -385,6 +389,7 @@ Page {
                 if (currentTool === "jwt") return jwtToolComponent;
                 if (currentTool === "encoding") return encodingToolComponent;
                 if (currentTool === "uuid") return uuidToolComponent;
+                if (currentTool === "hash") return hashToolComponent;
                 return null;
             }
         }
@@ -1423,6 +1428,607 @@ Page {
                                 background: Rectangle {
                                     color: Theme.inputBg
                                     radius: Theme.inputRadius
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
+            }
+        }
+    }
+
+    // Hash Generator Component
+    Component {
+        id: hashToolComponent
+
+        ScrollView {
+            anchors.fill: parent
+            anchors.margins: Theme.spacingLg
+            clip: true
+
+            ColumnLayout {
+                width: parent.width
+                spacing: Theme.spacingLg
+
+                // Input section
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: hashInputColumn.implicitHeight + Theme.spacingLg * 2
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        id: hashInputColumn
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingLg
+                        spacing: Theme.spacingMd
+
+                        Label {
+                            text: "Input Text"
+                            font.bold: true
+                            color: Theme.text
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 120
+                            color: Theme.inputBg
+                            border.color: hashInputField.activeFocus ? Theme.primary : Theme.inputBorder
+                            radius: Theme.inputRadius
+
+                            ScrollView {
+                                anchors.fill: parent
+                                anchors.margins: 2
+
+                                TextArea {
+                                    id: hashInputField
+                                    text: hashModel.input
+                                    placeholderText: "Enter text to hash..."
+                                    wrapMode: TextEdit.Wrap
+                                    font.family: "Consolas, Monaco, monospace"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Theme.text
+                                    placeholderTextColor: Theme.textMuted
+                                    onTextChanged: hashModel.input = text
+
+                                    background: Rectangle {
+                                        color: "transparent"
+                                    }
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            spacing: Theme.spacingMd
+
+                            Button {
+                                text: Icons.lock + " Hash Text"
+                                font.family: Icons.family
+                                onClicked: hashModel.hash_text()
+
+                                background: Rectangle {
+                                    radius: Theme.buttonRadius
+                                    color: parent.hovered ? Theme.primaryHover : Theme.primary
+                                }
+
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: Theme.primaryText
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    font.bold: true
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+                            }
+
+                            Button {
+                                text: "Clear"
+                                onClicked: {
+                                    hashModel.clear()
+                                    hashInputField.text = ""
+                                }
+
+                                background: Rectangle {
+                                    radius: Theme.buttonRadius
+                                    color: parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt
+                                    border.color: Theme.border
+                                }
+
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Error banner
+                Rectangle {
+                    visible: hashModel.error_message.length > 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 50
+                    color: Theme.errorBg
+                    border.color: Theme.error
+                    radius: Theme.cardRadius
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingMd
+                        spacing: Theme.spacingMd
+
+                        Label {
+                            text: Icons.warning
+                            font.family: Icons.family
+                            font.pixelSize: 20
+                            color: Theme.error
+                        }
+
+                        Label {
+                            text: hashModel.error_message
+                            color: Theme.error
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+                }
+
+                // Hash results
+                Rectangle {
+                    visible: hashModel.hash_md5.length > 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: hashResultsColumn.implicitHeight + Theme.spacingLg * 2
+                    color: Theme.surface
+                    border.color: Theme.success
+                    border.width: 2
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        id: hashResultsColumn
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingLg
+                        spacing: Theme.spacingMd
+
+                        Label {
+                            text: "Hash Results"
+                            font.bold: true
+                            color: Theme.text
+                        }
+
+                        // MD5
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+
+                            RowLayout {
+                                Label {
+                                    text: "MD5"
+                                    font.bold: true
+                                    color: Theme.textSecondary
+                                    Layout.preferredWidth: 80
+                                }
+
+                                Button {
+                                    text: "Copy"
+                                    onClicked: {
+                                        md5Output.selectAll()
+                                        md5Output.copy()
+                                        md5Output.deselect()
+                                    }
+
+                                    background: Rectangle {
+                                        radius: Theme.buttonRadius
+                                        color: parent.hovered ? Theme.surfaceHover : "transparent"
+                                    }
+
+                                    contentItem: Text {
+                                        text: parent.text
+                                        color: Theme.primary
+                                        font.pixelSize: Theme.fontSizeSmall
+                                    }
+                                }
+                            }
+
+                            TextField {
+                                id: md5Output
+                                Layout.fillWidth: true
+                                text: hashModel.hash_md5
+                                readOnly: true
+                                font.family: "Consolas, Monaco, monospace"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.text
+                                selectByMouse: true
+
+                                background: Rectangle {
+                                    color: Theme.inputBg
+                                    radius: Theme.inputRadius
+                                }
+                            }
+                        }
+
+                        // SHA-1
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+
+                            RowLayout {
+                                Label {
+                                    text: "SHA-1"
+                                    font.bold: true
+                                    color: Theme.textSecondary
+                                    Layout.preferredWidth: 80
+                                }
+
+                                Button {
+                                    text: "Copy"
+                                    onClicked: {
+                                        sha1Output.selectAll()
+                                        sha1Output.copy()
+                                        sha1Output.deselect()
+                                    }
+
+                                    background: Rectangle {
+                                        radius: Theme.buttonRadius
+                                        color: parent.hovered ? Theme.surfaceHover : "transparent"
+                                    }
+
+                                    contentItem: Text {
+                                        text: parent.text
+                                        color: Theme.primary
+                                        font.pixelSize: Theme.fontSizeSmall
+                                    }
+                                }
+                            }
+
+                            TextField {
+                                id: sha1Output
+                                Layout.fillWidth: true
+                                text: hashModel.hash_sha1
+                                readOnly: true
+                                font.family: "Consolas, Monaco, monospace"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.text
+                                selectByMouse: true
+
+                                background: Rectangle {
+                                    color: Theme.inputBg
+                                    radius: Theme.inputRadius
+                                }
+                            }
+                        }
+
+                        // SHA-256
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+
+                            RowLayout {
+                                Label {
+                                    text: "SHA-256"
+                                    font.bold: true
+                                    color: Theme.textSecondary
+                                    Layout.preferredWidth: 80
+                                }
+
+                                Button {
+                                    text: "Copy"
+                                    onClicked: {
+                                        sha256Output.selectAll()
+                                        sha256Output.copy()
+                                        sha256Output.deselect()
+                                    }
+
+                                    background: Rectangle {
+                                        radius: Theme.buttonRadius
+                                        color: parent.hovered ? Theme.surfaceHover : "transparent"
+                                    }
+
+                                    contentItem: Text {
+                                        text: parent.text
+                                        color: Theme.primary
+                                        font.pixelSize: Theme.fontSizeSmall
+                                    }
+                                }
+                            }
+
+                            TextField {
+                                id: sha256Output
+                                Layout.fillWidth: true
+                                text: hashModel.hash_sha256
+                                readOnly: true
+                                font.family: "Consolas, Monaco, monospace"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.text
+                                selectByMouse: true
+
+                                background: Rectangle {
+                                    color: Theme.inputBg
+                                    radius: Theme.inputRadius
+                                }
+                            }
+                        }
+
+                        // SHA-512
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+
+                            RowLayout {
+                                Label {
+                                    text: "SHA-512"
+                                    font.bold: true
+                                    color: Theme.textSecondary
+                                    Layout.preferredWidth: 80
+                                }
+
+                                Button {
+                                    text: "Copy"
+                                    onClicked: {
+                                        sha512Output.selectAll()
+                                        sha512Output.copy()
+                                        sha512Output.deselect()
+                                    }
+
+                                    background: Rectangle {
+                                        radius: Theme.buttonRadius
+                                        color: parent.hovered ? Theme.surfaceHover : "transparent"
+                                    }
+
+                                    contentItem: Text {
+                                        text: parent.text
+                                        color: Theme.primary
+                                        font.pixelSize: Theme.fontSizeSmall
+                                    }
+                                }
+                            }
+
+                            TextArea {
+                                id: sha512Output
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 60
+                                text: hashModel.hash_sha512
+                                readOnly: true
+                                wrapMode: TextEdit.WrapAnywhere
+                                font.family: "Consolas, Monaco, monospace"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.text
+                                selectByMouse: true
+
+                                background: Rectangle {
+                                    color: Theme.inputBg
+                                    radius: Theme.inputRadius
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // HMAC section
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: hmacColumn.implicitHeight + Theme.spacingLg * 2
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        id: hmacColumn
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingLg
+                        spacing: Theme.spacingMd
+
+                        RowLayout {
+                            Label {
+                                text: "HMAC"
+                                font.bold: true
+                                color: Theme.text
+                            }
+
+                            CheckBox {
+                                id: hmacEnabledCheck
+                                checked: hashModel.hmac_enabled
+                                onCheckedChanged: hashModel.hmac_enabled = checked
+                            }
+                        }
+
+                        ColumnLayout {
+                            visible: hashModel.hmac_enabled
+                            Layout.fillWidth: true
+                            spacing: Theme.spacingSm
+
+                            Label {
+                                text: "Secret Key"
+                                color: Theme.textSecondary
+                            }
+
+                            TextField {
+                                Layout.fillWidth: true
+                                text: hashModel.hmac_key
+                                placeholderText: "Enter HMAC secret key..."
+                                color: Theme.text
+                                placeholderTextColor: Theme.textMuted
+                                onTextChanged: hashModel.hmac_key = text
+
+                                background: Rectangle {
+                                    color: Theme.inputBg
+                                    border.color: Theme.inputBorder
+                                    radius: Theme.inputRadius
+                                }
+                            }
+
+                            RowLayout {
+                                spacing: Theme.spacingSm
+
+                                Label {
+                                    text: "Algorithm:"
+                                    color: Theme.textSecondary
+                                }
+
+                                Repeater {
+                                    model: [
+                                        { id: "sha256", label: "SHA-256" },
+                                        { id: "sha512", label: "SHA-512" }
+                                    ]
+
+                                    Button {
+                                        text: modelData.label
+                                        checkable: true
+                                        checked: hashModel.hmac_algorithm === modelData.id
+                                        onClicked: hashModel.hmac_algorithm = modelData.id
+
+                                        background: Rectangle {
+                                            radius: Theme.buttonRadius
+                                            color: parent.checked ? Theme.info : (parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt)
+                                        }
+
+                                        contentItem: Text {
+                                            text: parent.text
+                                            color: parent.checked ? Theme.primaryText : Theme.text
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            horizontalAlignment: Text.AlignHCenter
+                                        }
+                                    }
+                                }
+                            }
+
+                            Button {
+                                text: "Compute HMAC"
+                                onClicked: hashModel.compute_hmac()
+
+                                background: Rectangle {
+                                    radius: Theme.buttonRadius
+                                    color: parent.hovered ? Theme.primaryHover : Theme.primary
+                                }
+
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: Theme.primaryText
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+                            }
+
+                            ColumnLayout {
+                                visible: hashModel.hmac_result.length > 0
+                                Layout.fillWidth: true
+                                spacing: 4
+
+                                Label {
+                                    text: "HMAC Result"
+                                    font.bold: true
+                                    color: Theme.success
+                                }
+
+                                TextArea {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 60
+                                    text: hashModel.hmac_result
+                                    readOnly: true
+                                    wrapMode: TextEdit.WrapAnywhere
+                                    font.family: "Consolas, Monaco, monospace"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Theme.text
+                                    selectByMouse: true
+
+                                    background: Rectangle {
+                                        color: Theme.successBg
+                                        border.color: Theme.success
+                                        radius: Theme.inputRadius
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Compare section
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: compareColumn.implicitHeight + Theme.spacingLg * 2
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        id: compareColumn
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingLg
+                        spacing: Theme.spacingMd
+
+                        Label {
+                            text: "Verify Hash"
+                            font.bold: true
+                            color: Theme.text
+                        }
+
+                        TextField {
+                            id: compareHashField
+                            Layout.fillWidth: true
+                            text: hashModel.compare_hash
+                            placeholderText: "Paste hash to verify..."
+                            color: Theme.text
+                            placeholderTextColor: Theme.textMuted
+                            font.family: "Consolas, Monaco, monospace"
+                            onTextChanged: hashModel.compare_hash = text
+
+                            background: Rectangle {
+                                color: Theme.inputBg
+                                border.color: Theme.inputBorder
+                                radius: Theme.inputRadius
+                            }
+                        }
+
+                        Button {
+                            text: "Compare"
+                            onClicked: hashModel.compare()
+
+                            background: Rectangle {
+                                radius: Theme.buttonRadius
+                                color: parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt
+                                border.color: Theme.border
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                color: Theme.text
+                                font.pixelSize: Theme.fontSizeNormal
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+                        }
+
+                        Rectangle {
+                            visible: hashModel.compare_result.length > 0
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 50
+                            color: hashModel.compare_result.startsWith("match") ? Theme.successBg : Theme.errorBg
+                            border.color: hashModel.compare_result.startsWith("match") ? Theme.success : Theme.error
+                            radius: Theme.cardRadius
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: Theme.spacingMd
+                                spacing: Theme.spacingMd
+
+                                Label {
+                                    text: hashModel.compare_result.startsWith("match") ? Icons.check : Icons.x
+                                    font.family: Icons.family
+                                    font.pixelSize: 24
+                                    color: hashModel.compare_result.startsWith("match") ? Theme.success : Theme.error
+                                }
+
+                                Label {
+                                    text: {
+                                        if (hashModel.compare_result.startsWith("match:")) {
+                                            return "Match! (" + hashModel.compare_result.split(":")[1] + ")";
+                                        }
+                                        return "No match found";
+                                    }
+                                    font.bold: true
+                                    color: hashModel.compare_result.startsWith("match") ? Theme.success : Theme.error
                                 }
                             }
                         }
