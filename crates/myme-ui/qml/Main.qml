@@ -72,7 +72,7 @@ ApplicationWindow {
                         }
                         onPositionChanged: mouse => {
                             if (pressed) {
-                                var delta = Qt.point(mouse.x - clickPos.x, mouse.y - clickPos.y);
+                                const delta = Qt.point(mouse.x - clickPos.x, mouse.y - clickPos.y);
                                 if (Math.abs(delta.x) > 5 || Math.abs(delta.y) > 5) {
                                     isDragging = true;
                                     root.x += delta.x;
@@ -389,7 +389,7 @@ ApplicationWindow {
                     }
                     onPositionChanged: mouse => {
                         if (pressed) {
-                            var delta = Qt.point(mouse.x - clickPos.x, mouse.y - clickPos.y);
+                            const delta = Qt.point(mouse.x - clickPos.x, mouse.y - clickPos.y);
                             root.x += delta.x;
                             root.y += delta.y;
                         }

@@ -215,9 +215,9 @@ Default config is created automatically on first run. Configuration is loaded us
 - QML changes don't require rebuild - just restart the application
 - Only Rust bridge changes (cxx-qt) require `cargo build` + CMake rebuild
 
-### QML JavaScript Compatibility
-- QML uses ES5 JavaScript - avoid ES6+ features: arrow functions (`=>`), optional chaining (`?.`), nullish coalescing (`??`)
-- `qmlformat` silently fails (exit 255) on ES6 syntax - use `function()` instead of `() =>`
+### QML JavaScript
+- Qt 6.x QML supports modern ES6+ JavaScript: arrow functions, template literals, `let`/`const`, destructuring, etc.
+- Use modern syntax for cleaner, more readable code
 
 ### QML Formatting
 - qmlformat location: `/mnt/c/Qt/6.10.1/msvc2022_64/bin/qmlformat.exe -i <file>`

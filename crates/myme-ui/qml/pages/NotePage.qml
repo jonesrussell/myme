@@ -341,13 +341,13 @@ Page {
 
                 Label {
                     text: {
-                        var total = noteModel.row_count();
-                        var done = 0;
-                        for (var i = 0; i < total; i++) {
+                        const total = noteModel.row_count();
+                        let done = 0;
+                        for (let i = 0; i < total; i++) {
                             if (noteModel.get_done(i))
                                 done++;
                         }
-                        return total + " notes (" + done + " done, " + (total - done) + " pending)";
+                        return `${total} notes (${done} done, ${total - done} pending)`;
                     }
                     font.pixelSize: Theme.fontSizeSmall
                     color: Theme.textSecondary

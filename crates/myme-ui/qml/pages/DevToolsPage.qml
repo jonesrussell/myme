@@ -68,12 +68,12 @@ Page {
         if (searchQuery.length === 0) {
             return tools;
         }
-        var query = searchQuery.toLowerCase();
-        return tools.filter(function(tool) {
-            return tool.name.toLowerCase().indexOf(query) !== -1 ||
-                   tool.description.toLowerCase().indexOf(query) !== -1 ||
-                   tool.category.toLowerCase().indexOf(query) !== -1;
-        });
+        const query = searchQuery.toLowerCase();
+        return tools.filter(tool =>
+            tool.name.toLowerCase().indexOf(query) !== -1 ||
+            tool.description.toLowerCase().indexOf(query) !== -1 ||
+            tool.category.toLowerCase().indexOf(query) !== -1
+        );
     }
 
     background: Rectangle {
@@ -124,7 +124,7 @@ Page {
             Label {
                 text: {
                     if (currentTool === "index") return "Developer Tools";
-                    for (var i = 0; i < tools.length; i++) {
+                    for (let i = 0; i < tools.length; i++) {
                         if (tools[i].id === currentTool) return tools[i].name;
                     }
                     return "Tool";
@@ -551,7 +551,7 @@ Page {
                             Layout.preferredWidth: 200
                             model: ["HS256", "HS384", "HS512"]
                             currentIndex: {
-                                var alg = jwtModel.algorithm;
+                                const alg = jwtModel.algorithm;
                                 if (alg === "HS384")
                                     return 1;
                                 if (alg === "HS512")
