@@ -47,6 +47,16 @@ ApplicationWindow {
                 }
             }
 
+            Button {
+                text: "Dev Tools"
+                Layout.fillWidth: true
+                enabled: true
+                onClicked: {
+                    stackView.replace("pages/DevToolsPage.qml")
+                    drawer.close()
+                }
+            }
+
             Item { Layout.fillHeight: true }
         }
     }

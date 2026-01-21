@@ -1,10 +1,16 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import myme_ui
 
 Page {
     id: notePage
     title: "Notes"
+
+    // Instantiate the NoteModel from Rust
+    NoteModel {
+        id: noteModel
+    }
 
     header: ToolBar {
         RowLayout {

@@ -20,6 +20,10 @@ myme-services = { path = "../myme-services" }
 myme-auth = { path = "../myme-auth" }
 myme-integrations = { path = "../myme-integrations" }
 
+# JWT generation
+jsonwebtoken = "9"
+serde_json = "1"
+
 [build-dependencies]
 cxx-qt-build = { version = "0.8", features = ["link_qt_object_files"] }
 

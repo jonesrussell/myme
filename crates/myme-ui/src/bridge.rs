@@ -50,8 +50,14 @@ pub extern "C" fn initialize_note_model(base_url: *const c_char) -> bool {
 
     tracing::info!("Initializing NoteModel with base_url: {}", base_url_str);
 
+    // Get JWT token from environment variable if set
+    let jwt_token = std::env::var("GODO_JWT_TOKEN").ok();
+    if jwt_token.is_some() {
+        tracing::info!("Using JWT token from GODO_JWT_TOKEN environment variable");
+    }
+
     // Create the TodoClient
-    let client = match TodoClient::new(base_url_str, None) {
+    let client = match TodoClient::new(base_url_str, jwt_token) {
         Ok(c) => Arc::new(c),
         Err(e) => {
             tracing::error!("Failed to create TodoClient: {}", e);
