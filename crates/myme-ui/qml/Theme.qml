@@ -34,14 +34,18 @@ QtObject {
     property color primaryText: "#ffffff"
 
     property color success: isDark ? "#4ade80" : "#22c55e"
+    property color successBg: isDark ? "#1a3a1a" : "#E8F5E9"
     property color warning: isDark ? "#fbbf24" : "#f59e0b"
+    property color warningBg: isDark ? "#3a3a1a" : "#FFF8E1"
     property color error: isDark ? "#f87171" : "#ef4444"
+    property color errorBg: isDark ? "#3a1a1a" : "#FFEBEE"
     property color info: isDark ? "#60a5fa" : "#3b82f6"
+    property color infoBg: isDark ? "#1a2a3a" : "#E3F2FD"
 
     // Sidebar specific
     property color sidebarBg: isDark ? "#0f0f23" : "#f8f9fa"
     property color sidebarHover: isDark ? "#1a1a3e" : "#e9ecef"
-    property color sidebarActive: isDark ? "#6c63ff20" : "#5c5ce020"
+    property color sidebarActive: isDark ? "#252545" : "#e2e4e8"
     property color sidebarBorder: isDark ? "#1a1a3e" : "#e9ecef"
 
     // Card styling

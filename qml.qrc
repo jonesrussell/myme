@@ -1,6 +1,7 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
     <qresource prefix="/">
+        <file>assets/icon.png</file>
         <file>crates/myme-ui/qml/Main.qml</file>
         <file>crates/myme-ui/qml/Theme.qml</file>
         <file>crates/myme-ui/qml/Icons.qml</file>

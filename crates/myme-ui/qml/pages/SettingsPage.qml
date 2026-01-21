@@ -13,13 +13,7 @@ Page {
 
     header: ToolBar {
         background: Rectangle {
-            color: Theme.surface
-            Rectangle {
-                anchors.bottom: parent.bottom
-                width: parent.width
-                height: 1
-                color: Theme.border
-            }
+            color: "transparent"
         }
 
         RowLayout {
@@ -49,7 +43,7 @@ Page {
             // Appearance Section
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: appearanceContent.implicitHeight + Theme.spacingLg * 2
+                Layout.preferredHeight: appearanceContent.implicitHeight + Theme.spacingMd * 2
                 color: Theme.surface
                 border.color: Theme.border
                 border.width: 1
@@ -58,7 +52,7 @@ Page {
                 ColumnLayout {
                     id: appearanceContent
                     anchors.fill: parent
-                    anchors.margins: Theme.spacingLg
+                    anchors.margins: Theme.spacingMd
                     spacing: Theme.spacingMd
 
                     Label {
@@ -263,7 +257,7 @@ Page {
             // About Section
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: aboutContent.implicitHeight + Theme.spacingLg * 2
+                Layout.preferredHeight: aboutContent.implicitHeight + Theme.spacingMd * 2
                 color: Theme.surface
                 border.color: Theme.border
                 border.width: 1
@@ -272,7 +266,7 @@ Page {
                 ColumnLayout {
                     id: aboutContent
                     anchors.fill: parent
-                    anchors.margins: Theme.spacingLg
+                    anchors.margins: Theme.spacingMd
                     spacing: Theme.spacingMd
 
                     Label {

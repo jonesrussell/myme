@@ -77,10 +77,17 @@ add_custom_target(rust_myme_ui ALL
 )
 
 # Main executable with QML resources
-add_executable(myme-qt
+set(APP_SOURCES
     qt-main/main.cpp
     qml.qrc
 )
+
+# Add Windows application icon
+if(WIN32)
+    list(APPEND APP_SOURCES assets/app.rc)
+endif()
+
+add_executable(myme-qt ${APP_SOURCES})
 
 # Make sure Rust library is built before linking
 add_dependencies(myme-qt rust_myme_ui)

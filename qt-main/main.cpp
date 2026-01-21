@@ -19,6 +19,9 @@ int main(int argc, char *argv[])
     app.setOrganizationName("MyMe");
     app.setApplicationVersion("0.1.0");
 
+    // Set application icon
+    app.setWindowIcon(QIcon(":/assets/icon.png"));
+
     // Set icon theme (for Kirigami icons)
     QIcon::setThemeName("breeze");
 

@@ -89,13 +89,7 @@ Page {
 
     header: ToolBar {
         background: Rectangle {
-            color: Theme.surface
-            Rectangle {
-                anchors.bottom: parent.bottom
-                width: parent.width
-                height: 1
-                color: Theme.border
-            }
+            color: "transparent"
         }
 
         RowLayout {
@@ -418,7 +412,7 @@ Page {
                             visible: jwtModel.error_message.length > 0
                             Layout.fillWidth: true
                             Layout.preferredHeight: 50
-                            color: Theme.isDark ? "#4a1a1a" : "#FFE6E6"
+                            color: Theme.errorBg
                             border.color: Theme.error
                             border.width: 1
                             radius: Theme.cardRadius
@@ -602,7 +596,7 @@ Page {
                             visible: jwtModel.generated_token.length > 0
                             Layout.fillWidth: true
                             Layout.preferredHeight: 120
-                            color: Theme.isDark ? "#1a3a1a" : "#E8F5E9"
+                            color: Theme.successBg
                             border.color: Theme.success
                             border.width: 2
                             radius: Theme.cardRadius
@@ -689,7 +683,7 @@ Page {
                             visible: jwtModel.generated_token.length > 0
                             Layout.fillWidth: true
                             Layout.preferredHeight: infoColumn.height + Theme.spacingMd * 2
-                            color: Theme.isDark ? "#1a2a4a" : "#E3F2FD"
+                            color: Theme.infoBg
                             border.color: Theme.info
                             border.width: 1
                             radius: Theme.cardRadius

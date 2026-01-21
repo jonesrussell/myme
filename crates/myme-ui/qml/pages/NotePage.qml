@@ -32,13 +32,7 @@ Page {
 
     header: ToolBar {
         background: Rectangle {
-            color: Theme.surface
-            Rectangle {
-                anchors.bottom: parent.bottom
-                width: parent.width
-                height: 1
-                color: Theme.border
-            }
+            color: "transparent"
         }
 
         RowLayout {
@@ -104,7 +98,7 @@ Page {
     // Main content
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: Theme.spacingMd
+        anchors.margins: Theme.spacingLg
         spacing: Theme.spacingMd
 
         // Error message banner
@@ -112,7 +106,7 @@ Page {
             visible: noteModel.error_message.length > 0
             Layout.fillWidth: true
             Layout.preferredHeight: 60
-            color: Theme.isDark ? "#4a1a1a" : "#FFE6E6"
+            color: Theme.errorBg
             border.color: Theme.error
             border.width: 1
             radius: Theme.cardRadius
