@@ -45,24 +45,43 @@ ApplicationWindow {
                 anchors.margins: Theme.spacingSm
                 spacing: Theme.spacingXs
 
-                // Logo area with window drag support
+                // Logo area - clickable to go home, draggable for window
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 48
-                    color: "transparent"
+                    radius: Theme.buttonRadius
+                    color: currentPage === "welcome" ? Theme.sidebarActive : logoMouseArea.containsMouse ? Theme.sidebarHover : "transparent"
+
+                    Behavior on color {
+                        ColorAnimation { duration: 100 }
+                    }
 
                     MouseArea {
+                        id: logoMouseArea
                         anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
                         property point clickPos
+                        property bool isDragging: false
 
                         onPressed: mouse => {
                             clickPos = Qt.point(mouse.x, mouse.y);
+                            isDragging = false;
                         }
                         onPositionChanged: mouse => {
                             if (pressed) {
                                 var delta = Qt.point(mouse.x - clickPos.x, mouse.y - clickPos.y);
-                                root.x += delta.x;
-                                root.y += delta.y;
+                                if (Math.abs(delta.x) > 5 || Math.abs(delta.y) > 5) {
+                                    isDragging = true;
+                                    root.x += delta.x;
+                                    root.y += delta.y;
+                                }
+                            }
+                        }
+                        onReleased: {
+                            if (!isDragging) {
+                                currentPage = "welcome";
+                                stackView.replace(null);
                             }
                         }
                         onDoubleClicked: {
@@ -87,9 +106,9 @@ ApplicationWindow {
 
                             Label {
                                 anchors.centerIn: parent
-                                text: "M"
+                                text: Icons.house
+                                font.family: Icons.family
                                 font.pixelSize: 18
-                                font.bold: true
                                 color: Theme.primaryText
                             }
                         }
@@ -103,6 +122,10 @@ ApplicationWindow {
                             Layout.fillWidth: true
                         }
                     }
+
+                    ToolTip.visible: sidebarCollapsed && logoMouseArea.containsMouse
+                    ToolTip.text: "Home"
+                    ToolTip.delay: 500
                 }
 
                 Rectangle {
@@ -118,19 +141,19 @@ ApplicationWindow {
                     model: [
                         {
                             id: "notes",
-                            icon: "📝",
+                            icon: Icons.notePencil,
                             label: "Notes",
                             enabled: true
                         },
                         {
                             id: "repos",
-                            icon: "📁",
+                            icon: Icons.folderSimple,
                             label: "Repos",
                             enabled: false
                         },
                         {
                             id: "devtools",
-                            icon: "🔧",
+                            icon: Icons.wrench,
                             label: "Dev Tools",
                             enabled: true
                         }
@@ -183,7 +206,9 @@ ApplicationWindow {
 
                             Label {
                                 text: modelData.icon
-                                font.pixelSize: 16
+                                font.family: Icons.family
+                                font.pixelSize: 18
+                                color: Theme.text
                                 horizontalAlignment: Text.AlignHCenter
                                 Layout.preferredWidth: 24
                             }
@@ -253,8 +278,10 @@ ApplicationWindow {
                         }
 
                         Label {
-                            text: "⚙️"
-                            font.pixelSize: 16
+                            text: Icons.gearSix
+                            font.family: Icons.family
+                            font.pixelSize: 18
+                            color: Theme.text
                             horizontalAlignment: Text.AlignHCenter
                             Layout.preferredWidth: 24
                         }
@@ -308,8 +335,9 @@ ApplicationWindow {
                         }
 
                         Label {
-                            text: sidebarCollapsed ? "▶" : "◀"
-                            font.pixelSize: 12
+                            text: sidebarCollapsed ? Icons.caretRight : Icons.caretLeft
+                            font.family: Icons.family
+                            font.pixelSize: 18
                             horizontalAlignment: Text.AlignHCenter
                             Layout.preferredWidth: 24
                             color: Theme.textSecondary
@@ -389,8 +417,9 @@ ApplicationWindow {
 
                         Label {
                             anchors.centerIn: parent
-                            text: "─"
-                            font.pixelSize: 12
+                            text: Icons.minus
+                            font.family: Icons.family
+                            font.pixelSize: 14
                             color: Theme.textSecondary
                         }
 
@@ -412,8 +441,9 @@ ApplicationWindow {
 
                         Label {
                             anchors.centerIn: parent
-                            text: root.visibility === Window.Maximized ? "❐" : "□"
-                            font.pixelSize: 12
+                            text: Icons.squaresFour
+                            font.family: Icons.family
+                            font.pixelSize: 14
                             color: Theme.textSecondary
                         }
 
@@ -441,8 +471,9 @@ ApplicationWindow {
 
                         Label {
                             anchors.centerIn: parent
-                            text: "✕"
-                            font.pixelSize: 12
+                            text: Icons.x
+                            font.family: Icons.family
+                            font.pixelSize: 14
                             color: closeMouseArea.containsMouse ? "#ffffff" : Theme.textSecondary
                         }
 
@@ -560,8 +591,10 @@ ApplicationWindow {
                                     spacing: Theme.spacingSm
 
                                     Label {
-                                        text: "📝"
-                                        font.pixelSize: 28
+                                        text: Icons.notePencil
+                                        font.family: Icons.family
+                                        font.pixelSize: 32
+                                        color: Theme.text
                                         Layout.alignment: Qt.AlignHCenter
                                     }
 
@@ -605,8 +638,10 @@ ApplicationWindow {
                                     spacing: Theme.spacingSm
 
                                     Label {
-                                        text: "🔧"
-                                        font.pixelSize: 28
+                                        text: Icons.wrench
+                                        font.family: Icons.family
+                                        font.pixelSize: 32
+                                        color: Theme.text
                                         Layout.alignment: Qt.AlignHCenter
                                     }
 
@@ -650,8 +685,10 @@ ApplicationWindow {
                                     spacing: Theme.spacingSm
 
                                     Label {
-                                        text: "⚙️"
-                                        font.pixelSize: 28
+                                        text: Icons.gearSix
+                                        font.family: Icons.family
+                                        font.pixelSize: 32
+                                        color: Theme.text
                                         Layout.alignment: Qt.AlignHCenter
                                     }
 
