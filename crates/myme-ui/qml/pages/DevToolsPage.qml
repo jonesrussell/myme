@@ -31,10 +31,9 @@ Page {
         {
             id: "uuid",
             name: "UUID Generator",
-            description: "Generate random UUIDs (v4) for testing",
+            description: "Generate UUIDs v1, v4, v5, v7 with format options",
             icon: Icons.squaresFour,
-            category: "Generators",
-            comingSoon: true
+            category: "Generators"
         },
         {
             id: "json",
@@ -90,6 +89,11 @@ Page {
     EncodingModel {
         id: encodingModel
         encoding_type: "base64"
+    }
+
+    // Instantiate the UuidModel from Rust
+    UuidModel {
+        id: uuidModel
     }
 
     header: ToolBar {
@@ -380,6 +384,7 @@ Page {
             sourceComponent: {
                 if (currentTool === "jwt") return jwtToolComponent;
                 if (currentTool === "encoding") return encodingToolComponent;
+                if (currentTool === "uuid") return uuidToolComponent;
                 return null;
             }
         }
@@ -1015,6 +1020,401 @@ Page {
                                 text: encodingModel.output
                                 readOnly: true
                                 wrapMode: TextEdit.WrapAnywhere
+                                font.family: "Consolas, Monaco, monospace"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.text
+                                selectByMouse: true
+
+                                background: Rectangle {
+                                    color: Theme.inputBg
+                                    radius: Theme.inputRadius
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
+            }
+        }
+    }
+
+    // UUID Generator Component
+    Component {
+        id: uuidToolComponent
+
+        ScrollView {
+            anchors.fill: parent
+            anchors.margins: Theme.spacingLg
+            clip: true
+
+            ColumnLayout {
+                width: parent.width
+                spacing: Theme.spacingLg
+
+                // Settings card
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: uuidSettingsColumn.implicitHeight + Theme.spacingLg * 2
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        id: uuidSettingsColumn
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingLg
+                        spacing: Theme.spacingMd
+
+                        // UUID Version selector
+                        Label {
+                            text: "UUID Version"
+                            font.bold: true
+                            color: Theme.text
+                        }
+
+                        RowLayout {
+                            spacing: Theme.spacingSm
+
+                            Repeater {
+                                model: [
+                                    { id: "v1", label: "v1 (Time)", desc: "Time-based" },
+                                    { id: "v4", label: "v4 (Random)", desc: "Random" },
+                                    { id: "v5", label: "v5 (Name)", desc: "Namespace + Name" },
+                                    { id: "v7", label: "v7 (Time)", desc: "Unix timestamp" }
+                                ]
+
+                                Button {
+                                    text: modelData.label
+                                    checkable: true
+                                    checked: uuidModel.version === modelData.id
+                                    onClicked: uuidModel.version = modelData.id
+
+                                    background: Rectangle {
+                                        radius: Theme.buttonRadius
+                                        color: parent.checked ? Theme.primary : (parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt)
+                                    }
+
+                                    contentItem: Text {
+                                        text: parent.text
+                                        color: parent.checked ? Theme.primaryText : Theme.text
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+
+                                    ToolTip.text: modelData.desc
+                                    ToolTip.visible: hovered
+                                }
+                            }
+                        }
+
+                        // Format selector
+                        Label {
+                            text: "Format"
+                            font.bold: true
+                            color: Theme.text
+                        }
+
+                        RowLayout {
+                            spacing: Theme.spacingSm
+
+                            Repeater {
+                                model: [
+                                    { id: "standard", label: "Standard", example: "550e8400-e29b-41d4-a716-446655440000" },
+                                    { id: "uppercase", label: "Uppercase", example: "550E8400-E29B-41D4-A716-446655440000" },
+                                    { id: "no-dashes", label: "No Dashes", example: "550e8400e29b41d4a716446655440000" },
+                                    { id: "braces", label: "Braces", example: "{550e8400-e29b-41d4-a716-446655440000}" }
+                                ]
+
+                                Button {
+                                    text: modelData.label
+                                    checkable: true
+                                    checked: uuidModel.format === modelData.id
+                                    onClicked: uuidModel.format = modelData.id
+
+                                    background: Rectangle {
+                                        radius: Theme.buttonRadius
+                                        color: parent.checked ? Theme.info : (parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt)
+                                    }
+
+                                    contentItem: Text {
+                                        text: parent.text
+                                        color: parent.checked ? Theme.primaryText : Theme.text
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+
+                                    ToolTip.text: modelData.example
+                                    ToolTip.visible: hovered
+                                }
+                            }
+                        }
+
+                        // Count selector
+                        RowLayout {
+                            spacing: Theme.spacingMd
+
+                            Label {
+                                text: "Count:"
+                                font.bold: true
+                                color: Theme.text
+                            }
+
+                            SpinBox {
+                                id: uuidCountSpinner
+                                from: 1
+                                to: 100
+                                value: uuidModel.count
+                                onValueChanged: uuidModel.count = value
+                                editable: true
+                            }
+                        }
+
+                        // V5-specific options
+                        ColumnLayout {
+                            visible: uuidModel.version === "v5"
+                            Layout.fillWidth: true
+                            spacing: Theme.spacingSm
+
+                            Label {
+                                text: "Namespace"
+                                font.bold: true
+                                color: Theme.text
+                            }
+
+                            RowLayout {
+                                spacing: Theme.spacingSm
+
+                                Repeater {
+                                    model: [
+                                        { id: "dns", label: "DNS" },
+                                        { id: "url", label: "URL" },
+                                        { id: "oid", label: "OID" },
+                                        { id: "x500", label: "X500" },
+                                        { id: "custom", label: "Custom" }
+                                    ]
+
+                                    Button {
+                                        text: modelData.label
+                                        checkable: true
+                                        checked: uuidModel.namespace_type === modelData.id
+                                        onClicked: uuidModel.namespace_type = modelData.id
+
+                                        background: Rectangle {
+                                            radius: Theme.buttonRadius
+                                            color: parent.checked ? Theme.warning : (parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt)
+                                        }
+
+                                        contentItem: Text {
+                                            text: parent.text
+                                            color: parent.checked ? Theme.primaryText : Theme.text
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Custom namespace input
+                            Rectangle {
+                                visible: uuidModel.namespace_type === "custom"
+                                Layout.fillWidth: true
+                                height: 40
+                                color: Theme.inputBg
+                                border.color: Theme.inputBorder
+                                radius: Theme.inputRadius
+
+                                TextField {
+                                    anchors.fill: parent
+                                    anchors.margins: 2
+                                    placeholderText: "Custom namespace UUID..."
+                                    text: uuidModel.custom_namespace
+                                    color: Theme.text
+                                    placeholderTextColor: Theme.textMuted
+                                    font.family: "Consolas, Monaco, monospace"
+                                    onTextChanged: uuidModel.custom_namespace = text
+
+                                    background: Rectangle {
+                                        color: "transparent"
+                                    }
+                                }
+                            }
+
+                            Label {
+                                text: "Name"
+                                font.bold: true
+                                color: Theme.text
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 40
+                                color: Theme.inputBg
+                                border.color: Theme.inputBorder
+                                radius: Theme.inputRadius
+
+                                TextField {
+                                    anchors.fill: parent
+                                    anchors.margins: 2
+                                    placeholderText: "Enter name to hash..."
+                                    text: uuidModel.name
+                                    color: Theme.text
+                                    placeholderTextColor: Theme.textMuted
+                                    onTextChanged: uuidModel.name = text
+
+                                    background: Rectangle {
+                                        color: "transparent"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Error banner
+                Rectangle {
+                    visible: uuidModel.error_message.length > 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 50
+                    color: Theme.errorBg
+                    border.color: Theme.error
+                    radius: Theme.cardRadius
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingMd
+                        spacing: Theme.spacingMd
+
+                        Label {
+                            text: Icons.warning
+                            font.family: Icons.family
+                            font.pixelSize: 20
+                            color: Theme.error
+                        }
+
+                        Label {
+                            text: uuidModel.error_message
+                            color: Theme.error
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+                }
+
+                // Generate button
+                RowLayout {
+                    Layout.alignment: Qt.AlignHCenter
+                    spacing: Theme.spacingMd
+
+                    Button {
+                        text: Icons.squaresFour + " Generate"
+                        font.family: Icons.family
+                        onClicked: uuidModel.generate()
+
+                        background: Rectangle {
+                            radius: Theme.buttonRadius
+                            color: parent.hovered ? Theme.primaryHover : Theme.primary
+                        }
+
+                        contentItem: Text {
+                            text: parent.text
+                            color: Theme.primaryText
+                            font.pixelSize: Theme.fontSizeNormal
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+
+                    Button {
+                        text: "Clear"
+                        onClicked: uuidModel.clear()
+
+                        background: Rectangle {
+                            radius: Theme.buttonRadius
+                            color: parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt
+                            border.color: Theme.border
+                        }
+
+                        contentItem: Text {
+                            text: parent.text
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontSizeNormal
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+                }
+
+                // Generated UUIDs
+                Rectangle {
+                    visible: uuidModel.generated_uuids.length > 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Math.min(400, uuidListColumn.implicitHeight + Theme.spacingLg * 2)
+                    color: Theme.surface
+                    border.color: Theme.success
+                    border.width: 2
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        id: uuidListColumn
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingLg
+                        spacing: Theme.spacingSm
+
+                        RowLayout {
+                            Layout.fillWidth: true
+
+                            Label {
+                                text: "Generated UUIDs (" + uuidModel.generated_uuids.length + ")"
+                                font.bold: true
+                                color: Theme.text
+                                Layout.fillWidth: true
+                            }
+
+                            Button {
+                                text: "Copy All"
+                                onClicked: {
+                                    let allUuids = [];
+                                    for (let i = 0; i < uuidModel.generated_uuids.length; i++) {
+                                        allUuids.push(uuidModel.generated_uuids[i]);
+                                    }
+                                    uuidOutputArea.text = allUuids.join("\n");
+                                    uuidOutputArea.selectAll();
+                                    uuidOutputArea.copy();
+                                    uuidOutputArea.deselect();
+                                }
+
+                                background: Rectangle {
+                                    radius: Theme.buttonRadius
+                                    color: parent.hovered ? Theme.surfaceHover : "transparent"
+                                }
+
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: Theme.primary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                }
+                            }
+                        }
+
+                        ScrollView {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            clip: true
+
+                            TextArea {
+                                id: uuidOutputArea
+                                text: {
+                                    let result = [];
+                                    for (let i = 0; i < uuidModel.generated_uuids.length; i++) {
+                                        result.push(uuidModel.generated_uuids[i]);
+                                    }
+                                    return result.join("\n");
+                                }
+                                readOnly: true
+                                wrapMode: TextEdit.NoWrap
                                 font.family: "Consolas, Monaco, monospace"
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.text
