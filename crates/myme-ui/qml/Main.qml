@@ -50,7 +50,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 48
                     radius: Theme.buttonRadius
-                    color: currentPage === "welcome" ? Theme.sidebarActive : logoMouseArea.containsMouse ? Theme.sidebarHover : "transparent"
+                    color: logoMouseArea.containsMouse ? Theme.sidebarHover : "transparent"
 
                     Behavior on color {
                         ColorAnimation {
