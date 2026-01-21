@@ -53,7 +53,9 @@ ApplicationWindow {
                     color: currentPage === "welcome" ? Theme.sidebarActive : logoMouseArea.containsMouse ? Theme.sidebarHover : "transparent"
 
                     Behavior on color {
-                        ColorAnimation { duration: 100 }
+                        ColorAnimation {
+                            duration: 100
+                        }
                     }
 
                     MouseArea {

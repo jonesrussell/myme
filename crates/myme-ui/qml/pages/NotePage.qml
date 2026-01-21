@@ -46,7 +46,8 @@ Page {
             spacing: Theme.spacingMd
 
             ToolButton {
-                text: "↻"
+                text: Icons.arrowsClockwise
+                font.family: Icons.family
                 font.pixelSize: 18
                 onClicked: noteModel.fetch_notes()
                 ToolTip.text: "Refresh notes"
@@ -59,6 +60,7 @@ Page {
 
                 contentItem: Text {
                     text: parent.text
+                    font.family: Icons.family
                     color: Theme.text
                     font.pixelSize: 18
                     horizontalAlignment: Text.AlignHCenter
@@ -75,8 +77,9 @@ Page {
             }
 
             ToolButton {
-                text: "+"
-                font.pixelSize: 20
+                text: Icons.plus
+                font.family: Icons.family
+                font.pixelSize: 18
                 onClicked: addDialog.open()
                 ToolTip.text: "Add new note"
                 ToolTip.visible: hovered
@@ -88,8 +91,9 @@ Page {
 
                 contentItem: Text {
                     text: parent.text
+                    font.family: Icons.family
                     color: parent.parent.hovered ? Theme.primaryText : Theme.text
-                    font.pixelSize: 20
+                    font.pixelSize: 18
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
@@ -119,7 +123,8 @@ Page {
                 spacing: Theme.spacingMd
 
                 Label {
-                    text: "⚠"
+                    text: Icons.warning
+                    font.family: Icons.family
                     font.pixelSize: 20
                     color: Theme.error
                 }
@@ -294,8 +299,10 @@ Page {
                     spacing: Theme.spacingMd
 
                     Label {
-                        text: "📝"
+                        text: Icons.notePencil
+                        font.family: Icons.family
                         font.pixelSize: 48
+                        color: Theme.textMuted
                         anchors.horizontalCenter: parent.horizontalCenter
                     }
 

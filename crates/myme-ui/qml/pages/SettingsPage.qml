@@ -112,8 +112,10 @@ Page {
 
                                     Text {
                                         anchors.centerIn: parent
-                                        text: "☀️"
+                                        text: Icons.sun
+                                        font.family: Icons.family
                                         font.pixelSize: 20
+                                        color: "#f59e0b"
                                     }
                                 }
 
@@ -157,8 +159,10 @@ Page {
 
                                     Text {
                                         anchors.centerIn: parent
-                                        text: "🌙"
+                                        text: Icons.moon
+                                        font.family: Icons.family
                                         font.pixelSize: 20
+                                        color: "#a5b4fc"
                                     }
                                 }
 
@@ -212,8 +216,10 @@ Page {
 
                                     Text {
                                         anchors.centerIn: parent
-                                        text: "🔄"
+                                        text: Icons.circleHalf
+                                        font.family: Icons.family
                                         font.pixelSize: 20
+                                        color: "#888"
                                     }
                                 }
 
