@@ -157,3 +157,94 @@ pub enum WeatherError {
     #[error("Cache error: {0}")]
     Cache(String),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_wmo_code_clear() {
+        assert_eq!(WeatherCondition::from_wmo_code(0), WeatherCondition::Clear);
+    }
+
+    #[test]
+    fn test_wmo_code_partly_cloudy() {
+        assert_eq!(WeatherCondition::from_wmo_code(1), WeatherCondition::PartlyCloudy);
+        assert_eq!(WeatherCondition::from_wmo_code(2), WeatherCondition::PartlyCloudy);
+    }
+
+    #[test]
+    fn test_wmo_code_cloudy() {
+        assert_eq!(WeatherCondition::from_wmo_code(3), WeatherCondition::Cloudy);
+    }
+
+    #[test]
+    fn test_wmo_code_fog() {
+        assert_eq!(WeatherCondition::from_wmo_code(45), WeatherCondition::Fog);
+        assert_eq!(WeatherCondition::from_wmo_code(48), WeatherCondition::Fog);
+    }
+
+    #[test]
+    fn test_wmo_code_drizzle() {
+        assert_eq!(WeatherCondition::from_wmo_code(51), WeatherCondition::Drizzle);
+        assert_eq!(WeatherCondition::from_wmo_code(53), WeatherCondition::Drizzle);
+        assert_eq!(WeatherCondition::from_wmo_code(55), WeatherCondition::Drizzle);
+    }
+
+    #[test]
+    fn test_wmo_code_rain() {
+        assert_eq!(WeatherCondition::from_wmo_code(61), WeatherCondition::Rain);
+        assert_eq!(WeatherCondition::from_wmo_code(63), WeatherCondition::Rain);
+        assert_eq!(WeatherCondition::from_wmo_code(80), WeatherCondition::Rain);
+    }
+
+    #[test]
+    fn test_wmo_code_heavy_rain() {
+        assert_eq!(WeatherCondition::from_wmo_code(65), WeatherCondition::HeavyRain);
+        assert_eq!(WeatherCondition::from_wmo_code(81), WeatherCondition::HeavyRain);
+        assert_eq!(WeatherCondition::from_wmo_code(82), WeatherCondition::HeavyRain);
+    }
+
+    #[test]
+    fn test_wmo_code_snow() {
+        assert_eq!(WeatherCondition::from_wmo_code(71), WeatherCondition::Snow);
+        assert_eq!(WeatherCondition::from_wmo_code(73), WeatherCondition::Snow);
+        assert_eq!(WeatherCondition::from_wmo_code(75), WeatherCondition::Snow);
+        assert_eq!(WeatherCondition::from_wmo_code(77), WeatherCondition::Snow);
+        assert_eq!(WeatherCondition::from_wmo_code(85), WeatherCondition::Snow);
+        assert_eq!(WeatherCondition::from_wmo_code(86), WeatherCondition::Snow);
+    }
+
+    #[test]
+    fn test_wmo_code_sleet() {
+        assert_eq!(WeatherCondition::from_wmo_code(56), WeatherCondition::Sleet);
+        assert_eq!(WeatherCondition::from_wmo_code(57), WeatherCondition::Sleet);
+        assert_eq!(WeatherCondition::from_wmo_code(66), WeatherCondition::Sleet);
+        assert_eq!(WeatherCondition::from_wmo_code(67), WeatherCondition::Sleet);
+    }
+
+    #[test]
+    fn test_wmo_code_thunderstorm() {
+        assert_eq!(WeatherCondition::from_wmo_code(95), WeatherCondition::Thunderstorm);
+        assert_eq!(WeatherCondition::from_wmo_code(96), WeatherCondition::Thunderstorm);
+        assert_eq!(WeatherCondition::from_wmo_code(99), WeatherCondition::Thunderstorm);
+    }
+
+    #[test]
+    fn test_wmo_code_unknown_defaults_to_clear() {
+        assert_eq!(WeatherCondition::from_wmo_code(999), WeatherCondition::Clear);
+        assert_eq!(WeatherCondition::from_wmo_code(-1), WeatherCondition::Clear);
+    }
+
+    #[test]
+    fn test_condition_description() {
+        assert_eq!(WeatherCondition::Clear.description(), "Clear");
+        assert_eq!(WeatherCondition::Thunderstorm.description(), "Thunderstorm");
+    }
+
+    #[test]
+    fn test_condition_icon_name() {
+        assert_eq!(WeatherCondition::Clear.icon_name(), "sun");
+        assert_eq!(WeatherCondition::Rain.icon_name(), "cloud_rain");
+    }
+}
