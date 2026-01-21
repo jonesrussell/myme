@@ -52,11 +52,10 @@ Page {
         },
         {
             id: "timestamp",
-            name: "Timestamp Converter",
-            description: "Convert between Unix timestamps and human-readable dates",
+            name: "Time Toolkit",
+            description: "Parse timestamps, convert timezones, and perform date arithmetic",
             icon: Icons.arrowsClockwise,
-            category: "Conversion",
-            comingSoon: true
+            category: "Conversion"
         }
     ]
 
@@ -98,6 +97,11 @@ Page {
     // Instantiate the HashModel from Rust
     HashModel {
         id: hashModel
+    }
+
+    // Instantiate the TimeModel from Rust
+    TimeModel {
+        id: timeModel
     }
 
     header: ToolBar {
@@ -390,6 +394,7 @@ Page {
                 if (currentTool === "encoding") return encodingToolComponent;
                 if (currentTool === "uuid") return uuidToolComponent;
                 if (currentTool === "hash") return hashToolComponent;
+                if (currentTool === "timestamp") return timeToolComponent;
                 return null;
             }
         }
@@ -2030,6 +2035,529 @@ Page {
                                     font.bold: true
                                     color: hashModel.compare_result.startsWith("match") ? Theme.success : Theme.error
                                 }
+                            }
+                        }
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
+            }
+        }
+    }
+
+    // Time Toolkit Component
+    Component {
+        id: timeToolComponent
+
+        ScrollView {
+            anchors.fill: parent
+            anchors.margins: Theme.spacingLg
+            clip: true
+
+            ColumnLayout {
+                width: parent.width
+                spacing: Theme.spacingLg
+
+                // Current time button
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: currentTimeColumn.implicitHeight + Theme.spacingLg * 2
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        id: currentTimeColumn
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingLg
+                        spacing: Theme.spacingMd
+
+                        RowLayout {
+                            spacing: Theme.spacingMd
+
+                            Button {
+                                text: Icons.arrowsClockwise + " Get Current Time"
+                                font.family: Icons.family
+                                onClicked: timeModel.get_current_time()
+
+                                background: Rectangle {
+                                    radius: Theme.buttonRadius
+                                    color: parent.hovered ? Theme.primaryHover : Theme.primary
+                                }
+
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: Theme.primaryText
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    font.bold: true
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+                            }
+
+                            Button {
+                                text: "Clear All"
+                                onClicked: timeModel.clear()
+
+                                background: Rectangle {
+                                    radius: Theme.buttonRadius
+                                    color: parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt
+                                    border.color: Theme.border
+                                }
+
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+                            }
+                        }
+
+                        TextArea {
+                            visible: timeModel.current_time.length > 0
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 80
+                            text: timeModel.current_time
+                            readOnly: true
+                            font.family: "Consolas, Monaco, monospace"
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.text
+                            selectByMouse: true
+
+                            background: Rectangle {
+                                color: Theme.infoBg
+                                border.color: Theme.info
+                                radius: Theme.inputRadius
+                            }
+                        }
+                    }
+                }
+
+                // Error banner
+                Rectangle {
+                    visible: timeModel.error_message.length > 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 50
+                    color: Theme.errorBg
+                    border.color: Theme.error
+                    radius: Theme.cardRadius
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingMd
+                        spacing: Theme.spacingMd
+
+                        Label {
+                            text: Icons.warning
+                            font.family: Icons.family
+                            font.pixelSize: 20
+                            color: Theme.error
+                        }
+
+                        Label {
+                            text: timeModel.error_message
+                            color: Theme.error
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+                }
+
+                // Parse timestamp section
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: timestampColumn.implicitHeight + Theme.spacingLg * 2
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        id: timestampColumn
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingLg
+                        spacing: Theme.spacingMd
+
+                        Label {
+                            text: "Parse Unix Timestamp"
+                            font.bold: true
+                            color: Theme.text
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.spacingMd
+
+                            TextField {
+                                id: timestampInput
+                                Layout.fillWidth: true
+                                text: timeModel.input_timestamp
+                                placeholderText: "Enter Unix timestamp (seconds or milliseconds)..."
+                                color: Theme.text
+                                placeholderTextColor: Theme.textMuted
+                                font.family: "Consolas, Monaco, monospace"
+                                onTextChanged: timeModel.input_timestamp = text
+
+                                background: Rectangle {
+                                    color: Theme.inputBg
+                                    border.color: Theme.inputBorder
+                                    radius: Theme.inputRadius
+                                }
+                            }
+
+                            Button {
+                                text: "Parse"
+                                onClicked: timeModel.parse_timestamp()
+
+                                background: Rectangle {
+                                    radius: Theme.buttonRadius
+                                    color: parent.hovered ? Theme.primaryHover : Theme.primary
+                                }
+
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: Theme.primaryText
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Parse datetime section
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: datetimeColumn.implicitHeight + Theme.spacingLg * 2
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        id: datetimeColumn
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingLg
+                        spacing: Theme.spacingMd
+
+                        Label {
+                            text: "Parse Date/Time String"
+                            font.bold: true
+                            color: Theme.text
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.spacingMd
+
+                            TextField {
+                                id: datetimeInput
+                                Layout.fillWidth: true
+                                text: timeModel.input_datetime
+                                placeholderText: "YYYY-MM-DD HH:MM:SS"
+                                color: Theme.text
+                                placeholderTextColor: Theme.textMuted
+                                font.family: "Consolas, Monaco, monospace"
+                                onTextChanged: timeModel.input_datetime = text
+
+                                background: Rectangle {
+                                    color: Theme.inputBg
+                                    border.color: Theme.inputBorder
+                                    radius: Theme.inputRadius
+                                }
+                            }
+
+                            ComboBox {
+                                id: inputTimezoneCombo
+                                model: ["UTC", "Local", "America/New_York", "America/Los_Angeles", "Europe/London", "Europe/Paris", "Asia/Tokyo"]
+                                currentIndex: 0
+                                onCurrentTextChanged: timeModel.input_timezone = currentText
+                            }
+
+                            Button {
+                                text: "Parse"
+                                onClicked: timeModel.parse_datetime()
+
+                                background: Rectangle {
+                                    radius: Theme.buttonRadius
+                                    color: parent.hovered ? Theme.primaryHover : Theme.primary
+                                }
+
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: Theme.primaryText
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Results section
+                Rectangle {
+                    visible: timeModel.output_timestamp.length > 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: resultsColumn.implicitHeight + Theme.spacingLg * 2
+                    color: Theme.surface
+                    border.color: Theme.success
+                    border.width: 2
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        id: resultsColumn
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingLg
+                        spacing: Theme.spacingMd
+
+                        Label {
+                            text: "Parsed Results"
+                            font.bold: true
+                            color: Theme.text
+                        }
+
+                        GridLayout {
+                            Layout.fillWidth: true
+                            columns: 2
+                            columnSpacing: Theme.spacingMd
+                            rowSpacing: Theme.spacingSm
+
+                            Label {
+                                text: "Timestamp:"
+                                font.bold: true
+                                color: Theme.textSecondary
+                            }
+                            TextField {
+                                Layout.fillWidth: true
+                                text: timeModel.output_timestamp
+                                readOnly: true
+                                font.family: "Consolas, Monaco, monospace"
+                                color: Theme.text
+                                selectByMouse: true
+                                background: Rectangle { color: Theme.inputBg; radius: Theme.inputRadius }
+                            }
+
+                            Label {
+                                text: "ISO 8601:"
+                                font.bold: true
+                                color: Theme.textSecondary
+                            }
+                            TextField {
+                                Layout.fillWidth: true
+                                text: timeModel.output_iso8601
+                                readOnly: true
+                                font.family: "Consolas, Monaco, monospace"
+                                color: Theme.text
+                                selectByMouse: true
+                                background: Rectangle { color: Theme.inputBg; radius: Theme.inputRadius }
+                            }
+
+                            Label {
+                                text: "RFC 2822:"
+                                font.bold: true
+                                color: Theme.textSecondary
+                            }
+                            TextField {
+                                Layout.fillWidth: true
+                                text: timeModel.output_rfc2822
+                                readOnly: true
+                                font.family: "Consolas, Monaco, monospace"
+                                color: Theme.text
+                                selectByMouse: true
+                                background: Rectangle { color: Theme.inputBg; radius: Theme.inputRadius }
+                            }
+
+                            Label {
+                                text: "Local:"
+                                font.bold: true
+                                color: Theme.textSecondary
+                            }
+                            TextField {
+                                Layout.fillWidth: true
+                                text: timeModel.output_local
+                                readOnly: true
+                                font.family: "Consolas, Monaco, monospace"
+                                color: Theme.text
+                                selectByMouse: true
+                                background: Rectangle { color: Theme.inputBg; radius: Theme.inputRadius }
+                            }
+
+                            Label {
+                                text: "Relative:"
+                                font.bold: true
+                                color: Theme.textSecondary
+                            }
+                            Label {
+                                text: timeModel.output_relative
+                                color: Theme.info
+                                font.bold: true
+                            }
+                        }
+                    }
+                }
+
+                // Timezone conversion
+                Rectangle {
+                    visible: timeModel.output_timestamp.length > 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: tzColumn.implicitHeight + Theme.spacingLg * 2
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        id: tzColumn
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingLg
+                        spacing: Theme.spacingMd
+
+                        Label {
+                            text: "Convert to Timezone"
+                            font.bold: true
+                            color: Theme.text
+                        }
+
+                        RowLayout {
+                            spacing: Theme.spacingMd
+
+                            ComboBox {
+                                id: targetTimezoneCombo
+                                model: ["Local", "UTC", "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles", "Europe/London", "Europe/Paris", "Europe/Berlin", "Asia/Tokyo", "Asia/Shanghai", "Australia/Sydney"]
+                                currentIndex: 0
+                                onCurrentTextChanged: timeModel.target_timezone = currentText
+                            }
+
+                            Button {
+                                text: "Convert"
+                                onClicked: timeModel.convert_timezone()
+
+                                background: Rectangle {
+                                    radius: Theme.buttonRadius
+                                    color: parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt
+                                    border.color: Theme.border
+                                }
+
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: Theme.text
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+                            }
+                        }
+
+                        TextField {
+                            visible: timeModel.converted_time.length > 0
+                            Layout.fillWidth: true
+                            text: timeModel.converted_time
+                            readOnly: true
+                            font.family: "Consolas, Monaco, monospace"
+                            color: Theme.text
+                            selectByMouse: true
+
+                            background: Rectangle {
+                                color: Theme.successBg
+                                border.color: Theme.success
+                                radius: Theme.inputRadius
+                            }
+                        }
+                    }
+                }
+
+                // Date arithmetic
+                Rectangle {
+                    visible: timeModel.output_timestamp.length > 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: arithmeticColumn.implicitHeight + Theme.spacingLg * 2
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        id: arithmeticColumn
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingLg
+                        spacing: Theme.spacingMd
+
+                        Label {
+                            text: "Date Arithmetic"
+                            font.bold: true
+                            color: Theme.text
+                        }
+
+                        GridLayout {
+                            columns: 4
+                            columnSpacing: Theme.spacingMd
+                            rowSpacing: Theme.spacingSm
+
+                            Label { text: "Days:"; color: Theme.textSecondary }
+                            SpinBox {
+                                from: -365
+                                to: 365
+                                value: timeModel.add_days
+                                onValueChanged: timeModel.add_days = value
+                                editable: true
+                            }
+
+                            Label { text: "Hours:"; color: Theme.textSecondary }
+                            SpinBox {
+                                from: -24
+                                to: 24
+                                value: timeModel.add_hours
+                                onValueChanged: timeModel.add_hours = value
+                                editable: true
+                            }
+
+                            Label { text: "Minutes:"; color: Theme.textSecondary }
+                            SpinBox {
+                                from: -60
+                                to: 60
+                                value: timeModel.add_minutes
+                                onValueChanged: timeModel.add_minutes = value
+                                editable: true
+                            }
+
+                            Label { text: "Seconds:"; color: Theme.textSecondary }
+                            SpinBox {
+                                from: -60
+                                to: 60
+                                value: timeModel.add_seconds
+                                onValueChanged: timeModel.add_seconds = value
+                                editable: true
+                            }
+                        }
+
+                        Button {
+                            text: "Calculate"
+                            onClicked: timeModel.apply_arithmetic()
+
+                            background: Rectangle {
+                                radius: Theme.buttonRadius
+                                color: parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt
+                                border.color: Theme.border
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                color: Theme.text
+                                font.pixelSize: Theme.fontSizeNormal
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+                        }
+
+                        TextArea {
+                            visible: timeModel.arithmetic_result.length > 0
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 80
+                            text: timeModel.arithmetic_result
+                            readOnly: true
+                            font.family: "Consolas, Monaco, monospace"
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.text
+                            selectByMouse: true
+
+                            background: Rectangle {
+                                color: Theme.successBg
+                                border.color: Theme.success
+                                radius: Theme.inputRadius
                             }
                         }
                     }
