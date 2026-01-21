@@ -64,7 +64,7 @@ impl qobject::UuidModel {
         self.as_mut().set_error_message(QString::from(""));
 
         let version = self.as_ref().version().to_string();
-        let count = self.as_ref().count().max(1).min(100);
+        let count = (*self.as_ref().count()).max(1).min(100);
         let format = self.as_ref().format().to_string();
         let namespace_type = self.as_ref().namespace_type().to_string();
         let custom_ns = self.as_ref().custom_namespace().to_string();

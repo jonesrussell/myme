@@ -313,10 +313,10 @@ impl qobject::TimeModel {
             }
         };
 
-        let seconds = self.as_ref().add_seconds();
-        let minutes = self.as_ref().add_minutes();
-        let hours = self.as_ref().add_hours();
-        let days = self.as_ref().add_days();
+        let seconds = *self.as_ref().add_seconds();
+        let minutes = *self.as_ref().add_minutes();
+        let hours = *self.as_ref().add_hours();
+        let days = *self.as_ref().add_days();
 
         let total_seconds = seconds + (minutes * 60) + (hours * 3600) + (days * 86400);
         let duration = chrono::Duration::seconds(total_seconds);
