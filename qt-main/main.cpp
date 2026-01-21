@@ -2,6 +2,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QIcon>
+#include <QQuickStyle>
 
 // cxx-qt generated bridges
 extern "C" bool cxx_qt_init_crate_myme_ui();
@@ -20,6 +21,9 @@ int main(int argc, char *argv[])
 
     // Set icon theme (for Kirigami icons)
     QIcon::setThemeName("breeze");
+
+    // Use Basic style to allow QML customization of controls
+    QQuickStyle::setStyle("Basic");
 
     // Initialize cxx-qt types (this also registers QML types)
     cxx_qt_init_crate_myme_ui();

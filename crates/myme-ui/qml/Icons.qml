@@ -36,8 +36,14 @@ QtObject {
 
     // Actions
     readonly property string x: "\ueddb"
+    readonly property string xCircle: "\ueddc"
     readonly property string minus: "\uebf8"
     readonly property string plus: "\uec86"
+
+    // Window controls
+    readonly property string square: "\ued1c"
+    readonly property string cornersOut: "\uea70"
+    readonly property string cornersIn: "\uea6f"
     readonly property string check: "\uea30"
     readonly property string copy: "\uea6b"
     readonly property string trash: "\ued8a"

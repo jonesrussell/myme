@@ -443,7 +443,7 @@ ApplicationWindow {
 
                         Label {
                             anchors.centerIn: parent
-                            text: Icons.squaresFour
+                            text: root.visibility === Window.Maximized ? Icons.cornersIn : Icons.square
                             font.family: Icons.family
                             font.pixelSize: 14
                             color: Theme.textSecondary

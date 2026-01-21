@@ -215,6 +215,18 @@ Default config is created automatically on first run. Configuration is loaded us
 - QML changes don't require rebuild - just restart the application
 - Only Rust bridge changes (cxx-qt) require `cargo build` + CMake rebuild
 
+### QML JavaScript Compatibility
+- QML uses ES5 JavaScript - avoid ES6+ features: arrow functions (`=>`), optional chaining (`?.`), nullish coalescing (`??`)
+- `qmlformat` silently fails (exit 255) on ES6 syntax - use `function()` instead of `() =>`
+
+### QML Formatting
+- qmlformat location: `/mnt/c/Qt/6.10.1/msvc2022_64/bin/qmlformat.exe -i <file>`
+
+### QML Singletons
+- Theme/Icons defined in `crates/myme-ui/qml/Theme.qml` and `Icons.qml`
+- Registered in `crates/myme-ui/qml/qmldir`
+- Phosphor Icons font used for UI icons (`crates/myme-ui/qml/fonts/Phosphor.ttf`)
+
 ## Important Files
 
 - [Cargo.toml](Cargo.toml) - Workspace configuration with shared dependencies
