@@ -176,6 +176,111 @@ impl GitHubClient {
         tracing::info!("Created repository: {}", repo.full_name);
         Ok(repo)
     }
+
+    /// List issues for a repository
+    pub async fn list_issues(&self, owner: &str, repo: &str) -> Result<Vec<GitHubIssue>> {
+        tracing::debug!("Fetching issues for {}/{}", owner, repo);
+
+        let url = self.base_url.join(&format!("repos/{}/{}/issues", owner, repo))?;
+        let request = self.build_request(
+            self.client
+                .get(url)
+                .query(&[("state", "all"), ("per_page", "100")])
+        );
+
+        let response = request.send().await.context("Failed to fetch issues")?;
+        let response = self.check_response(response).await?;
+        let issues: Vec<GitHubIssue> = response.json().await?;
+
+        tracing::info!("Fetched {} issues for {}/{}", issues.len(), owner, repo);
+        Ok(issues)
+    }
+
+    /// List issues updated since a timestamp
+    pub async fn list_issues_since(
+        &self,
+        owner: &str,
+        repo: &str,
+        since: &str,
+    ) -> Result<Vec<GitHubIssue>> {
+        tracing::debug!("Fetching issues for {}/{} since {}", owner, repo, since);
+
+        let url = self.base_url.join(&format!("repos/{}/{}/issues", owner, repo))?;
+        let request = self.build_request(
+            self.client
+                .get(url)
+                .query(&[("state", "all"), ("since", since), ("per_page", "100")])
+        );
+
+        let response = request.send().await.context("Failed to fetch issues")?;
+        let response = self.check_response(response).await?;
+        let issues: Vec<GitHubIssue> = response.json().await?;
+
+        Ok(issues)
+    }
+
+    /// Create a new issue
+    pub async fn create_issue(
+        &self,
+        owner: &str,
+        repo: &str,
+        req: CreateIssueRequest,
+    ) -> Result<GitHubIssue> {
+        tracing::debug!("Creating issue in {}/{}: {}", owner, repo, req.title);
+
+        let url = self.base_url.join(&format!("repos/{}/{}/issues", owner, repo))?;
+        let request = self.build_request(self.client.post(url).json(&req));
+
+        let response = request.send().await.context("Failed to create issue")?;
+        let response = self.check_response(response).await?;
+        let issue: GitHubIssue = response.json().await?;
+
+        tracing::info!("Created issue #{} in {}/{}", issue.number, owner, repo);
+        Ok(issue)
+    }
+
+    /// Update an issue
+    pub async fn update_issue(
+        &self,
+        owner: &str,
+        repo: &str,
+        issue_number: i32,
+        req: UpdateIssueRequest,
+    ) -> Result<GitHubIssue> {
+        tracing::debug!("Updating issue #{} in {}/{}", issue_number, owner, repo);
+
+        let url = self.base_url.join(&format!(
+            "repos/{}/{}/issues/{}",
+            owner, repo, issue_number
+        ))?;
+        let request = self.build_request(self.client.patch(url).json(&req));
+
+        let response = request.send().await.context("Failed to update issue")?;
+        let response = self.check_response(response).await?;
+        let issue: GitHubIssue = response.json().await?;
+
+        Ok(issue)
+    }
+
+    /// Close an issue
+    pub async fn close_issue(&self, owner: &str, repo: &str, issue_number: i32) -> Result<GitHubIssue> {
+        self.update_issue(owner, repo, issue_number, UpdateIssueRequest {
+            title: None,
+            body: None,
+            state: Some("closed".to_string()),
+            labels: None,
+        }).await
+    }
+
+    /// Reopen an issue
+    pub async fn reopen_issue(&self, owner: &str, repo: &str, issue_number: i32) -> Result<GitHubIssue> {
+        self.update_issue(owner, repo, issue_number, UpdateIssueRequest {
+            title: None,
+            body: None,
+            state: Some("open".to_string()),
+            labels: None,
+        }).await
+    }
 }
 
 #[cfg(test)]
