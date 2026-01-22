@@ -1,6 +1,12 @@
 // crates/myme-services/src/github.rs
 
+use anyhow::{Context, Result};
+use reqwest::{header, Client};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use url::Url;
+
+const GITHUB_API_URL: &str = "https://api.github.com";
 
 /// GitHub repository representation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,6 +86,48 @@ pub struct CreateLabelRequest {
     pub color: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+}
+
+/// GitHub API client
+#[derive(Debug, Clone)]
+pub struct GitHubClient {
+    base_url: Url,
+    client: Arc<Client>,
+    token: String,
+}
+
+impl GitHubClient {
+    /// Create a new GitHub client with OAuth token
+    pub fn new(token: String) -> Result<Self> {
+        let client = Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .context("Failed to create HTTP client")?;
+
+        Ok(Self {
+            base_url: Url::parse(GITHUB_API_URL).unwrap(),
+            client: Arc::new(client),
+            token,
+        })
+    }
+
+    /// Build request with auth headers
+    fn build_request(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+        req.header(header::AUTHORIZATION, format!("Bearer {}", self.token))
+            .header(header::ACCEPT, "application/vnd.github+json")
+            .header(header::USER_AGENT, "myme-app")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+    }
+
+    /// Check response status and extract error
+    async fn check_response(&self, response: reqwest::Response) -> Result<reqwest::Response> {
+        let status = response.status();
+        if !status.is_success() {
+            let error_text = response.text().await.unwrap_or_default();
+            anyhow::bail!("GitHub API error ({}): {}", status, error_text);
+        }
+        Ok(response)
+    }
 }
 
 #[cfg(test)]
