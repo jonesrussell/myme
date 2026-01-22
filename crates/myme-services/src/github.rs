@@ -128,6 +128,54 @@ impl GitHubClient {
         }
         Ok(response)
     }
+
+    /// List repositories for authenticated user
+    pub async fn list_repos(&self) -> Result<Vec<GitHubRepo>> {
+        tracing::debug!("Fetching user repositories");
+
+        let url = self.base_url.join("user/repos")?;
+        let request = self.build_request(
+            self.client
+                .get(url)
+                .query(&[("sort", "updated"), ("per_page", "100")]),
+        );
+
+        let response = request.send().await.context("Failed to fetch repos")?;
+        let response = self.check_response(response).await?;
+        let repos: Vec<GitHubRepo> = response.json().await?;
+
+        tracing::info!("Fetched {} repositories", repos.len());
+        Ok(repos)
+    }
+
+    /// Get a specific repository
+    pub async fn get_repo(&self, owner: &str, repo: &str) -> Result<GitHubRepo> {
+        tracing::debug!("Fetching repository {}/{}", owner, repo);
+
+        let url = self.base_url.join(&format!("repos/{}/{}", owner, repo))?;
+        let request = self.build_request(self.client.get(url));
+
+        let response = request.send().await.context("Failed to fetch repo")?;
+        let response = self.check_response(response).await?;
+        let repo: GitHubRepo = response.json().await?;
+
+        Ok(repo)
+    }
+
+    /// Create a new repository
+    pub async fn create_repo(&self, req: CreateRepoRequest) -> Result<GitHubRepo> {
+        tracing::debug!("Creating repository: {}", req.name);
+
+        let url = self.base_url.join("user/repos")?;
+        let request = self.build_request(self.client.post(url).json(&req));
+
+        let response = request.send().await.context("Failed to create repo")?;
+        let response = self.check_response(response).await?;
+        let repo: GitHubRepo = response.json().await?;
+
+        tracing::info!("Created repository: {}", repo.full_name);
+        Ok(repo)
+    }
 }
 
 #[cfg(test)]
