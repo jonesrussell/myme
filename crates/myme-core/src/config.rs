@@ -16,6 +16,10 @@ pub struct Config {
     /// Weather settings
     #[serde(default)]
     pub weather: WeatherConfig,
+
+    /// Projects settings
+    #[serde(default)]
+    pub projects: ProjectsConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -67,6 +71,33 @@ impl Default for WeatherConfig {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectsConfig {
+    /// Sync interval in minutes (default: 5)
+    #[serde(default = "default_sync_interval")]
+    pub sync_interval_minutes: u32,
+    /// Auto-create status labels on repos (default: true)
+    #[serde(default = "default_auto_create_labels")]
+    pub auto_create_labels: bool,
+}
+
+fn default_sync_interval() -> u32 {
+    5
+}
+
+fn default_auto_create_labels() -> bool {
+    true
+}
+
+impl Default for ProjectsConfig {
+    fn default() -> Self {
+        Self {
+            sync_interval_minutes: default_sync_interval(),
+            auto_create_labels: default_auto_create_labels(),
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         let config_dir = dirs::config_dir()
@@ -85,6 +116,7 @@ impl Default for Config {
                 dark_mode: false,
             },
             weather: WeatherConfig::default(),
+            projects: ProjectsConfig::default(),
         }
     }
 }
