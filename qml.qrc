@@ -9,6 +9,7 @@
         <file>crates/myme-ui/qml/fonts/Phosphor.ttf</file>
         <file>crates/myme-ui/qml/pages/DevToolsPage.qml</file>
         <file>crates/myme-ui/qml/pages/NotePage.qml</file>
+        <file>crates/myme-ui/qml/pages/ProjectsPage.qml</file>
         <file>crates/myme-ui/qml/pages/RepoPage.qml</file>
         <file>crates/myme-ui/qml/pages/SettingsPage.qml</file>
         <file>crates/myme-ui/qml/pages/WeatherPage.qml</file>
