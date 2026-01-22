@@ -281,6 +281,70 @@ impl GitHubClient {
             labels: None,
         }).await
     }
+
+    /// List labels for a repository
+    pub async fn list_labels(&self, owner: &str, repo: &str) -> Result<Vec<GitHubLabel>> {
+        tracing::debug!("Fetching labels for {}/{}", owner, repo);
+
+        let url = self.base_url.join(&format!("repos/{}/{}/labels", owner, repo))?;
+        let request = self.build_request(self.client.get(url));
+
+        let response = request.send().await.context("Failed to fetch labels")?;
+        let response = self.check_response(response).await?;
+        let labels: Vec<GitHubLabel> = response.json().await?;
+
+        Ok(labels)
+    }
+
+    /// Create a label
+    pub async fn create_label(
+        &self,
+        owner: &str,
+        repo: &str,
+        req: CreateLabelRequest,
+    ) -> Result<GitHubLabel> {
+        tracing::debug!("Creating label {} in {}/{}", req.name, owner, repo);
+
+        let url = self.base_url.join(&format!("repos/{}/{}/labels", owner, repo))?;
+        let request = self.build_request(self.client.post(url).json(&req));
+
+        let response = request.send().await.context("Failed to create label")?;
+        let response = self.check_response(response).await?;
+        let label: GitHubLabel = response.json().await?;
+
+        Ok(label)
+    }
+
+    /// Set labels on an issue (replaces existing)
+    pub async fn set_issue_labels(
+        &self,
+        owner: &str,
+        repo: &str,
+        issue_number: i32,
+        labels: Vec<String>,
+    ) -> Result<Vec<GitHubLabel>> {
+        tracing::debug!("Setting labels on issue #{} in {}/{}", issue_number, owner, repo);
+
+        let url = self.base_url.join(&format!(
+            "repos/{}/{}/issues/{}/labels",
+            owner, repo, issue_number
+        ))?;
+
+        #[derive(Serialize)]
+        struct SetLabelsRequest {
+            labels: Vec<String>,
+        }
+
+        let request = self.build_request(
+            self.client.put(url).json(&SetLabelsRequest { labels })
+        );
+
+        let response = request.send().await.context("Failed to set labels")?;
+        let response = self.check_response(response).await?;
+        let labels: Vec<GitHubLabel> = response.json().await?;
+
+        Ok(labels)
+    }
 }
 
 #[cfg(test)]
