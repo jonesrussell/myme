@@ -6,6 +6,7 @@ fn main() {
         .file("src/models/hash_model.rs")
         .file("src/models/json_model.rs")
         .file("src/models/jwt_model.rs")
+        .file("src/models/kanban_model.rs")
         .file("src/models/note_model.rs")
         .file("src/models/project_model.rs")
         .file("src/models/repo_model.rs")
