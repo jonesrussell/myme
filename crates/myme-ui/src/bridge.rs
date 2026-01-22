@@ -2,7 +2,7 @@ use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::sync::{Arc, OnceLock};
 
-use myme_services::TodoClient;
+use myme_services::{GitHubClient, ProjectStore, TodoClient};
 use myme_weather::{WeatherCache, WeatherProvider};
 
 // Static tokio runtime that lives for the duration of the application
@@ -14,6 +14,10 @@ static TODO_CLIENT: OnceLock<Arc<TodoClient>> = OnceLock::new();
 // Weather services
 static WEATHER_PROVIDER: OnceLock<Arc<WeatherProvider>> = OnceLock::new();
 static WEATHER_CACHE: OnceLock<std::sync::Mutex<WeatherCache>> = OnceLock::new();
+
+// GitHub/Projects services
+static GITHUB_CLIENT: OnceLock<Arc<GitHubClient>> = OnceLock::new();
+static PROJECT_STORE: OnceLock<Arc<std::sync::Mutex<ProjectStore>>> = OnceLock::new();
 
 /// Initialize the tokio runtime (call once at application startup)
 fn get_or_init_runtime() -> tokio::runtime::Handle {
@@ -180,4 +184,79 @@ pub fn get_weather_services() -> Option<(Arc<WeatherProvider>, WeatherCache, tok
     let _ = cache.load();
 
     Some((provider, cache, runtime))
+}
+
+/// Initialize GitHub client and project store
+/// Must be called before QML tries to access ProjectModel
+#[no_mangle]
+pub extern "C" fn initialize_github_client() -> bool {
+    // Ensure runtime is initialized
+    let _runtime = get_or_init_runtime();
+
+    // Get token from secure storage
+    let token = match myme_auth::SecureStorage::retrieve_token("github") {
+        Ok(token_set) if !token_set.is_expired() => token_set.access_token,
+        _ => {
+            tracing::warn!("No valid GitHub token found, projects will be unavailable");
+            return false;
+        }
+    };
+
+    // Create GitHub client
+    let client = match GitHubClient::new(token) {
+        Ok(c) => Arc::new(c),
+        Err(e) => {
+            tracing::error!("Failed to create GitHub client: {}", e);
+            return false;
+        }
+    };
+
+    if GITHUB_CLIENT.set(client).is_err() {
+        tracing::warn!("GitHub client already initialized");
+    }
+
+    // Initialize project store
+    let config_dir = dirs::config_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("myme");
+
+    let db_path = config_dir.join("projects.db");
+
+    // Ensure directory exists
+    if let Err(e) = std::fs::create_dir_all(&config_dir) {
+        tracing::error!("Failed to create config directory: {}", e);
+        return false;
+    }
+
+    let store = match ProjectStore::open(&db_path) {
+        Ok(s) => Arc::new(std::sync::Mutex::new(s)),
+        Err(e) => {
+            tracing::error!("Failed to open project store: {}", e);
+            return false;
+        }
+    };
+
+    if PROJECT_STORE.set(store).is_err() {
+        tracing::warn!("Project store already initialized");
+    }
+
+    tracing::info!("GitHub client and project store initialized");
+    true
+}
+
+/// Get GitHub client and runtime
+pub fn get_github_client_and_runtime() -> Option<(Arc<GitHubClient>, tokio::runtime::Handle)> {
+    let client = GITHUB_CLIENT.get()?.clone();
+    let runtime = RUNTIME.get()?.handle().clone();
+    Some((client, runtime))
+}
+
+/// Get project store
+pub fn get_project_store() -> Option<Arc<std::sync::Mutex<ProjectStore>>> {
+    PROJECT_STORE.get().cloned()
+}
+
+/// Check if GitHub is authenticated
+pub fn is_github_authenticated() -> bool {
+    GITHUB_CLIENT.get().is_some()
 }
