@@ -10,6 +10,7 @@ extern "C" bool cxx_qt_init_crate_myme_ui();
 // Rust initialization functions
 extern "C" bool initialize_note_model(const char* base_url);
 extern "C" bool initialize_weather_services();
+extern "C" bool initialize_github_client();
 
 int main(int argc, char *argv[])
 {
@@ -37,6 +38,9 @@ int main(int argc, char *argv[])
 
     // Initialize weather services (WeatherProvider, cache)
     initialize_weather_services();
+
+    // Initialize GitHub client (requires prior OAuth authentication)
+    initialize_github_client();
 
     QQmlApplicationEngine engine;
 
