@@ -20,15 +20,36 @@ Page {
         id: projectModel
     }
 
-    // Update project count when projects change
+    // Auth model for handling OAuth flow
+    AuthModel {
+        id: authModel
+    }
+
+    // Update project count when loading finishes
     Connections {
         target: projectModel
-        function onProjectsChanged() {
-            projectsPage.projectCount = projectModel.row_count();
+        function onLoadingChanged() {
+            if (!projectModel.loading) {
+                projectsPage.projectCount = projectModel.row_count();
+            }
         }
-        function onAuthChanged() {
-            // Re-check auth status when it changes
-            projectsPage.projectCount = projectModel.row_count();
+        function onAuthenticatedChanged() {
+            // Re-fetch projects when auth status changes
+            if (projectModel.authenticated) {
+                projectModel.fetch_projects();
+            }
+        }
+    }
+
+    // Listen for auth completion to fetch projects
+    Connections {
+        target: authModel
+        function onAuth_completed() {
+            // After successful auth, check project auth and fetch
+            projectModel.check_auth();
+            if (projectModel.authenticated) {
+                projectModel.fetch_projects();
+            }
         }
     }
 
@@ -170,22 +191,31 @@ Page {
                     width: authLabel.implicitWidth + Theme.spacingLg * 2
                     height: authLabel.implicitHeight + Theme.spacingMd
                     radius: Theme.buttonRadius
-                    color: authMouseArea.containsMouse ? Theme.primaryHover : Theme.primary
+                    color: authModel.loading ? Theme.surfaceAlt : (authMouseArea.containsMouse ? Theme.primaryHover : Theme.primary)
+                    opacity: authModel.loading ? 0.7 : 1.0
 
                     RowLayout {
                         anchors.centerIn: parent
                         spacing: Theme.spacingSm
 
                         Label {
-                            text: Icons.githubLogo
+                            text: authModel.loading ? Icons.spinner : Icons.githubLogo
                             font.family: Icons.family
                             font.pixelSize: 18
                             color: Theme.primaryText
+
+                            RotationAnimation on rotation {
+                                running: authModel.loading
+                                from: 0
+                                to: 360
+                                duration: 1000
+                                loops: Animation.Infinite
+                            }
                         }
 
                         Label {
                             id: authLabel
-                            text: "Connect GitHub"
+                            text: authModel.loading ? "Connecting..." : "Connect GitHub"
                             font.pixelSize: Theme.fontSizeNormal
                             font.bold: true
                             color: Theme.primaryText
@@ -196,12 +226,21 @@ Page {
                         id: authMouseArea
                         anchors.fill: parent
                         hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            // Navigate to settings for auth
-                            // Note: This would be handled by the parent/main navigation
-                        }
+                        cursorShape: authModel.loading ? Qt.BusyCursor : Qt.PointingHandCursor
+                        enabled: !authModel.loading
+                        onClicked: authModel.authenticate()
                     }
+                }
+
+                // Error message from auth
+                Label {
+                    visible: authModel.error_message !== ""
+                    text: authModel.error_message
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.error
+                    wrapMode: Text.WordWrap
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.maximumWidth: 300
                 }
             }
         }

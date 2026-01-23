@@ -1,3 +1,4 @@
+pub mod auth_model;
 pub mod encoding_model;
 pub mod hash_model;
 pub mod json_model;

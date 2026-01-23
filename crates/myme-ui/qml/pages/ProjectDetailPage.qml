@@ -34,12 +34,14 @@ Page {
         id: kanbanModel
     }
 
-    // Force UI update when tasks change
+    // Force UI update when loading finishes
     Connections {
         target: kanbanModel
-        function onTasksChanged() {
-            columnsRepeater.model = 0;
-            columnsRepeater.model = projectDetailPage.columns.length;
+        function onLoadingChanged() {
+            if (!kanbanModel.loading) {
+                columnsRepeater.model = 0;
+                columnsRepeater.model = projectDetailPage.columns.length;
+            }
         }
     }
 

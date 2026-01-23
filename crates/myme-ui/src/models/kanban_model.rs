@@ -91,8 +91,8 @@ impl KanbanModelRust {
             return;
         }
 
-        // Get project store
-        if let Some(store) = crate::bridge::get_project_store() {
+        // Get project store (initializes if needed)
+        if let Some(store) = crate::bridge::get_project_store_or_init() {
             self.store = Some(store);
             tracing::info!("KanbanModel: project store initialized");
         } else {
@@ -105,9 +105,11 @@ impl KanbanModelRust {
             self.runtime = Some(runtime);
             tracing::info!("KanbanModel: GitHub client initialized");
         } else {
-            // Still need runtime for operations
-            self.runtime = Some(tokio::runtime::Handle::current());
-            tracing::warn!("KanbanModel: GitHub client not available (not authenticated)");
+            // Get runtime from bridge (must use global runtime, not Handle::current())
+            if let Some(runtime) = crate::bridge::get_runtime() {
+                self.runtime = Some(runtime);
+            }
+            tracing::info!("KanbanModel: GitHub client not available (not authenticated)");
         }
     }
 

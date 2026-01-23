@@ -115,8 +115,8 @@ impl ProjectModelRust {
             return;
         }
 
-        // Get project store
-        if let Some(store) = crate::bridge::get_project_store() {
+        // Get project store (initializes if needed)
+        if let Some(store) = crate::bridge::get_project_store_or_init() {
             self.project_store = Some(store);
             tracing::info!("ProjectModel: project store initialized");
         } else {
@@ -130,10 +130,12 @@ impl ProjectModelRust {
             self.authenticated = true;
             tracing::info!("ProjectModel: GitHub client initialized");
         } else {
-            // Still need runtime for async operations
-            self.runtime = Some(tokio::runtime::Handle::current());
+            // Get runtime from bridge (must use global runtime, not Handle::current())
+            if let Some(runtime) = crate::bridge::get_runtime() {
+                self.runtime = Some(runtime);
+            }
             self.authenticated = false;
-            tracing::warn!("ProjectModel: GitHub client not available (not authenticated)");
+            tracing::info!("ProjectModel: GitHub client not available (not authenticated)");
         }
     }
 

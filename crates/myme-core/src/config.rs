@@ -20,6 +20,10 @@ pub struct Config {
     /// Projects settings
     #[serde(default)]
     pub projects: ProjectsConfig,
+
+    /// GitHub OAuth settings
+    #[serde(default)]
+    pub github: GitHubConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -98,6 +102,35 @@ impl Default for ProjectsConfig {
     }
 }
 
+/// GitHub OAuth configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitHubConfig {
+    /// GitHub OAuth App Client ID
+    /// Create at: https://github.com/settings/developers
+    pub client_id: String,
+    /// GitHub OAuth App Client Secret
+    pub client_secret: String,
+}
+
+impl GitHubConfig {
+    /// Check if credentials are configured (not placeholders)
+    pub fn is_configured(&self) -> bool {
+        !self.client_id.is_empty()
+            && !self.client_secret.is_empty()
+            && !self.client_id.starts_with("YOUR_")
+            && !self.client_secret.starts_with("YOUR_")
+    }
+}
+
+impl Default for GitHubConfig {
+    fn default() -> Self {
+        Self {
+            client_id: "YOUR_GITHUB_CLIENT_ID".to_string(),
+            client_secret: "YOUR_GITHUB_CLIENT_SECRET".to_string(),
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         let config_dir = dirs::config_dir()
@@ -117,6 +150,7 @@ impl Default for Config {
             },
             weather: WeatherConfig::default(),
             projects: ProjectsConfig::default(),
+            github: GitHubConfig::default(),
         }
     }
 }
