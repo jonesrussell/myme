@@ -127,16 +127,16 @@ impl ProjectModelRust {
         if let Some((client, runtime)) = crate::bridge::get_github_client_and_runtime() {
             self.github_client = Some(client);
             self.runtime = Some(runtime);
-            self.authenticated = true;
             tracing::info!("ProjectModel: GitHub client initialized");
         } else {
             // Get runtime from bridge (must use global runtime, not Handle::current())
             if let Some(runtime) = crate::bridge::get_runtime() {
                 self.runtime = Some(runtime);
             }
-            self.authenticated = false;
             tracing::info!("ProjectModel: GitHub client not available (not authenticated)");
         }
+        // Auth state is set only via set_authenticated() in check_auth() so Qt emits
+        // authenticatedChanged and QML bindings (e.g. visibility) update.
     }
 
     /// Get project at index if valid

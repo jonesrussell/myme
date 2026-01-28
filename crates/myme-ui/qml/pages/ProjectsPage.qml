@@ -811,8 +811,6 @@ Page {
 
     Component.onCompleted: {
         projectModel.check_auth();
-        if (projectModel.authenticated) {
-            projectModel.fetch_projects();
-        }
+        // Fetch is triggered by onAuthenticatedChanged when authenticated becomes true
     }
 }
