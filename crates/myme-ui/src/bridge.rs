@@ -199,9 +199,16 @@ pub extern "C" fn initialize_github_client() -> bool {
 
     // Get token from secure storage
     let token = match myme_auth::SecureStorage::retrieve_token("github") {
-        Ok(token_set) if !token_set.is_expired() => token_set.access_token,
-        _ => {
-            tracing::warn!("No valid GitHub token found, projects will be unavailable");
+        Ok(token_set) => {
+            if token_set.is_expired() {
+                tracing::warn!("GitHub token is expired (expires_at: {})", token_set.expires_at);
+                return false;
+            }
+            tracing::info!("Retrieved valid GitHub token from secure storage");
+            token_set.access_token
+        }
+        Err(e) => {
+            tracing::warn!("Failed to retrieve GitHub token: {}", e);
             return false;
         }
     };
@@ -358,6 +365,8 @@ pub fn get_github_auth_and_runtime() -> Option<(Arc<GitHubAuth>, tokio::runtime:
 /// Reinitialize GitHub client after successful OAuth
 /// Call this after authentication completes to refresh the client with new token
 pub fn reinitialize_github_client() {
+    tracing::info!("Attempting to reinitialize GitHub client after OAuth...");
+
     // Note: OnceLock doesn't support clearing/replacing, so if the client
     // was already initialized with no token, it can't be updated without
     // restarting the app. This is a known limitation.

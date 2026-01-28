@@ -546,6 +546,7 @@ impl qobject::ProjectModel {
     /// Check and update authentication status
     pub fn check_auth(mut self: Pin<&mut Self>) {
         let was_authenticated = self.as_ref().rust().authenticated;
+        tracing::info!("check_auth: was_authenticated = {}", was_authenticated);
 
         // Re-initialize to check for updated auth state
         self.as_mut().rust_mut().github_client = None;
@@ -553,9 +554,13 @@ impl qobject::ProjectModel {
         self.as_mut().rust_mut().ensure_initialized();
 
         let is_authenticated = crate::bridge::is_github_authenticated();
+        tracing::info!("check_auth: is_github_authenticated() = {}", is_authenticated);
+
         self.as_mut().set_authenticated(is_authenticated);
+        tracing::info!("check_auth: set_authenticated({}) called", is_authenticated);
 
         if was_authenticated != is_authenticated {
+            tracing::info!("check_auth: auth state changed, emitting auth_changed signal");
             self.as_mut().auth_changed();
         }
     }

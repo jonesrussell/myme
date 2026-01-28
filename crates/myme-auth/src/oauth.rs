@@ -4,7 +4,7 @@
 use anyhow::{Context, Result};
 use oauth2::{
     AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge,
-    RedirectUrl, Scope, TokenResponse, TokenUrl,
+    PkceCodeVerifier, RedirectUrl, Scope, TokenResponse, TokenUrl,
 };
 use oauth2::basic::BasicClient;
 use oauth2::reqwest::async_http_client;
@@ -46,8 +46,8 @@ pub trait OAuth2Provider: Send + Sync {
 
     /// Start the OAuth2 authorization flow
     ///
-    /// Returns the authorization URL to open in browser
-    fn authorize(&self) -> Result<(String, CsrfToken)> {
+    /// Returns the authorization URL, CSRF token, and PKCE verifier
+    fn authorize(&self) -> Result<(String, CsrfToken, PkceCodeVerifier)> {
         let config = self.config();
 
         let client = BasicClient::new(
@@ -64,7 +64,7 @@ pub trait OAuth2Provider: Send + Sync {
         );
 
         // Generate PKCE challenge for additional security
-        let (pkce_challenge, _pkce_verifier) = PkceCodeChallenge::new_random_sha256();
+        let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
         // Generate authorization URL
         let mut auth_request = client
@@ -79,15 +79,15 @@ pub trait OAuth2Provider: Send + Sync {
             .set_pkce_challenge(pkce_challenge)
             .url();
 
-        Ok((auth_url.to_string(), csrf_token))
+        Ok((auth_url.to_string(), csrf_token, pkce_verifier))
     }
 
     /// Complete the OAuth2 flow with authorization code
     ///
     /// # Arguments
     /// * `code` - Authorization code from callback
-    /// * `state` - CSRF token for validation
-    async fn exchange_code(&self, code: String, _state: String) -> Result<TokenSet> {
+    /// * `pkce_verifier` - PKCE verifier from authorization step
+    async fn exchange_code(&self, code: String, pkce_verifier: PkceCodeVerifier) -> Result<TokenSet> {
         let config = self.config();
 
         let client = BasicClient::new(
@@ -98,17 +98,19 @@ pub trait OAuth2Provider: Send + Sync {
         )
         .set_redirect_uri(RedirectUrl::new(config.redirect_uri.clone())?);
 
-        // Exchange code for token
+        // Exchange code for token with PKCE verifier
         let token_result = client
             .exchange_code(AuthorizationCode::new(code))
+            .set_pkce_verifier(pkce_verifier)
             .request_async(async_http_client)
             .await
             .context("Failed to exchange authorization code")?;
 
         // Calculate expiration
+        // GitHub OAuth tokens don't expire, so default to 1 year if no expiration provided
         let expires_in = token_result.expires_in()
             .map(|d| d.as_secs() as i64)
-            .unwrap_or(3600); // Default 1 hour
+            .unwrap_or(365 * 24 * 3600); // Default 1 year for non-expiring tokens
         let expires_at = chrono::Utc::now().timestamp() + expires_in;
 
         // Extract scopes
@@ -133,8 +135,8 @@ pub trait OAuth2Provider: Send + Sync {
 
     /// Perform full OAuth2 flow with browser and local callback server
     async fn authenticate(&self) -> Result<TokenSet> {
-        // Generate authorization URL
-        let (auth_url, csrf_token) = self.authorize()?;
+        // Generate authorization URL and PKCE verifier
+        let (auth_url, csrf_token, pkce_verifier) = self.authorize()?;
 
         tracing::info!("Opening browser for OAuth2 authorization...");
         tracing::info!("Auth URL: {}", auth_url);
@@ -249,8 +251,10 @@ pub trait OAuth2Provider: Send + Sync {
             anyhow::bail!("CSRF token mismatch");
         }
 
-        // Exchange code for token
-        self.exchange_code(code, state).await
+        tracing::info!("Received OAuth callback, exchanging code for token...");
+
+        // Exchange code for token with PKCE verifier
+        self.exchange_code(code, pkce_verifier).await
     }
 
     /// Get stored token, or None if not authenticated
