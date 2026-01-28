@@ -1,11 +1,18 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import myme_ui
 import ".."
 
 Page {
     id: settingsPage
     title: "Settings"
+
+    // Auth model for connected accounts
+    AuthModel {
+        id: authModel
+        Component.onCompleted: authModel.check_auth()
+    }
 
     background: Rectangle {
         color: Theme.background
@@ -436,6 +443,167 @@ Page {
 
                             Label {
                                 text: "Auto detects your preferred unit from system locale"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.textSecondary
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Connected Accounts Section
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: accountsContent.implicitHeight + Theme.spacingMd * 2
+                color: Theme.surface
+                border.color: Theme.border
+                border.width: 1
+                radius: Theme.cardRadius
+
+                ColumnLayout {
+                    id: accountsContent
+                    anchors.fill: parent
+                    anchors.margins: Theme.spacingMd
+                    spacing: Theme.spacingMd
+
+                    Label {
+                        text: "Connected Accounts"
+                        font.pixelSize: Theme.fontSizeMedium
+                        font.bold: true
+                        color: Theme.text
+                    }
+
+                    Label {
+                        text: "Connect your accounts to enable additional features like project management and repository access."
+                        font.pixelSize: Theme.fontSizeNormal
+                        color: Theme.textSecondary
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+
+                    // GitHub Account
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Theme.spacingSm
+                        height: 72
+                        radius: Theme.cardRadius
+                        color: Theme.surfaceAlt
+                        border.color: authModel.authenticated ? Theme.success : Theme.border
+                        border.width: authModel.authenticated ? 2 : 1
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: Theme.spacingMd
+                            spacing: Theme.spacingMd
+
+                            // GitHub icon
+                            Rectangle {
+                                width: 44
+                                height: 44
+                                radius: 22
+                                color: Theme.isDark ? "#333" : "#24292f"
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: Icons.githubLogo
+                                    font.family: Icons.family
+                                    font.pixelSize: 24
+                                    color: "#ffffff"
+                                }
+                            }
+
+                            // Account info
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+
+                                Label {
+                                    text: "GitHub"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    font.bold: true
+                                    color: Theme.text
+                                }
+
+                                Label {
+                                    text: authModel.authenticated ? "Connected" : "Not connected"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: authModel.authenticated ? Theme.success : Theme.textSecondary
+                                }
+                            }
+
+                            // Connect/Disconnect button
+                            Button {
+                                text: authModel.loading ? "Connecting..." : (authModel.authenticated ? "Disconnect" : "Connect")
+                                enabled: !authModel.loading
+                                Layout.preferredWidth: 110
+                                Layout.preferredHeight: 36
+
+                                background: Rectangle {
+                                    radius: Theme.buttonRadius
+                                    color: {
+                                        if (!parent.enabled) return Theme.surfaceAlt
+                                        if (authModel.authenticated) return Theme.error + "20"
+                                        return parent.hovered ? Theme.primaryHover : Theme.primary
+                                    }
+                                    border.color: authModel.authenticated ? Theme.error : "transparent"
+                                    border.width: authModel.authenticated ? 1 : 0
+                                }
+
+                                contentItem: Label {
+                                    text: parent.text
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.bold: true
+                                    color: {
+                                        if (!parent.enabled) return Theme.textMuted
+                                        if (authModel.authenticated) return Theme.error
+                                        return Theme.primaryText
+                                    }
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+
+                                onClicked: {
+                                    if (authModel.authenticated) {
+                                        authModel.sign_out()
+                                    } else {
+                                        authModel.authenticate()
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Error message
+                    Label {
+                        visible: authModel.error_message !== ""
+                        text: authModel.error_message
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.error
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+
+                    // Info text
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Theme.spacingSm
+                        height: 40
+                        radius: Theme.inputRadius
+                        color: Theme.surfaceAlt
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: Theme.spacingSm
+
+                            Text {
+                                text: Icons.info
+                                font.family: Icons.family
+                                font.pixelSize: Theme.fontSizeNormal
+                                color: Theme.textMuted
+                            }
+
+                            Label {
+                                text: "GitHub connection enables project tracking and repository management"
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.textSecondary
                             }

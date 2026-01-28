@@ -16,6 +16,14 @@ pub struct Config {
     /// Weather settings
     #[serde(default)]
     pub weather: WeatherConfig,
+
+    /// Projects settings
+    #[serde(default)]
+    pub projects: ProjectsConfig,
+
+    /// GitHub OAuth settings
+    #[serde(default)]
+    pub github: GitHubConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -67,6 +75,62 @@ impl Default for WeatherConfig {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectsConfig {
+    /// Sync interval in minutes (default: 5)
+    #[serde(default = "default_sync_interval")]
+    pub sync_interval_minutes: u32,
+    /// Auto-create status labels on repos (default: true)
+    #[serde(default = "default_auto_create_labels")]
+    pub auto_create_labels: bool,
+}
+
+fn default_sync_interval() -> u32 {
+    5
+}
+
+fn default_auto_create_labels() -> bool {
+    true
+}
+
+impl Default for ProjectsConfig {
+    fn default() -> Self {
+        Self {
+            sync_interval_minutes: default_sync_interval(),
+            auto_create_labels: default_auto_create_labels(),
+        }
+    }
+}
+
+/// GitHub OAuth configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitHubConfig {
+    /// GitHub OAuth App Client ID
+    /// Create at: https://github.com/settings/developers
+    pub client_id: String,
+    /// GitHub OAuth App Client Secret
+    pub client_secret: String,
+}
+
+impl GitHubConfig {
+    /// Check if credentials are configured (not placeholders)
+    pub fn is_configured(&self) -> bool {
+        !self.client_id.is_empty()
+            && !self.client_secret.is_empty()
+            && !self.client_id.starts_with("YOUR_")
+            && !self.client_secret.starts_with("YOUR_")
+    }
+}
+
+impl Default for GitHubConfig {
+    fn default() -> Self {
+        Self {
+            client_id: "YOUR_GITHUB_CLIENT_ID".to_string(),
+            client_secret: "YOUR_GITHUB_CLIENT_SECRET".to_string(),
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         let config_dir = dirs::config_dir()
@@ -85,6 +149,8 @@ impl Default for Config {
                 dark_mode: false,
             },
             weather: WeatherConfig::default(),
+            projects: ProjectsConfig::default(),
+            github: GitHubConfig::default(),
         }
     }
 }

@@ -15,3 +15,9 @@ url.workspace = true
 
 # Date/time handling
 chrono = { version = "0.4", features = ["serde"] }
+
+# SQLite for local storage
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+[dev-dependencies]
+tempfile = "3"

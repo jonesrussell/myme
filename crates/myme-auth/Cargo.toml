@@ -15,8 +15,8 @@ tracing.workspace = true
 # OAuth2
 oauth2 = "4.4"
 
-# Secure storage
-keyring = "3.2"
+# Directory paths
+dirs = "5.0"
 
 # HTTP server for OAuth callback
 warp = "0.3"

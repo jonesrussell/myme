@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
-use keyring::Entry;
 use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::PathBuf;
 
 /// Token set for OAuth2 authentication
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,26 +33,40 @@ impl TokenSet {
     }
 }
 
-/// Secure storage for OAuth tokens using platform keyring
+/// Secure storage for OAuth tokens using file-based storage
+/// Tokens are stored in the user's config directory
 pub struct SecureStorage;
 
 impl SecureStorage {
+    /// Get the token file path for a service
+    fn token_path(service: &str) -> Result<PathBuf> {
+        let config_dir = dirs::config_dir()
+            .context("Failed to get config directory")?
+            .join("myme")
+            .join("tokens");
+
+        // Ensure directory exists
+        fs::create_dir_all(&config_dir)
+            .context("Failed to create tokens directory")?;
+
+        Ok(config_dir.join(format!("{}.json", service)))
+    }
+
     /// Store a token set securely
     ///
     /// # Arguments
     /// * `service` - Service identifier (e.g., "github", "google")
     /// * `token_set` - The token set to store
     pub fn store_token(service: &str, token_set: &TokenSet) -> Result<()> {
-        let entry = Entry::new("myme", service)
-            .context("Failed to create keyring entry")?;
+        let path = Self::token_path(service)?;
 
-        let json = serde_json::to_string(token_set)
+        let json = serde_json::to_string_pretty(token_set)
             .context("Failed to serialize token set")?;
 
-        entry.set_password(&json)
-            .context("Failed to store token in keyring")?;
+        fs::write(&path, &json)
+            .context("Failed to write token file")?;
 
-        tracing::info!("Stored token for service: {}", service);
+        tracing::info!("Stored token for service: {} at {:?}", service, path);
         Ok(())
     }
 
@@ -60,16 +75,15 @@ impl SecureStorage {
     /// # Arguments
     /// * `service` - Service identifier (e.g., "github", "google")
     pub fn retrieve_token(service: &str) -> Result<TokenSet> {
-        let entry = Entry::new("myme", service)
-            .context("Failed to create keyring entry")?;
+        let path = Self::token_path(service)?;
 
-        let json = entry.get_password()
-            .context("Failed to retrieve token from keyring")?;
+        let json = fs::read_to_string(&path)
+            .context("Failed to read token file")?;
 
         let token_set: TokenSet = serde_json::from_str(&json)
             .context("Failed to deserialize token set")?;
 
-        tracing::debug!("Retrieved token for service: {}", service);
+        tracing::info!("Retrieved token for service: {}", service);
         Ok(token_set)
     }
 
@@ -78,13 +92,14 @@ impl SecureStorage {
     /// # Arguments
     /// * `service` - Service identifier (e.g., "github", "google")
     pub fn delete_token(service: &str) -> Result<()> {
-        let entry = Entry::new("myme", service)
-            .context("Failed to create keyring entry")?;
+        let path = Self::token_path(service)?;
 
-        entry.delete_credential()
-            .context("Failed to delete token from keyring")?;
+        if path.exists() {
+            fs::remove_file(&path)
+                .context("Failed to delete token file")?;
+            tracing::info!("Deleted token for service: {}", service);
+        }
 
-        tracing::info!("Deleted token for service: {}", service);
         Ok(())
     }
 
