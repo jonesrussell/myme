@@ -21,6 +21,10 @@ pub struct Config {
     #[serde(default)]
     pub projects: ProjectsConfig,
 
+    /// Repos settings (local search path for git repositories)
+    #[serde(default)]
+    pub repos: ReposConfig,
+
     /// GitHub OAuth settings
     #[serde(default)]
     pub github: GitHubConfig,
@@ -102,6 +106,55 @@ impl Default for ProjectsConfig {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReposConfig {
+    /// Base directory to search for local git repositories (e.g. ~/dev)
+    #[serde(default = "default_repos_local_search_path_str")]
+    pub local_search_path: String,
+}
+
+fn default_repos_local_search_path_str() -> String {
+    default_repos_local_search_path()
+        .to_string_lossy()
+        .into_owned()
+}
+
+fn default_repos_local_search_path() -> PathBuf {
+    dirs::home_dir()
+        .map(|h| h.join("dev"))
+        .unwrap_or_else(|| PathBuf::from("."))
+}
+
+impl Default for ReposConfig {
+    fn default() -> Self {
+        Self {
+            local_search_path: default_repos_local_search_path_str(),
+        }
+    }
+}
+
+impl ReposConfig {
+    /// Returns (effective_path, config_path_invalid).
+    /// effective_path: valid directory to use (config path if valid, else fallback).
+    /// config_path_invalid: true if configured path was invalid (missing or not a directory).
+    pub fn effective_local_search_path(&self) -> (PathBuf, bool) {
+        let configured = PathBuf::from(&self.local_search_path);
+        let invalid = !configured.exists() || !configured.is_dir();
+        if invalid {
+            let fallback = default_repos_local_search_path();
+            let fallback_valid = fallback.exists() && fallback.is_dir();
+            let effective = if fallback_valid {
+                fallback
+            } else {
+                PathBuf::from(".")
+            };
+            (effective, true)
+        } else {
+            (configured, false)
+        }
+    }
+}
+
 /// GitHub OAuth configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GitHubConfig {
@@ -150,6 +203,7 @@ impl Default for Config {
             },
             weather: WeatherConfig::default(),
             projects: ProjectsConfig::default(),
+            repos: ReposConfig::default(),
             github: GitHubConfig::default(),
         }
     }

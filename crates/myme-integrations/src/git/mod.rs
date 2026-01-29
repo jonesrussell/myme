@@ -173,30 +173,93 @@ impl GitOperations {
         Self::get_repository_info(target_path)
     }
 
-    /// Pull latest changes from remote
+    /// Fetch from remote (update refs only, no merge).
     ///
     /// # Arguments
     /// * `path` - Repository path
-    pub fn pull(path: &Path) -> Result<()> {
+    pub fn fetch(path: &Path) -> Result<()> {
         let repo = Git2Repository::open(path)
             .context("Failed to open git repository")?;
 
-        // Get the current branch
-        let head = repo.head()
-            .context("Failed to get HEAD reference")?;
+        let head = repo.head().context("Failed to get HEAD reference")?;
+        let branch_name = head.shorthand().context("Failed to get branch name")?;
 
-        let branch_name = head.shorthand()
-            .context("Failed to get branch name")?;
-
-        // Fetch from origin
         let mut remote = repo.find_remote("origin")
             .context("Failed to find remote 'origin'")?;
 
         remote.fetch(&[branch_name], None, None)
             .context("Failed to fetch from remote")?;
 
-        tracing::info!("Pulled latest changes for {:?}", path);
+        tracing::info!("Fetched latest for {:?}", path);
         Ok(())
+    }
+
+    /// Pull latest changes (fetch + merge).
+    ///
+    /// # Arguments
+    /// * `path` - Repository path
+    pub fn pull(path: &Path) -> Result<()> {
+        Self::fetch(path)?;
+
+        let repo = Git2Repository::open(path)
+            .context("Failed to open git repository")?;
+
+        let fetch_head = repo.find_reference("FETCH_HEAD")
+            .context("Failed to find FETCH_HEAD")?;
+        let fetch_commit = repo.reference_to_annotated_commit(&fetch_head)
+            .context("Failed to resolve FETCH_HEAD")?;
+
+        let (analysis, _) = repo.merge_analysis(&[&fetch_commit])
+            .context("Failed to analyze merge")?;
+
+        if analysis.is_up_to_date() {
+            tracing::info!("Already up to date: {:?}", path);
+            return Ok(());
+        }
+
+        if analysis.is_fast_forward() {
+            let refname = format!("refs/heads/{}", repo.head().context("HEAD")?.shorthand().context("branch")?);
+            let mut reference = repo.find_reference(&refname)
+                .context("Failed to find branch ref")?;
+            reference.set_target(fetch_commit.id(), "fast-forward")
+                .context("Failed to update ref")?;
+            repo.set_head(&refname).context("Failed to set HEAD")?;
+            repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))
+                .context("Failed to checkout")?;
+            tracing::info!("Fast-forwarded {:?}", path);
+            return Ok(());
+        }
+
+        if analysis.is_normal() {
+            repo.merge(&[&fetch_commit], None, None)
+                .context("Failed to merge")?;
+            let mut index = repo.index().context("Failed to get index")?;
+            if index.has_conflicts() {
+                anyhow::bail!("Merge conflicts; resolve manually");
+            }
+            index.write().context("Failed to write index")?;
+            let tree_oid = index.write_tree().context("Failed to write tree")?;
+            let tree = repo.find_tree(tree_oid).context("Failed to find tree")?;
+            let head_ref = repo.head().context("HEAD")?;
+            let head_commit = repo.find_commit(head_ref.target().context("HEAD target")?)
+                .context("Failed to find HEAD commit")?;
+            let their_commit = repo.find_commit(fetch_commit.id())
+                .context("Failed to find fetch commit")?;
+            let sig = repo.signature().context("Failed to get signature")?;
+            repo.commit(
+                Some("HEAD"),
+                &sig,
+                &sig,
+                "Merge",
+                &tree,
+                &[&head_commit, &their_commit],
+            )
+            .context("Failed to create merge commit")?;
+            tracing::info!("Merged for {:?}", path);
+            return Ok(());
+        }
+
+        anyhow::bail!("Merge not possible (e.g. unrelated histories)");
     }
 
     /// Push changes to remote

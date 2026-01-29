@@ -23,6 +23,12 @@ static PROJECT_STORE: OnceLock<Arc<std::sync::Mutex<ProjectStore>>> = OnceLock::
 // GitHub OAuth provider
 static GITHUB_AUTH_PROVIDER: OnceLock<Arc<GitHubAuth>> = OnceLock::new();
 
+// Repo service channel
+static REPO_SERVICE_TX: OnceLock<std::sync::mpsc::Sender<crate::services::RepoServiceMessage>> =
+    OnceLock::new();
+static REPO_SERVICE_RX: OnceLock<std::sync::Mutex<std::sync::mpsc::Receiver<crate::services::RepoServiceMessage>>> =
+    OnceLock::new();
+
 /// Initialize the tokio runtime (call once at application startup)
 fn get_or_init_runtime() -> tokio::runtime::Handle {
     RUNTIME.get_or_init(|| {
@@ -360,6 +366,37 @@ pub fn get_github_auth_and_runtime() -> Option<(Arc<GitHubAuth>, tokio::runtime:
     let provider = GITHUB_AUTH_PROVIDER.get()?.clone();
     let runtime = RUNTIME.get()?.handle().clone();
     Some((provider, runtime))
+}
+
+/// Get effective repos local search path and whether config path was invalid.
+/// Returns (effective_path, config_path_invalid).
+pub fn get_repos_local_search_path() -> Option<(std::path::PathBuf, bool)> {
+    let config = myme_core::Config::load().ok()?;
+    Some(config.repos.effective_local_search_path())
+}
+
+/// Initialize repo service channel. Call once when RepoModel is first created.
+/// Returns true if initialized (or already initialized).
+pub fn init_repo_service_channel() -> bool {
+    if REPO_SERVICE_TX.get().is_some() {
+        return true;
+    }
+    let (tx, rx) = std::sync::mpsc::channel();
+    REPO_SERVICE_TX.set(tx).ok();
+    REPO_SERVICE_RX.set(std::sync::Mutex::new(rx)).ok();
+    true
+}
+
+/// Get repo service sender for request_* calls. None if init_repo_service_channel not called yet.
+pub fn get_repo_service_tx(
+) -> Option<std::sync::mpsc::Sender<crate::services::RepoServiceMessage>> {
+    REPO_SERVICE_TX.get().cloned()
+}
+
+/// Non-blocking recv from repo service channel. Called by RepoModel::poll_channel.
+pub fn try_recv_repo_message() -> Option<crate::services::RepoServiceMessage> {
+    let rx = REPO_SERVICE_RX.get()?;
+    rx.lock().ok()?.try_recv().ok()
 }
 
 /// Reinitialize GitHub client after successful OAuth

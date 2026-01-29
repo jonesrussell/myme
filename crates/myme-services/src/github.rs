@@ -16,6 +16,12 @@ pub struct GitHubRepo {
     pub full_name: String,
     pub description: Option<String>,
     pub html_url: String,
+    /// HTTPS clone URL (e.g. https://github.com/owner/repo.git)
+    #[serde(default)]
+    pub clone_url: Option<String>,
+    /// SSH clone URL (e.g. git@github.com:owner/repo.git)
+    #[serde(default)]
+    pub ssh_url: Option<String>,
     pub private: bool,
     pub default_branch: String,
     #[serde(default)]
