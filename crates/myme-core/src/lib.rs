@@ -1,9 +1,10 @@
 pub mod app;
 pub mod config;
 pub mod plugin;
+pub mod repo_op_state;
 
 pub use app::App;
-pub use config::{Config, TemperatureUnit, WeatherConfig};
+pub use config::{Config, GitHubConfig, TemperatureUnit, WeatherConfig};
 pub use plugin::{PluginContext, PluginProvider, UiComponent};
 
 use anyhow::Result;

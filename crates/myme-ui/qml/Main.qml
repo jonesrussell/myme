@@ -156,10 +156,16 @@ ApplicationWindow {
                             enabled: true
                         },
                         {
+                            id: "projects",
+                            icon: Icons.squaresFour,
+                            label: "Projects",
+                            enabled: true
+                        },
+                        {
                             id: "repos",
                             icon: Icons.folderSimple,
                             label: "Repos",
-                            enabled: false
+                            enabled: true
                         },
                         {
                             id: "weather",
@@ -198,6 +204,8 @@ ApplicationWindow {
                                     currentPage = modelData.id;
                                     if (modelData.id === "notes")
                                         stackView.replace("pages/NotePage.qml");
+                                    else if (modelData.id === "projects")
+                                        stackView.replace("pages/ProjectsPage.qml");
                                     else if (modelData.id === "repos")
                                         stackView.replace("pages/RepoPage.qml");
                                     else if (modelData.id === "weather")

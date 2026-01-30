@@ -16,6 +16,18 @@ pub struct Config {
     /// Weather settings
     #[serde(default)]
     pub weather: WeatherConfig,
+
+    /// Projects settings
+    #[serde(default)]
+    pub projects: ProjectsConfig,
+
+    /// Repos settings (local search path for git repositories)
+    #[serde(default)]
+    pub repos: ReposConfig,
+
+    /// GitHub OAuth settings
+    #[serde(default)]
+    pub github: GitHubConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -67,6 +79,111 @@ impl Default for WeatherConfig {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectsConfig {
+    /// Sync interval in minutes (default: 5)
+    #[serde(default = "default_sync_interval")]
+    pub sync_interval_minutes: u32,
+    /// Auto-create status labels on repos (default: true)
+    #[serde(default = "default_auto_create_labels")]
+    pub auto_create_labels: bool,
+}
+
+fn default_sync_interval() -> u32 {
+    5
+}
+
+fn default_auto_create_labels() -> bool {
+    true
+}
+
+impl Default for ProjectsConfig {
+    fn default() -> Self {
+        Self {
+            sync_interval_minutes: default_sync_interval(),
+            auto_create_labels: default_auto_create_labels(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReposConfig {
+    /// Base directory to search for local git repositories (e.g. ~/dev)
+    #[serde(default = "default_repos_local_search_path_str")]
+    pub local_search_path: String,
+}
+
+fn default_repos_local_search_path_str() -> String {
+    default_repos_local_search_path()
+        .to_string_lossy()
+        .into_owned()
+}
+
+fn default_repos_local_search_path() -> PathBuf {
+    dirs::home_dir()
+        .map(|h| h.join("dev"))
+        .unwrap_or_else(|| PathBuf::from("."))
+}
+
+impl Default for ReposConfig {
+    fn default() -> Self {
+        Self {
+            local_search_path: default_repos_local_search_path_str(),
+        }
+    }
+}
+
+impl ReposConfig {
+    /// Returns (effective_path, config_path_invalid).
+    /// effective_path: valid directory to use (config path if valid, else fallback).
+    /// config_path_invalid: true if configured path was invalid (missing or not a directory).
+    pub fn effective_local_search_path(&self) -> (PathBuf, bool) {
+        let configured = PathBuf::from(&self.local_search_path);
+        let invalid = !configured.exists() || !configured.is_dir();
+        if invalid {
+            let fallback = default_repos_local_search_path();
+            let fallback_valid = fallback.exists() && fallback.is_dir();
+            let effective = if fallback_valid {
+                fallback
+            } else {
+                PathBuf::from(".")
+            };
+            (effective, true)
+        } else {
+            (configured, false)
+        }
+    }
+}
+
+/// GitHub OAuth configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitHubConfig {
+    /// GitHub OAuth App Client ID
+    /// Create at: https://github.com/settings/developers
+    pub client_id: String,
+    /// GitHub OAuth App Client Secret
+    pub client_secret: String,
+}
+
+impl GitHubConfig {
+    /// Check if credentials are configured (not placeholders)
+    pub fn is_configured(&self) -> bool {
+        !self.client_id.is_empty()
+            && !self.client_secret.is_empty()
+            && !self.client_id.starts_with("YOUR_")
+            && !self.client_secret.starts_with("YOUR_")
+    }
+}
+
+impl Default for GitHubConfig {
+    fn default() -> Self {
+        Self {
+            client_id: "YOUR_GITHUB_CLIENT_ID".to_string(),
+            client_secret: "YOUR_GITHUB_CLIENT_SECRET".to_string(),
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         let config_dir = dirs::config_dir()
@@ -85,6 +202,9 @@ impl Default for Config {
                 dark_mode: false,
             },
             weather: WeatherConfig::default(),
+            projects: ProjectsConfig::default(),
+            repos: ReposConfig::default(),
+            github: GitHubConfig::default(),
         }
     }
 }

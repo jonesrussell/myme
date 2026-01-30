@@ -4,7 +4,7 @@
 use anyhow::{Context, Result};
 use oauth2::{
     AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge,
-    RedirectUrl, Scope, TokenResponse, TokenUrl,
+    PkceCodeVerifier, RedirectUrl, Scope, TokenResponse, TokenUrl,
 };
 use oauth2::basic::BasicClient;
 use oauth2::reqwest::async_http_client;
@@ -46,8 +46,8 @@ pub trait OAuth2Provider: Send + Sync {
 
     /// Start the OAuth2 authorization flow
     ///
-    /// Returns the authorization URL to open in browser
-    fn authorize(&self) -> Result<(String, CsrfToken)> {
+    /// Returns the authorization URL, CSRF token, and PKCE verifier
+    fn authorize(&self) -> Result<(String, CsrfToken, PkceCodeVerifier)> {
         let config = self.config();
 
         let client = BasicClient::new(
@@ -64,7 +64,7 @@ pub trait OAuth2Provider: Send + Sync {
         );
 
         // Generate PKCE challenge for additional security
-        let (pkce_challenge, _pkce_verifier) = PkceCodeChallenge::new_random_sha256();
+        let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
         // Generate authorization URL
         let mut auth_request = client
@@ -79,15 +79,15 @@ pub trait OAuth2Provider: Send + Sync {
             .set_pkce_challenge(pkce_challenge)
             .url();
 
-        Ok((auth_url.to_string(), csrf_token))
+        Ok((auth_url.to_string(), csrf_token, pkce_verifier))
     }
 
     /// Complete the OAuth2 flow with authorization code
     ///
     /// # Arguments
     /// * `code` - Authorization code from callback
-    /// * `state` - CSRF token for validation
-    async fn exchange_code(&self, code: String, _state: String) -> Result<TokenSet> {
+    /// * `pkce_verifier` - PKCE verifier from authorization step
+    async fn exchange_code(&self, code: String, pkce_verifier: PkceCodeVerifier) -> Result<TokenSet> {
         let config = self.config();
 
         let client = BasicClient::new(
@@ -98,17 +98,19 @@ pub trait OAuth2Provider: Send + Sync {
         )
         .set_redirect_uri(RedirectUrl::new(config.redirect_uri.clone())?);
 
-        // Exchange code for token
+        // Exchange code for token with PKCE verifier
         let token_result = client
             .exchange_code(AuthorizationCode::new(code))
+            .set_pkce_verifier(pkce_verifier)
             .request_async(async_http_client)
             .await
             .context("Failed to exchange authorization code")?;
 
         // Calculate expiration
+        // GitHub OAuth tokens don't expire, so default to 1 year if no expiration provided
         let expires_in = token_result.expires_in()
             .map(|d| d.as_secs() as i64)
-            .unwrap_or(3600); // Default 1 hour
+            .unwrap_or(365 * 24 * 3600); // Default 1 year for non-expiring tokens
         let expires_at = chrono::Utc::now().timestamp() + expires_in;
 
         // Extract scopes
@@ -133,8 +135,8 @@ pub trait OAuth2Provider: Send + Sync {
 
     /// Perform full OAuth2 flow with browser and local callback server
     async fn authenticate(&self) -> Result<TokenSet> {
-        // Generate authorization URL
-        let (auth_url, csrf_token) = self.authorize()?;
+        // Generate authorization URL and PKCE verifier
+        let (auth_url, csrf_token, pkce_verifier) = self.authorize()?;
 
         tracing::info!("Opening browser for OAuth2 authorization...");
         tracing::info!("Auth URL: {}", auth_url);
@@ -155,9 +157,81 @@ pub trait OAuth2Provider: Send + Sync {
                     let _ = sender.send((code, state));
                 }
 
-                Ok::<_, warp::Rejection>(warp::reply::html(
-                    "<html><body><h1>Authorization successful!</h1><p>You can close this window and return to MyMe.</p></body></html>"
-                ))
+                Ok::<_, warp::Rejection>(warp::reply::html(r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyMe - Authorization Successful</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #e4e6eb;
+        }
+        .container {
+            text-align: center;
+            padding: 3rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            max-width: 420px;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: #6c63ff;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: white;
+        }
+        h1 {
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+            color: #4ade80;
+        }
+        .subtitle {
+            font-size: 1rem;
+            color: #a8a8b3;
+            margin-bottom: 1.5rem;
+        }
+        .message {
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            color: #4ade80;
+        }
+        .close-hint {
+            margin-top: 1.5rem;
+            font-size: 0.875rem;
+            color: #6c6c7a;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">M</div>
+        <h1>Authorization Successful</h1>
+        <p class="subtitle">GitHub account connected</p>
+        <div class="message">
+            ✓ You can close this window and return to MyMe
+        </div>
+        <p class="close-hint">This window can be safely closed</p>
+    </div>
+</body>
+</html>"#))
             });
 
         // Start server in background
@@ -177,8 +251,10 @@ pub trait OAuth2Provider: Send + Sync {
             anyhow::bail!("CSRF token mismatch");
         }
 
-        // Exchange code for token
-        self.exchange_code(code, state).await
+        tracing::info!("Received OAuth callback, exchanging code for token...");
+
+        // Exchange code for token with PKCE verifier
+        self.exchange_code(code, pkce_verifier).await
     }
 
     /// Get stored token, or None if not authenticated

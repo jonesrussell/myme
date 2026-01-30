@@ -282,6 +282,34 @@ Page {
                                     verticalAlignment: Text.AlignVCenter
                                 }
                             }
+
+                            Button {
+                                text: Icons.squaresFour
+                                font.family: Icons.family
+                                onClicked: {
+                                    promoteDialog.noteIndex = noteDelegate.index;
+                                    promoteDialog.noteTitle = noteModel.get_content(noteDelegate.index);
+                                    promoteDialog.open();
+                                }
+                                ToolTip.text: "Promote to Project"
+                                ToolTip.visible: hovered
+
+                                background: Rectangle {
+                                    radius: Theme.buttonRadius
+                                    color: parent.hovered ? Theme.primary + "30" : "transparent"
+                                    border.color: Theme.primary
+                                    border.width: 1
+                                }
+
+                                contentItem: Text {
+                                    text: parent.text
+                                    font.family: Icons.family
+                                    color: Theme.primary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
                         }
                     }
                 }
@@ -497,5 +525,137 @@ Page {
 
     Component.onCompleted: {
         noteModel.fetch_notes();
+    }
+
+    // Promote to Project dialog
+    Dialog {
+        id: promoteDialog
+        title: "Promote to Project"
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        modal: true
+
+        anchors.centerIn: parent
+        width: Math.min(parent.width * 0.8, 450)
+
+        property int noteIndex: -1
+        property string noteTitle: ""
+
+        background: Rectangle {
+            color: Theme.surface
+            border.color: Theme.border
+            border.width: 1
+            radius: Theme.cardRadius
+        }
+
+        header: Rectangle {
+            color: Theme.surfaceAlt
+            height: 50
+            radius: Theme.cardRadius
+
+            Rectangle {
+                anchors.bottom: parent.bottom
+                width: parent.width
+                height: Theme.cardRadius
+                color: Theme.surfaceAlt
+            }
+
+            Label {
+                anchors.centerIn: parent
+                text: "Promote to Project"
+                font.pixelSize: Theme.fontSizeMedium
+                font.bold: true
+                color: Theme.text
+            }
+        }
+
+        onAccepted: {
+            if (repoNameField.text.trim().length > 0) {
+                // Navigate to projects page
+                // Note: Full integration would add the project via ProjectModel
+                stackView.replace("ProjectsPage.qml");
+            }
+        }
+
+        onRejected: {
+            repoNameField.text = "";
+        }
+
+        onOpened: {
+            repoNameField.text = "";
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: Theme.spacingMd
+
+            Label {
+                text: "Create a new project from this note?"
+                font.pixelSize: Theme.fontSizeNormal
+                color: Theme.text
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: notePreview.implicitHeight + Theme.spacingMd * 2
+                color: Theme.surfaceAlt
+                border.color: Theme.border
+                radius: Theme.cardRadius
+
+                Label {
+                    id: notePreview
+                    anchors.fill: parent
+                    anchors.margins: Theme.spacingMd
+                    text: promoteDialog.noteTitle
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.textSecondary
+                    wrapMode: Text.WordWrap
+                    elide: Text.ElideRight
+                    maximumLineCount: 3
+                }
+            }
+
+            Label {
+                text: "GitHub Repository (owner/repo):"
+                font.pixelSize: Theme.fontSizeNormal
+                color: Theme.text
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 40
+                color: Theme.inputBg
+                border.color: repoNameField.activeFocus ? Theme.primary : Theme.inputBorder
+                border.width: repoNameField.activeFocus ? 2 : 1
+                radius: Theme.inputRadius
+
+                TextField {
+                    id: repoNameField
+                    anchors.fill: parent
+                    anchors.margins: 2
+                    placeholderText: "e.g., jonesrussell/my-project"
+                    color: Theme.text
+                    placeholderTextColor: Theme.textMuted
+
+                    background: Rectangle {
+                        color: "transparent"
+                    }
+                }
+            }
+
+            Label {
+                text: "The note will be used as the project description."
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.textMuted
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+        }
+
+        Shortcut {
+            sequence: "Ctrl+Return"
+            onActivated: promoteDialog.accept()
+        }
     }
 }

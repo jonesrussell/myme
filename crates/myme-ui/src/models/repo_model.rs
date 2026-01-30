@@ -1,10 +1,19 @@
 use core::pin::Pin;
-use std::sync::Arc;
 
 use cxx_qt::CxxQtType;
 use cxx_qt_lib::QString;
-use myme_auth::{GitHubAuth, OAuth2Provider};
-use myme_integrations::{GitHubClient, Repository};
+use myme_integrations::{RepoEntry, RepoState};
+
+use crate::bridge;
+use crate::services::{request_clone, request_pull, request_refresh, RepoServiceMessage};
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum OpState {
+    Idle,
+    BusyRefresh,
+    BusyClone(usize),
+    BusyPull(usize),
+}
 
 #[cxx_qt::bridge]
 pub mod qobject {
@@ -19,55 +28,69 @@ pub mod qobject {
         #[qproperty(bool, loading)]
         #[qproperty(bool, authenticated)]
         #[qproperty(QString, error_message)]
-        #[qproperty(QString, username)]
+        #[qproperty(bool, config_path_invalid)]
+        #[qproperty(QString, effective_path)]
         type RepoModel = super::RepoModelRust;
 
         #[qinvokable]
-        fn authenticate(self: Pin<&mut RepoModel>);
+        fn check_auth(self: Pin<&mut RepoModel>);
 
         #[qinvokable]
-        fn fetch_repositories(self: Pin<&mut RepoModel>);
+        fn fetch_repos(self: Pin<&mut RepoModel>);
 
         #[qinvokable]
-        fn create_repository(
-            self: Pin<&mut RepoModel>,
-            name: &QString,
-            description: &QString,
-            is_private: bool,
-        );
+        fn clone_repo(self: Pin<&mut RepoModel>, index: i32);
 
         #[qinvokable]
-        fn sign_out(self: Pin<&mut RepoModel>);
+        fn pull_repo(self: Pin<&mut RepoModel>, index: i32);
+
+        #[qinvokable]
+        fn poll_channel(self: Pin<&mut RepoModel>);
+
+        #[qinvokable]
+        fn clear_error(self: Pin<&mut RepoModel>);
 
         #[qinvokable]
         fn row_count(self: &RepoModel) -> i32;
 
         #[qinvokable]
-        fn get_name(self: &RepoModel, index: i32) -> QString;
-
-        #[qinvokable]
         fn get_full_name(self: &RepoModel, index: i32) -> QString;
 
         #[qinvokable]
-        fn get_description(self: &RepoModel, index: i32) -> QString;
+        fn get_local_path(self: &RepoModel, index: i32) -> QString;
 
         #[qinvokable]
-        fn get_url(self: &RepoModel, index: i32) -> QString;
+        fn get_branch(self: &RepoModel, index: i32) -> QString;
+
+        #[qinvokable]
+        fn get_is_clean(self: &RepoModel, index: i32) -> bool;
+
+        #[qinvokable]
+        fn get_has_local(self: &RepoModel, index: i32) -> bool;
+
+        #[qinvokable]
+        fn get_has_github(self: &RepoModel, index: i32) -> bool;
 
         #[qinvokable]
         fn get_clone_url(self: &RepoModel, index: i32) -> QString;
 
         #[qinvokable]
-        fn get_stars(self: &RepoModel, index: i32) -> i32;
+        fn get_state(self: &RepoModel, index: i32) -> i32;
 
         #[qinvokable]
-        fn get_is_private(self: &RepoModel, index: i32) -> bool;
+        fn get_busy(self: &RepoModel, index: i32) -> bool;
+
+        #[qinvokable]
+        fn get_html_url(self: &RepoModel, index: i32) -> QString;
 
         #[qsignal]
         fn repos_changed(self: Pin<&mut RepoModel>);
 
         #[qsignal]
-        fn authentication_changed(self: Pin<&mut RepoModel>);
+        fn auth_changed(self: Pin<&mut RepoModel>);
+
+        #[qsignal]
+        fn error_occurred(self: Pin<&mut RepoModel>);
     }
 }
 
@@ -76,225 +99,310 @@ pub struct RepoModelRust {
     loading: bool,
     authenticated: bool,
     error_message: QString,
-    username: QString,
-    repos: Vec<Repository>,
-    github_auth: Option<Arc<GitHubAuth>>,
-    github_client: Option<Arc<GitHubClient>>,
-    runtime: Option<tokio::runtime::Handle>,
+    config_path_invalid: bool,
+    effective_path: QString,
+    entries: Vec<RepoEntry>,
+    op_state: OpState,
 }
 
 impl RepoModelRust {
-    pub fn initialize(
-        &mut self,
-        client_id: String,
-        client_secret: String,
-        runtime: tokio::runtime::Handle,
-    ) {
-        let auth = Arc::new(GitHubAuth::new(client_id, client_secret));
-        let authenticated = auth.is_authenticated();
-
-        // Create client if authenticated and token is available
-        let client = auth
-            .get_token()
-            .filter(|_| authenticated)
-            .map(|token| Arc::new(GitHubClient::new(token.access_token)));
-
-        self.github_auth = Some(auth);
-        self.github_client = client;
-        self.runtime = Some(runtime);
-        self.authenticated = authenticated;
-    }
-
-    /// Get repository at index if valid, returns None for invalid indices
-    fn get_repo(&self, index: i32) -> Option<&Repository> {
+    fn get_entry(&self, index: i32) -> Option<&RepoEntry> {
         if index < 0 {
             return None;
         }
-        self.repos.get(index as usize)
+        self.entries.get(index as usize)
+    }
+
+    fn set_error(&mut self, s: String) {
+        self.error_message = QString::from(&s);
+    }
+
+    fn clear_error_msg(&mut self) {
+        self.error_message = QString::from("");
+    }
+}
+
+impl Default for OpState {
+    fn default() -> Self {
+        OpState::Idle
     }
 }
 
 impl qobject::RepoModel {
-    pub fn authenticate(mut self: Pin<&mut Self>) {
-        let auth = match &self.as_ref().rust().github_auth {
-            Some(a) => a.clone(),
-            None => {
-                self.as_mut().set_error_message(QString::from("Not initialized"));
-                return;
-            }
-        };
-
-        let runtime = match &self.as_ref().rust().runtime {
-            Some(r) => r.clone(),
-            None => return,
-        };
-
-        self.as_mut().set_loading(true);
-        self.as_mut().set_error_message(QString::from(""));
-
-        runtime.spawn(async move {
-            match auth.authenticate().await {
-                Ok(token_set) => {
-                    tracing::info!("GitHub authentication successful");
-                    // Create client with new token
-                    let _client = GitHubClient::new(token_set.access_token);
-                    // TODO: Signal authentication success to UI
-                }
-                Err(e) => {
-                    tracing::error!("GitHub authentication failed: {}", e);
-                    // TODO: Signal authentication failure to UI
-                }
-            }
-        });
+    pub fn check_auth(mut self: Pin<&mut Self>) {
+        bridge::init_repo_service_channel();
+        let auth = bridge::is_github_authenticated();
+        self.as_mut().set_authenticated(auth);
+        if let Some((path, invalid)) = bridge::get_repos_local_search_path() {
+            self.as_mut().set_config_path_invalid(invalid);
+            self.as_mut()
+                .set_effective_path(QString::from(path.to_string_lossy().as_ref()));
+        }
+        self.as_mut().auth_changed();
     }
 
-    pub fn fetch_repositories(mut self: Pin<&mut Self>) {
-        let client = match &self.as_ref().rust().github_client {
-            Some(c) => c.clone(),
-            None => {
-                self.as_mut().set_error_message(QString::from("Not authenticated"));
-                return;
-            }
-        };
-
-        let runtime = match &self.as_ref().rust().runtime {
-            Some(r) => r.clone(),
-            None => return,
-        };
-
-        self.as_mut().set_loading(true);
-        self.as_mut().set_error_message(QString::from(""));
-
-        runtime.spawn(async move {
-            match client.list_repositories(Some("all"), Some("updated")).await {
-                Ok(repos) => {
-                    tracing::info!("Successfully fetched {} repositories", repos.len());
-                    // TODO: Update repos list in model and signal UI
-                }
-                Err(e) => {
-                    tracing::error!("Failed to fetch repositories: {}", e);
-                    // TODO: Signal error to UI
-                }
-            }
-        });
-    }
-
-    pub fn create_repository(
-        mut self: Pin<&mut Self>,
-        name: &QString,
-        description: &QString,
-        is_private: bool,
-    ) {
-        let client = match &self.as_ref().rust().github_client {
-            Some(c) => c.clone(),
-            None => {
-                self.as_mut().set_error_message(QString::from("Not authenticated"));
-                return;
-            }
-        };
-
-        let runtime = match &self.as_ref().rust().runtime {
-            Some(r) => r.clone(),
-            None => return,
-        };
-
-        let name_str = name.to_string();
-        let desc_str = description.to_string();
-        let desc_opt = if desc_str.is_empty() {
-            None
-        } else {
-            Some(desc_str)
-        };
-
-        self.as_mut().set_loading(true);
-
-        runtime.spawn(async move {
-            match client.create_repository(&name_str, desc_opt.as_deref(), is_private).await {
-                Ok(repo) => {
-                    tracing::info!("Created repository: {}", repo.full_name);
-                    // TODO: Add repo to list and signal UI
-                }
-                Err(e) => {
-                    tracing::error!("Failed to create repository: {}", e);
-                    // TODO: Signal error to UI
-                }
-            }
-        });
-    }
-
-    pub fn sign_out(mut self: Pin<&mut Self>) {
-        if let Some(auth) = &self.as_ref().rust().github_auth {
-            if let Err(e) = auth.sign_out() {
-                tracing::error!("Failed to sign out: {}", e);
-                self.as_mut().set_error_message(QString::from(&format!("Sign out failed: {}", e)));
-                return;
-            }
+    pub fn fetch_repos(mut self: Pin<&mut Self>) {
+        if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
+            self.as_mut().rust_mut().set_error("Operation in progress".into());
+            self.as_mut().error_occurred();
+            return;
         }
 
-        // Clear authentication state
-        self.as_mut().set_authenticated(false);
-        self.as_mut().set_username(QString::from(""));
+        bridge::init_repo_service_channel();
+        let tx = match bridge::get_repo_service_tx() {
+            Some(t) => t,
+            None => {
+                self.as_mut().rust_mut().set_error("Repo service not initialized".into());
+                self.as_mut().error_occurred();
+                return;
+            }
+        };
 
-        // Clear repos
-        self.as_mut().rust_mut().repos.clear();
-        self.as_mut().rust_mut().github_client = None;
+        if let Some((path, invalid)) = bridge::get_repos_local_search_path() {
+            self.as_mut().set_config_path_invalid(invalid);
+            self.as_mut()
+                .set_effective_path(QString::from(path.to_string_lossy().as_ref()));
+        }
+        self.as_mut().set_loading(true);
+        self.as_mut().rust_mut().op_state = OpState::BusyRefresh;
+        self.as_mut().rust_mut().clear_error_msg();
 
+        request_refresh(&tx);
+    }
+
+    pub fn clone_repo(mut self: Pin<&mut Self>, index: i32) {
+        if index < 0 {
+            return;
+        }
+        let i = index as usize;
+        if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
+            return;
+        }
+        let ent = match self.as_ref().rust().get_entry(index) {
+            Some(e) => e.clone(),
+            None => return,
+        };
+        if ent.state != RepoState::GitHubOnly {
+            return;
+        }
+        let clone_url = ent.github.as_ref().and_then(|g| {
+            g.clone_url
+                .clone()
+                .filter(|s| !s.is_empty())
+                .or_else(|| Some(format!("https://github.com/{}.git", g.full_name)))
+        });
+        let clone_url = match clone_url {
+            Some(u) => u,
+            None => {
+                self.as_mut()
+                    .rust_mut()
+                    .set_error("No clone URL for this repo".into());
+                self.as_mut().error_occurred();
+                return;
+            }
+        };
+
+        let (base_path, _) = bridge::get_repos_local_search_path().unwrap_or((
+            std::path::PathBuf::from("."),
+            true,
+        ));
+        let full_name = ent.full_name.clone();
+        let sep = std::path::MAIN_SEPARATOR;
+        let target_path = base_path.join(full_name.replace('/', &sep.to_string()));
+
+        bridge::init_repo_service_channel();
+        let tx = match bridge::get_repo_service_tx() {
+            Some(t) => t,
+            None => return,
+        };
+
+        self.as_mut().rust_mut().op_state = OpState::BusyClone(i);
+        if let Some(e) = self.as_mut().rust_mut().entries.get_mut(i) {
+            e.busy = true;
+        }
         self.as_mut().repos_changed();
-        self.as_mut().authentication_changed();
 
-        tracing::info!("Signed out from GitHub");
+        request_clone(&tx, i, clone_url, target_path);
+    }
+
+    pub fn pull_repo(mut self: Pin<&mut Self>, index: i32) {
+        if index < 0 {
+            return;
+        }
+        let i = index as usize;
+        if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
+            return;
+        }
+        let path = match self.as_ref().rust().get_entry(index) {
+            Some(e) => e.local.as_ref().map(|l| l.path.clone()),
+            None => None,
+        };
+        let path = match path {
+            Some(p) => p,
+            None => return,
+        };
+
+        bridge::init_repo_service_channel();
+        let tx = match bridge::get_repo_service_tx() {
+            Some(t) => t,
+            None => return,
+        };
+
+        self.as_mut().rust_mut().op_state = OpState::BusyPull(i);
+        if let Some(e) = self.as_mut().rust_mut().entries.get_mut(i) {
+            e.busy = true;
+        }
+        self.as_mut().repos_changed();
+
+        request_pull(&tx, i, path);
+    }
+
+    pub fn poll_channel(mut self: Pin<&mut Self>) {
+        let msg = match bridge::try_recv_repo_message() {
+            Some(m) => m,
+            None => return,
+        };
+
+        match msg {
+            RepoServiceMessage::RefreshDone(res) => {
+                self.as_mut().set_loading(false);
+                self.as_mut().rust_mut().op_state = OpState::Idle;
+                match res {
+                    Ok(entries) => {
+                        self.as_mut().rust_mut().clear_error_msg();
+                        self.as_mut().rust_mut().entries = entries;
+                        self.as_mut().repos_changed();
+                    }
+                    Err(e) => {
+                        self.as_mut()
+                            .rust_mut()
+                            .set_error(e.to_string());
+                        self.as_mut().error_occurred();
+                    }
+                }
+            }
+            RepoServiceMessage::CloneDone { index, result } => {
+                if let Some(e) = self.as_mut().rust_mut().entries.get_mut(index) {
+                    e.busy = false;
+                }
+                self.as_mut().rust_mut().op_state = OpState::Idle;
+                self.as_mut().repos_changed();
+
+                if let Err(e) = result {
+                    self.as_mut().rust_mut().set_error(e.to_string());
+                    self.as_mut().error_occurred();
+                }
+                // Trigger refresh after clone
+                if let Some(tx) = bridge::get_repo_service_tx() {
+                    self.as_mut().set_loading(true);
+                    self.as_mut().rust_mut().op_state = OpState::BusyRefresh;
+                    request_refresh(&tx);
+                }
+            }
+            RepoServiceMessage::PullDone { index, result } => {
+                if let Some(e) = self.as_mut().rust_mut().entries.get_mut(index) {
+                    e.busy = false;
+                }
+                self.as_mut().rust_mut().op_state = OpState::Idle;
+                self.as_mut().repos_changed();
+
+                if let Err(e) = result {
+                    self.as_mut().rust_mut().set_error(e.to_string());
+                    self.as_mut().error_occurred();
+                }
+                if let Some(tx) = bridge::get_repo_service_tx() {
+                    self.as_mut().set_loading(true);
+                    self.as_mut().rust_mut().op_state = OpState::BusyRefresh;
+                    request_refresh(&tx);
+                }
+            }
+        }
+    }
+
+    pub fn clear_error(mut self: Pin<&mut Self>) {
+        self.as_mut().rust_mut().clear_error_msg();
     }
 
     pub fn row_count(&self) -> i32 {
-        self.rust().repos.len() as i32
-    }
-
-    pub fn get_name(&self, index: i32) -> QString {
-        self.rust()
-            .get_repo(index)
-            .map(|repo| QString::from(&repo.name))
-            .unwrap_or_else(|| QString::from(""))
+        self.rust().entries.len() as i32
     }
 
     pub fn get_full_name(&self, index: i32) -> QString {
         self.rust()
-            .get_repo(index)
-            .map(|repo| QString::from(&repo.full_name))
+            .get_entry(index)
+            .map(|e| QString::from(&e.full_name))
             .unwrap_or_else(|| QString::from(""))
     }
 
-    pub fn get_description(&self, index: i32) -> QString {
+    pub fn get_local_path(&self, index: i32) -> QString {
         self.rust()
-            .get_repo(index)
-            .map(|repo| QString::from(repo.description.as_deref().unwrap_or("")))
+            .get_entry(index)
+            .and_then(|e| e.local.as_ref())
+            .map(|l| l.path.to_string_lossy().into_owned())
+            .map(QString::from)
             .unwrap_or_else(|| QString::from(""))
     }
 
-    pub fn get_url(&self, index: i32) -> QString {
+    pub fn get_branch(&self, index: i32) -> QString {
         self.rust()
-            .get_repo(index)
-            .map(|repo| QString::from(&repo.html_url))
+            .get_entry(index)
+            .and_then(|e| e.local.as_ref())
+            .and_then(|l| l.current_branch.as_deref())
+            .map(QString::from)
             .unwrap_or_else(|| QString::from(""))
+    }
+
+    pub fn get_is_clean(&self, index: i32) -> bool {
+        self.rust()
+            .get_entry(index)
+            .and_then(|e| e.local.as_ref())
+            .map(|l| l.is_clean)
+            .unwrap_or(true)
+    }
+
+    pub fn get_has_local(&self, index: i32) -> bool {
+        self.rust()
+            .get_entry(index)
+            .map(|e| e.local.is_some())
+            .unwrap_or(false)
+    }
+
+    pub fn get_has_github(&self, index: i32) -> bool {
+        self.rust()
+            .get_entry(index)
+            .map(|e| e.github.is_some())
+            .unwrap_or(false)
     }
 
     pub fn get_clone_url(&self, index: i32) -> QString {
         self.rust()
-            .get_repo(index)
-            .map(|repo| QString::from(&repo.clone_url))
+            .get_entry(index)
+            .and_then(|e| e.github.as_ref())
+            .and_then(|g| g.clone_url.as_deref())
+            .map(QString::from)
             .unwrap_or_else(|| QString::from(""))
     }
 
-    pub fn get_stars(&self, index: i32) -> i32 {
+    pub fn get_state(&self, index: i32) -> i32 {
         self.rust()
-            .get_repo(index)
-            .map(|repo| repo.stargazers_count as i32)
+            .get_entry(index)
+            .map(|e| e.state as i32)
             .unwrap_or(0)
     }
 
-    pub fn get_is_private(&self, index: i32) -> bool {
+    pub fn get_busy(&self, index: i32) -> bool {
         self.rust()
-            .get_repo(index)
-            .map(|repo| repo.private)
+            .get_entry(index)
+            .map(|e| e.busy)
             .unwrap_or(false)
+    }
+
+    pub fn get_html_url(&self, index: i32) -> QString {
+        self.rust()
+            .get_entry(index)
+            .and_then(|e| e.github.as_ref())
+            .map(|g| &g.html_url)
+            .map(QString::from)
+            .unwrap_or_else(|| QString::from(""))
     }
 }

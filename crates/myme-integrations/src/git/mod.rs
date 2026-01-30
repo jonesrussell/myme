@@ -173,30 +173,93 @@ impl GitOperations {
         Self::get_repository_info(target_path)
     }
 
-    /// Pull latest changes from remote
+    /// Fetch from remote (update refs only, no merge).
     ///
     /// # Arguments
     /// * `path` - Repository path
-    pub fn pull(path: &Path) -> Result<()> {
+    pub fn fetch(path: &Path) -> Result<()> {
         let repo = Git2Repository::open(path)
             .context("Failed to open git repository")?;
 
-        // Get the current branch
-        let head = repo.head()
-            .context("Failed to get HEAD reference")?;
+        let head = repo.head().context("Failed to get HEAD reference")?;
+        let branch_name = head.shorthand().context("Failed to get branch name")?;
 
-        let branch_name = head.shorthand()
-            .context("Failed to get branch name")?;
-
-        // Fetch from origin
         let mut remote = repo.find_remote("origin")
             .context("Failed to find remote 'origin'")?;
 
         remote.fetch(&[branch_name], None, None)
             .context("Failed to fetch from remote")?;
 
-        tracing::info!("Pulled latest changes for {:?}", path);
+        tracing::info!("Fetched latest for {:?}", path);
         Ok(())
+    }
+
+    /// Pull latest changes (fetch + merge).
+    ///
+    /// # Arguments
+    /// * `path` - Repository path
+    pub fn pull(path: &Path) -> Result<()> {
+        Self::fetch(path)?;
+
+        let repo = Git2Repository::open(path)
+            .context("Failed to open git repository")?;
+
+        let fetch_head = repo.find_reference("FETCH_HEAD")
+            .context("Failed to find FETCH_HEAD")?;
+        let fetch_commit = repo.reference_to_annotated_commit(&fetch_head)
+            .context("Failed to resolve FETCH_HEAD")?;
+
+        let (analysis, _) = repo.merge_analysis(&[&fetch_commit])
+            .context("Failed to analyze merge")?;
+
+        if analysis.is_up_to_date() {
+            tracing::info!("Already up to date: {:?}", path);
+            return Ok(());
+        }
+
+        if analysis.is_fast_forward() {
+            let refname = format!("refs/heads/{}", repo.head().context("HEAD")?.shorthand().context("branch")?);
+            let mut reference = repo.find_reference(&refname)
+                .context("Failed to find branch ref")?;
+            reference.set_target(fetch_commit.id(), "fast-forward")
+                .context("Failed to update ref")?;
+            repo.set_head(&refname).context("Failed to set HEAD")?;
+            repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))
+                .context("Failed to checkout")?;
+            tracing::info!("Fast-forwarded {:?}", path);
+            return Ok(());
+        }
+
+        if analysis.is_normal() {
+            repo.merge(&[&fetch_commit], None, None)
+                .context("Failed to merge")?;
+            let mut index = repo.index().context("Failed to get index")?;
+            if index.has_conflicts() {
+                anyhow::bail!("Merge conflicts; resolve manually");
+            }
+            index.write().context("Failed to write index")?;
+            let tree_oid = index.write_tree().context("Failed to write tree")?;
+            let tree = repo.find_tree(tree_oid).context("Failed to find tree")?;
+            let head_ref = repo.head().context("HEAD")?;
+            let head_commit = repo.find_commit(head_ref.target().context("HEAD target")?)
+                .context("Failed to find HEAD commit")?;
+            let their_commit = repo.find_commit(fetch_commit.id())
+                .context("Failed to find fetch commit")?;
+            let sig = repo.signature().context("Failed to get signature")?;
+            repo.commit(
+                Some("HEAD"),
+                &sig,
+                &sig,
+                "Merge",
+                &tree,
+                &[&head_commit, &their_commit],
+            )
+            .context("Failed to create merge commit")?;
+            tracing::info!("Merged for {:?}", path);
+            return Ok(());
+        }
+
+        anyhow::bail!("Merge not possible (e.g. unrelated histories)");
     }
 
     /// Push changes to remote
@@ -264,10 +327,127 @@ impl GitOperations {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::io::Write;
 
     #[test]
     fn test_git_operations_creation() {
         // Just verify the struct exists
         let _ops = GitOperations;
+    }
+
+    #[test]
+    fn test_discover_repositories() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let base = dir.path();
+
+        // Create repo1
+        let repo1_path = base.join("repo1");
+        fs::create_dir_all(&repo1_path).unwrap();
+        let repo1 = git2::Repository::init(&repo1_path).unwrap();
+        let _sig = repo1.signature().unwrap();
+        let mut index = repo1.index().unwrap();
+        let tree_id = index.write_tree().unwrap();
+        let tree = repo1.find_tree(tree_id).unwrap();
+        repo1
+            .commit(Some("HEAD"), &_sig, &_sig, "init", &tree, &[])
+            .unwrap();
+
+        // Create repo2
+        let repo2_path = base.join("repo2");
+        fs::create_dir_all(&repo2_path).unwrap();
+        git2::Repository::init(&repo2_path).unwrap();
+
+        // Create non-repo dir
+        fs::create_dir_all(base.join("not-a-repo")).unwrap();
+
+        // Create nested: repo3 inside a folder
+        let nested = base.join("nested").join("repo3");
+        fs::create_dir_all(&nested).unwrap();
+        git2::Repository::init(&nested).unwrap();
+
+        let repos = GitOperations::discover_repositories(base, Some(5)).unwrap();
+        assert!(repos.len() >= 3, "expected at least 3 repos, got {}", repos.len());
+        let names: Vec<_> = repos.iter().map(|r| r.name.as_str()).collect();
+        assert!(names.contains(&"repo1"));
+        assert!(names.contains(&"repo2"));
+        assert!(names.contains(&"repo3"));
+    }
+
+    #[test]
+    fn test_clone_from_local() {
+        // Create a "remote" repo
+        let remote_dir = tempfile::tempdir().expect("remote temp dir");
+        let remote_path = remote_dir.path();
+        let repo = git2::Repository::init(remote_path).unwrap();
+        let sig = repo.signature().unwrap();
+
+        // Add and commit a file
+        let readme = remote_path.join("README");
+        fs::File::create(&readme)
+            .unwrap()
+            .write_all(b"hello")
+            .unwrap();
+        let mut index = repo.index().unwrap();
+        index.add_path(std::path::Path::new("README")).unwrap();
+        index.write().unwrap();
+        let tree_id = index.write_tree().unwrap();
+        let tree = repo.find_tree(tree_id).unwrap();
+        repo.commit(Some("HEAD"), &sig, &sig, "initial", &tree, &[])
+            .unwrap();
+
+        // Clone to target (file:// URL on Windows needs 3 slashes)
+        let target_dir = tempfile::tempdir().expect("target temp dir");
+        let target_path = target_dir.path().join("cloned");
+        let url = format!("file:///{}", remote_path.display().to_string().replace('\\', "/"));
+        let result = GitOperations::clone_repository(&url, &target_path);
+        assert!(result.is_ok(), "clone failed: {:?}", result.err());
+        let cloned = result.unwrap();
+        assert_eq!(cloned.name, "cloned");
+        assert!(target_path.join("README").exists());
+    }
+
+    #[test]
+    fn test_fetch_and_pull() {
+        // Create remote repo with a commit
+        let remote_dir = tempfile::tempdir().expect("remote");
+        let remote_path = remote_dir.path();
+        let remote_repo = git2::Repository::init(remote_path).unwrap();
+        let sig = remote_repo.signature().unwrap();
+        let readme = remote_path.join("file.txt");
+        fs::File::create(&readme).unwrap().write_all(b"v1").unwrap();
+        let mut index = remote_repo.index().unwrap();
+        index.add_path(std::path::Path::new("file.txt")).unwrap();
+        index.write().unwrap();
+        let tree_id = index.write_tree().unwrap();
+        let tree = remote_repo.find_tree(tree_id).unwrap();
+        remote_repo
+            .commit(Some("HEAD"), &sig, &sig, "v1", &tree, &[])
+            .unwrap();
+
+        // Clone it
+        let target_dir = tempfile::tempdir().expect("target");
+        let target_path = target_dir.path().join("clone");
+        let url = format!("file:///{}", remote_path.display().to_string().replace('\\', "/"));
+        GitOperations::clone_repository(&url, &target_path).unwrap();
+
+        // Add another commit to remote
+        fs::File::create(&readme).unwrap().write_all(b"v2").unwrap();
+        let mut index = remote_repo.index().unwrap();
+        index.add_path(std::path::Path::new("file.txt")).unwrap();
+        index.write().unwrap();
+        let tree_id = index.write_tree().unwrap();
+        let tree = remote_repo.find_tree(tree_id).unwrap();
+        let head = remote_repo.head().unwrap().target().unwrap();
+        let parent = remote_repo.find_commit(head).unwrap();
+        remote_repo
+            .commit(Some("HEAD"), &sig, &sig, "v2", &tree, &[&parent])
+            .unwrap();
+
+        // Fetch and pull in clone
+        let pull_result = GitOperations::pull(&target_path);
+        assert!(pull_result.is_ok(), "pull failed: {:?}", pull_result.err());
+        let content = fs::read_to_string(target_path.join("file.txt")).unwrap();
+        assert_eq!(content, "v2");
     }
 }
