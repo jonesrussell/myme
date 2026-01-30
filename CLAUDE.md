@@ -227,6 +227,10 @@ Default config is created automatically on first run. Configuration is loaded us
 - Registered in `crates/myme-ui/qml/qmldir`
 - Phosphor Icons font used for UI icons (`crates/myme-ui/qml/fonts/Phosphor.ttf`)
 
+### cxx-qt Invokable Naming
+- cxx-qt exposes Rust methods to QML using the **exact snake_case names** from Rust (no camelCase conversion)
+- In QML, always call invokable methods with snake_case: `model.check_auth()`, `model.fetch_repos()`, `model.poll_channel()` — not `checkAuth`, `fetchRepos`, or `pollChannel`
+
 ## Important Files
 
 - [Cargo.toml](Cargo.toml) - Workspace configuration with shared dependencies

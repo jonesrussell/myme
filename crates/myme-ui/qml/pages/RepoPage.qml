@@ -27,7 +27,7 @@ Page {
         interval: 100
         running: true
         repeat: true
-        onTriggered: repoModel.pollChannel()
+        onTriggered: repoModel.poll_channel()
     }
 
     Connections {

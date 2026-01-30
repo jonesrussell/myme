@@ -96,6 +96,12 @@ If you see `cannot open input file 'kernel32.lib'`, the Windows SDK may be incom
    - MSVC v142 - VS 2022 C++ x64/x86 build tools (or latest version)
 4. Install/Repair the components
 
+## Unresolved Externals (LNK2019) - WinHTTP / UuidCreate
+
+If you see errors like `unresolved external symbol __imp_WinHttp*` or `__imp_UuidCreate`, the CMake build is missing Windows system libraries required by reqwest's native-tls backend.
+
+**Fix:** CMakeLists.txt already links `winhttp` and `rpcrt4`. Ensure you're using the latest CMakeLists.txt. If issues persist, verify the Windows SDK is fully installed (Visual Studio Installer → Modify → Individual components → Windows SDK).
+
 ## Current Status
 
 The Rust architecture is complete and correct. The build failure is environment-specific (Windows linker/SDK path issue), not a code issue.

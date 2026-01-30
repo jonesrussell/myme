@@ -137,6 +137,10 @@ if(CXX_QT_GEN_LIB)
             crypt32
             secur32
             Shlwapi
+            # WinHTTP (reqwest native-tls on Windows)
+            winhttp
+            # RPC runtime (UuidCreate)
+            rpcrt4
             # Windows Runtime library for WinRT APIs (Geolocation, etc.)
             runtimeobject
         )
