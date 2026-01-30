@@ -5,7 +5,7 @@ use cxx_qt_lib::QString;
 use myme_integrations::{RepoEntry, RepoState};
 
 use crate::bridge;
-use crate::services::{request_clone, request_pull, request_refresh, RepoError, RepoServiceMessage};
+use crate::services::{request_clone, request_pull, request_refresh, RepoServiceMessage};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum OpState {
@@ -130,6 +130,7 @@ impl Default for OpState {
 
 impl qobject::RepoModel {
     pub fn check_auth(mut self: Pin<&mut Self>) {
+        bridge::init_repo_service_channel();
         let auth = bridge::is_github_authenticated();
         self.as_mut().set_authenticated(auth);
         if let Some((path, invalid)) = bridge::get_repos_local_search_path() {
@@ -164,7 +165,7 @@ impl qobject::RepoModel {
         }
         self.as_mut().set_loading(true);
         self.as_mut().rust_mut().op_state = OpState::BusyRefresh;
-        self.as_mut().clear_error_msg();
+        self.as_mut().rust_mut().clear_error_msg();
 
         request_refresh(&tx);
     }

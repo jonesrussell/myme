@@ -1,238 +1,281 @@
 import QtQuick
-import QtQuick.Controls as Controls
+import QtQuick.Controls
 import QtQuick.Layouts
-import org.kde.kirigami as Kirigami
-import com.myme 1.0
+import myme_ui
+import ".."
+import "../components"
 
-Kirigami.ScrollablePage {
+Page {
     id: repoPage
-    title: "GitHub Repositories"
+    title: "Repos"
+
+    property int repoCount: 0
+
+    background: Rectangle {
+        color: Theme.background
+    }
 
     RepoModel {
         id: repoModel
-        Component.onCompleted: {
-            // Check if authenticated and fetch repos
-            if (authenticated) {
-                fetchRepositories()
+    }
+
+    AuthModel {
+        id: authModel
+    }
+
+    Timer {
+        interval: 100
+        running: true
+        repeat: true
+        onTriggered: repoModel.pollChannel()
+    }
+
+    Connections {
+        target: repoModel
+        function onLoadingChanged() {
+            if (!repoModel.loading) {
+                repoPage.repoCount = repoModel.rowCount();
             }
+        }
+        function onReposChanged() {
+            repoPage.repoCount = repoModel.rowCount();
+        }
+        function onAuthenticatedChanged() {
+            repoModel.fetchRepos();
         }
     }
 
-    actions: [
-        Kirigami.Action {
-            text: repoModel && repoModel.authenticated ? "Sign Out" : "Sign In"
-            icon.name: repoModel && repoModel.authenticated ? "system-log-out" : "system-log-in"
-            onTriggered: {
-                if (repoModel.authenticated) {
-                    repoModel.signOut()
-                } else {
-                    repoModel.authenticate()
+    Connections {
+        target: authModel
+        function onAuth_completed() {
+            repoModel.checkAuth();
+            repoModel.fetchRepos();
+        }
+    }
+
+    Component.onCompleted: {
+        repoModel.checkAuth();
+    }
+
+    header: ToolBar {
+        background: Rectangle {
+            color: "transparent"
+        }
+
+        RowLayout {
+            anchors.fill: parent
+            spacing: Theme.spacingMd
+
+            Label {
+                text: "Repos"
+                font.pixelSize: Theme.fontSizeLarge
+                font.bold: true
+                color: Theme.text
+                Layout.fillWidth: true
+                leftPadding: Theme.spacingMd
+            }
+
+            ToolButton {
+                text: Icons.arrowsClockwise
+                font.family: Icons.family
+                font.pixelSize: 18
+                enabled: !repoModel.loading
+                onClicked: repoModel.fetchRepos()
+                ToolTip.text: "Refresh"
+                ToolTip.visible: hovered
+
+                background: Rectangle {
+                    radius: Theme.buttonRadius
+                    color: parent.hovered ? Theme.surfaceHover : "transparent"
+                    opacity: parent.enabled ? 1.0 : 0.5
+                }
+
+                contentItem: Text {
+                    text: parent.text
+                    font.family: Icons.family
+                    color: Theme.text
+                    font.pixelSize: 18
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    opacity: parent.enabled ? 1.0 : 0.5
                 }
             }
-        },
-        Kirigami.Action {
-            text: "Refresh"
-            icon.name: "view-refresh"
-            enabled: repoModel && repoModel.authenticated && !repoModel.loading
-            onTriggered: repoModel.fetchRepositories()
-        },
-        Kirigami.Action {
-            text: "New Repository"
-            icon.name: "list-add"
-            enabled: repoModel && repoModel.authenticated && !repoModel.loading
-            onTriggered: newRepoDialog.open()
+
+            Item { width: Theme.spacingSm }
         }
-    ]
+    }
 
     ColumnLayout {
-        width: parent.width
-        spacing: Kirigami.Units.largeSpacing
+        anchors.fill: parent
+        anchors.margins: Theme.spacingLg
+        spacing: Theme.spacingMd
 
-        // Authentication status banner
-        Kirigami.InlineMessage {
+        Rectangle {
+            visible: !repoModel.authenticated
             Layout.fillWidth: true
-            visible: repoModel && !repoModel.authenticated
-            type: Kirigami.MessageType.Information
-            text: "Sign in to GitHub to view and manage your repositories"
-            actions: [
-                Kirigami.Action {
-                    text: "Sign In"
-                    icon.name: "system-log-in"
-                    onTriggered: repoModel.authenticate()
+            Layout.preferredHeight: 56
+            color: Theme.infoBg
+            border.color: Theme.info
+            border.width: 1
+            radius: Theme.cardRadius
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: Theme.spacingMd
+                spacing: Theme.spacingMd
+
+                Label {
+                    text: "Sign in to GitHub to see your remote repositories."
+                    font.pixelSize: Theme.fontSizeNormal
+                    color: Theme.text
+                    Layout.fillWidth: true
                 }
-            ]
+
+                Button {
+                    text: "Sign in"
+                    onClicked: authModel.authenticate()
+                    background: Rectangle {
+                        radius: Theme.buttonRadius
+                        color: parent.hovered ? Theme.primaryHover : Theme.primary
+                    }
+                    contentItem: Label {
+                        text: parent.text
+                        color: Theme.primaryText
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+            }
         }
 
-        // Error message
-        Kirigami.InlineMessage {
+        Rectangle {
+            visible: repoModel.configPathInvalid
             Layout.fillWidth: true
-            visible: repoModel && repoModel.errorMessage !== ""
-            type: Kirigami.MessageType.Error
-            text: repoModel ? repoModel.errorMessage : ""
+            Layout.preferredHeight: 56
+            color: Theme.warningBg
+            border.color: Theme.warning
+            border.width: 1
+            radius: Theme.cardRadius
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: Theme.spacingMd
+                spacing: Theme.spacingMd
+
+                Label {
+                    text: "Repository path is invalid (missing or not a directory). Using: " + (repoModel.effectivePath || ".")
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.text
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+            }
         }
 
-        // Loading indicator
-        Controls.BusyIndicator {
+        Rectangle {
+            visible: repoModel.errorMessage !== ""
+            Layout.fillWidth: true
+            Layout.preferredHeight: 56
+            color: Theme.errorBg
+            border.color: Theme.error
+            border.width: 1
+            radius: Theme.cardRadius
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: Theme.spacingMd
+                spacing: Theme.spacingMd
+
+                Label {
+                    text: repoModel.errorMessage
+                    font.pixelSize: Theme.fontSizeNormal
+                    color: Theme.error
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+
+                Button {
+                    text: "Dismiss"
+                    onClicked: repoModel.clearError()
+                    background: Rectangle {
+                        radius: Theme.buttonRadius
+                        color: parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt
+                    }
+                    contentItem: Label {
+                        text: parent.text
+                        color: Theme.text
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+            }
+        }
+
+        BusyIndicator {
+            visible: repoModel.loading
+            running: repoModel.loading
             Layout.alignment: Qt.AlignHCenter
-            visible: repoModel && repoModel.loading
-            running: repoModel && repoModel.loading
         }
 
-        // User info
-        RowLayout {
-            Layout.fillWidth: true
-            visible: repoModel && repoModel.authenticated && repoModel.username !== ""
-            spacing: Kirigami.Units.smallSpacing
-
-            Controls.Label {
-                text: "Signed in as:"
-                font.bold: true
-            }
-
-            Controls.Label {
-                text: repoModel ? repoModel.username : ""
-            }
-        }
-
-        // Repository list
-        Repeater {
-            model: repoModel ? repoModel.rowCount() : 0
-
-            delegate: Kirigami.Card {
-                Layout.fillWidth: true
-
-                header: RowLayout {
-                    Kirigami.Heading {
-                        text: repoModel.getFullName(index)
-                        level: 3
-                        Layout.fillWidth: true
-                    }
-
-                    Controls.Label {
-                        text: repoModel.getIsPrivate(index) ? "Private" : "Public"
-                        color: repoModel.getIsPrivate(index) ?
-                            Kirigami.Theme.neutralTextColor :
-                            Kirigami.Theme.positiveTextColor
-                    }
-                }
-
-                contentItem: ColumnLayout {
-                    spacing: Kirigami.Units.smallSpacing
-
-                    Controls.Label {
-                        text: repoModel.getDescription(index)
-                        visible: repoModel.getDescription(index) !== ""
-                        wrapMode: Text.WordWrap
-                        Layout.fillWidth: true
-                    }
-
-                    RowLayout {
-                        spacing: Kirigami.Units.largeSpacing
-
-                        RowLayout {
-                            spacing: Kirigami.Units.smallSpacing
-                            Controls.Label {
-                                text: "★"
-                                color: Kirigami.Theme.highlightColor
-                            }
-                            Controls.Label {
-                                text: repoModel.getStars(index)
-                            }
-                        }
-                    }
-                }
-
-                actions: [
-                    Kirigami.Action {
-                        text: "Open in Browser"
-                        icon.name: "internet-web-browser"
-                        onTriggered: Qt.openUrlExternally(repoModel.getUrl(index))
-                    },
-                    Kirigami.Action {
-                        text: "Copy Clone URL"
-                        icon.name: "edit-copy"
-                        onTriggered: {
-                            // Copy to clipboard
-                            clipboardHelper.text = repoModel.getCloneUrl(index)
-                            clipboardHelper.selectAll()
-                            clipboardHelper.copy()
-                            showPassiveNotification("Clone URL copied to clipboard")
-                        }
-                    }
-                ]
-            }
-        }
-
-        // Placeholder when no repos
-        Kirigami.PlaceholderMessage {
+        ScrollView {
+            visible: !repoModel.loading && repoCount > 0
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: repoModel && repoModel.authenticated &&
-                     repoModel.rowCount() === 0 && !repoModel.loading
-            text: "No repositories found"
-            explanation: "Create a new repository to get started"
-            icon.name: "folder-git"
-        }
-    }
+            clip: true
 
-    // Hidden text field for clipboard operations
-    Controls.TextField {
-        id: clipboardHelper
-        visible: false
-    }
+            ColumnLayout {
+                width: parent.width - 20
+                spacing: Theme.spacingMd
 
-    // New repository dialog
-    Controls.Dialog {
-        id: newRepoDialog
-        title: "Create New Repository"
-        modal: true
-        standardButtons: Controls.Dialog.Ok | Controls.Dialog.Cancel
-        anchors.centerIn: parent
-        width: Math.min(500, parent.width - Kirigami.Units.gridUnit * 4)
-
-        onAccepted: {
-            if (repoNameField.text.trim() !== "") {
-                repoModel.createRepository(
-                    repoNameField.text.trim(),
-                    repoDescField.text.trim(),
-                    privateCheckBox.checked
-                )
-                repoNameField.text = ""
-                repoDescField.text = ""
-                privateCheckBox.checked = false
+                Repeater {
+                    model: repoCount
+                    delegate: RepoCard {
+                        index: modelData
+                        repoModel: repoModel
+                        Layout.fillWidth: true
+                    }
+                }
             }
         }
 
-        ColumnLayout {
-            anchors.fill: parent
-            spacing: Kirigami.Units.smallSpacing
+        Rectangle {
+            visible: !repoModel.loading && repoCount === 0
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            color: Theme.surface
+            border.color: Theme.border
+            border.width: 1
+            radius: Theme.cardRadius
 
-            Controls.Label {
-                text: "Repository Name:"
-            }
+            ColumnLayout {
+                anchors.centerIn: parent
+                spacing: Theme.spacingMd
 
-            Controls.TextField {
-                id: repoNameField
-                Layout.fillWidth: true
-                placeholderText: "my-awesome-project"
-            }
+                Label {
+                    text: Icons.folderSimple
+                    font.family: Icons.family
+                    font.pixelSize: 64
+                    color: Theme.textMuted
+                    Layout.alignment: Qt.AlignHCenter
+                }
 
-            Controls.Label {
-                text: "Description (optional):"
-                Layout.topMargin: Kirigami.Units.smallSpacing
-            }
+                Label {
+                    text: "No repositories found"
+                    font.pixelSize: Theme.fontSizeLarge
+                    font.bold: true
+                    color: Theme.text
+                    Layout.alignment: Qt.AlignHCenter
+                }
 
-            Controls.TextField {
-                id: repoDescField
-                Layout.fillWidth: true
-                placeholderText: "A short description of your project"
-            }
-
-            Controls.CheckBox {
-                id: privateCheckBox
-                text: "Private repository"
-                checked: false
-                Layout.topMargin: Kirigami.Units.smallSpacing
+                Label {
+                    text: repoModel.authenticated
+                        ? "Add local repos under your dev path, or clone from GitHub."
+                        : "Sign in to GitHub to see remote repos. Local repos from your dev path will still appear."
+                    font.pixelSize: Theme.fontSizeNormal
+                    color: Theme.textSecondary
+                    Layout.alignment: Qt.AlignHCenter
+                    horizontalAlignment: Text.AlignHCenter
+                }
             }
         }
     }

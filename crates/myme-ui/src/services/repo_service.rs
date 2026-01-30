@@ -3,10 +3,8 @@
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Duration;
 
 use myme_integrations::{match_repos, GitOperations, RepoEntry};
-use myme_services::GitHubClient;
 
 use crate::bridge;
 
@@ -203,4 +201,30 @@ pub fn request_pull(
             .map_err(|e| RepoError::Git(e.to_string()));
         let _ = tx.send(RepoServiceMessage::PullDone { index, result });
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn repo_error_display() {
+        assert!(format!("{}", RepoError::Git("x".into())).contains("Git"));
+        assert!(format!("{}", RepoError::GitHub("y".into())).contains("GitHub"));
+        assert!(format!("{}", RepoError::Io("i".into())).contains("IO"));
+        assert!(format!("{}", RepoError::Config("z".into())).contains("Config"));
+    }
+
+    #[test]
+    fn repo_service_message_variants() {
+        // Verify we can construct and match all message variants
+        let _refresh_ok: RepoServiceMessage =
+            RepoServiceMessage::RefreshDone(Ok(vec![]));
+        let _refresh_err: RepoServiceMessage =
+            RepoServiceMessage::RefreshDone(Err(RepoError::Config("x".into())));
+        let _clone: RepoServiceMessage =
+            RepoServiceMessage::CloneDone { index: 0, result: Ok(()) };
+        let _pull: RepoServiceMessage =
+            RepoServiceMessage::PullDone { index: 1, result: Err(RepoError::Git("e".into())) };
+    }
 }

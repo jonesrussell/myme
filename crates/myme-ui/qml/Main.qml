@@ -165,7 +165,7 @@ ApplicationWindow {
                             id: "repos",
                             icon: Icons.folderSimple,
                             label: "Repos",
-                            enabled: false
+                            enabled: true
                         },
                         {
                             id: "weather",

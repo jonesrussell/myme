@@ -29,3 +29,6 @@ chrono = { version = "0.4", features = ["serde"] }
 # Internal dependencies
 myme-auth = { path = "../myme-auth" }
 myme-services = { path = "../myme-services" }
+
+[dev-dependencies]
+tempfile = "3"
