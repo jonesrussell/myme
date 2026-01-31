@@ -1,3 +1,4 @@
+pub mod app_services;
 pub mod bridge;
 pub mod models;
 pub mod services;

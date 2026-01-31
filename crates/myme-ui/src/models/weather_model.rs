@@ -3,7 +3,10 @@ use std::sync::Arc;
 
 use cxx_qt::CxxQtType;
 use cxx_qt_lib::QString;
-use myme_weather::{WeatherCache, WeatherData, WeatherProvider, TemperatureUnit};
+use myme_weather::{TemperatureUnit, WeatherCache, WeatherData, WeatherProvider};
+
+use crate::bridge;
+use crate::services::{request_weather_fetch, WeatherServiceMessage};
 
 #[cxx_qt::bridge]
 pub mod qobject {
@@ -37,6 +40,10 @@ pub mod qobject {
 
         #[qinvokable]
         fn refresh(self: Pin<&mut WeatherModel>);
+
+        /// Poll for async operation results. Call this from a QML Timer.
+        #[qinvokable]
+        fn poll_channel(self: Pin<&mut WeatherModel>);
 
         #[qinvokable]
         fn set_temperature_unit(self: Pin<&mut WeatherModel>, unit: &QString);
@@ -82,7 +89,18 @@ pub mod qobject {
 
         #[qsignal]
         fn weather_changed(self: Pin<&mut WeatherModel>);
+
+        #[qsignal]
+        fn error_occurred(self: Pin<&mut WeatherModel>);
     }
+}
+
+/// Operation state tracking
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+enum OpState {
+    #[default]
+    Idle,
+    Fetching,
 }
 
 #[derive(Default)]
@@ -109,20 +127,19 @@ pub struct WeatherModelRust {
     weather_data: Option<WeatherData>,
     provider: Option<Arc<WeatherProvider>>,
     cache: Option<WeatherCache>,
-    runtime: Option<tokio::runtime::Handle>,
+    op_state: OpState,
 }
 
 impl WeatherModelRust {
     fn ensure_initialized(&mut self) {
-        if self.provider.is_some() && self.runtime.is_some() {
+        if self.provider.is_some() {
             return;
         }
 
         match crate::bridge::get_weather_services() {
-            Some((provider, cache, runtime)) => {
+            Some((provider, cache, _runtime)) => {
                 self.provider = Some(provider);
                 self.cache = Some(cache);
-                self.runtime = Some(runtime);
                 tracing::info!("WeatherModel auto-initialized from global services");
             }
             None => {
@@ -134,6 +151,14 @@ impl WeatherModelRust {
     fn store_weather_data(&mut self, data: &WeatherData) {
         self.weather_data = Some(data.clone());
     }
+
+    fn set_error(&mut self, msg: &str) {
+        self.error_message = QString::from(msg);
+    }
+
+    fn clear_error(&mut self) {
+        self.error_message = QString::from("");
+    }
 }
 
 impl qobject::WeatherModel {
@@ -144,8 +169,10 @@ impl qobject::WeatherModel {
         self.as_mut().set_feels_like(data.current.feels_like);
         self.as_mut().set_humidity(data.current.humidity as i32);
         self.as_mut().set_wind_speed(data.current.wind_speed);
-        self.as_mut().set_condition(QString::from(data.current.condition.description()));
-        self.as_mut().set_condition_icon(QString::from(data.current.condition.icon_name()));
+        self.as_mut()
+            .set_condition(QString::from(data.current.condition.description()));
+        self.as_mut()
+            .set_condition_icon(QString::from(data.current.condition.icon_name()));
 
         let location_name = data
             .location
@@ -164,9 +191,12 @@ impl qobject::WeatherModel {
         if let Some(today) = data.forecast.first() {
             self.as_mut().set_today_high(today.high);
             self.as_mut().set_today_low(today.low);
-            self.as_mut().set_precipitation_chance(today.precipitation_chance as i32);
-            self.as_mut().set_sunrise(QString::from(today.sunrise.format("%H:%M").to_string()));
-            self.as_mut().set_sunset(QString::from(today.sunset.format("%H:%M").to_string()));
+            self.as_mut()
+                .set_precipitation_chance(today.precipitation_chance as i32);
+            self.as_mut()
+                .set_sunrise(QString::from(today.sunrise.format("%H:%M").to_string()));
+            self.as_mut()
+                .set_sunset(QString::from(today.sunset.format("%H:%M").to_string()));
         }
 
         // Store weather data for forecast methods
@@ -174,32 +204,33 @@ impl qobject::WeatherModel {
         self.as_mut().set_has_data(true);
     }
 
+    /// Refresh weather data asynchronously (non-blocking)
     pub fn refresh(mut self: Pin<&mut Self>) {
         self.as_mut().rust_mut().ensure_initialized();
+
+        // Prevent concurrent operations
+        if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
+            tracing::warn!("refresh: operation already in progress");
+            return;
+        }
 
         let provider = match &self.as_ref().rust().provider {
             Some(p) => p.clone(),
             None => {
                 self.as_mut()
                     .set_error_message(QString::from("Weather service not initialized"));
+                self.as_mut().error_occurred();
                 return;
             }
         };
 
-        let runtime = match &self.as_ref().rust().runtime {
-            Some(r) => r.clone(),
-            None => return,
-        };
-
         // Check cache first - extract data to avoid borrow conflicts
-        let cache_result: Option<(WeatherData, bool, bool)> = self
-            .as_ref()
-            .rust()
-            .cache
-            .as_ref()
-            .and_then(|cache| {
+        let cache_result: Option<(WeatherData, bool, bool)> =
+            self.as_ref().rust().cache.as_ref().and_then(|cache| {
                 if !cache.is_expired() {
-                    cache.get().map(|data| (data.clone(), cache.is_stale(), cache.is_expired()))
+                    cache
+                        .get()
+                        .map(|data| (data.clone(), cache.is_stale(), cache.is_expired()))
                 } else {
                     None
                 }
@@ -218,46 +249,67 @@ impl qobject::WeatherModel {
             // Otherwise, continue to refresh in background
         }
 
-        self.as_mut().set_loading(true);
-        self.as_mut().set_error_message(QString::from(""));
-
-        // Get location and fetch weather
-        let result = runtime.block_on(async {
-            let location = myme_weather::location::get_current_location().await?;
-            tracing::info!(
-                "Got location: {}, {}",
-                location.latitude,
-                location.longitude
-            );
-            provider.fetch(&location).await
-        });
-
-        match result {
-            Ok(data) => {
-                tracing::info!("Weather data fetched successfully");
-
-                // Update cache
-                if let Some(cache) = &mut self.as_mut().rust_mut().cache {
-                    cache.update(data.clone());
-                    if let Err(e) = cache.save() {
-                        tracing::warn!("Failed to save weather cache: {}", e);
-                    }
-                }
-
-                self.as_mut().update_from_data(&data);
-                self.as_mut().set_loading(false);
-                self.as_mut().set_is_stale(false);
-                self.as_mut().weather_changed();
-            }
-            Err(e) => {
-                tracing::error!("Failed to fetch weather: {}", e);
+        // Initialize channel if needed
+        bridge::init_weather_service_channel();
+        let tx = match bridge::get_weather_service_tx() {
+            Some(t) => t,
+            None => {
                 self.as_mut()
-                    .set_error_message(QString::from(format!("Weather error: {}", e)));
-                self.as_mut().set_loading(false);
+                    .set_error_message(QString::from("Service channel not ready"));
+                self.as_mut().error_occurred();
+                return;
+            }
+        };
 
-                // If we have cached data, mark as stale but keep showing it
-                if self.as_ref().rust().has_data {
-                    self.as_mut().set_is_stale(true);
+        self.as_mut().set_loading(true);
+        self.as_mut().rust_mut().clear_error();
+        self.as_mut().rust_mut().op_state = OpState::Fetching;
+
+        // Spawn async operation (non-blocking)
+        request_weather_fetch(&tx, provider);
+    }
+
+    /// Poll for async operation results. Call this from a QML Timer (e.g., every 100ms).
+    pub fn poll_channel(mut self: Pin<&mut Self>) {
+        let msg = match bridge::try_recv_weather_message() {
+            Some(m) => m,
+            None => return,
+        };
+
+        match msg {
+            WeatherServiceMessage::FetchDone(result) => {
+                self.as_mut().set_loading(false);
+                self.as_mut().rust_mut().op_state = OpState::Idle;
+
+                match result {
+                    Ok(data) => {
+                        tracing::info!("Weather data fetched successfully");
+
+                        // Update cache
+                        if let Some(cache) = &mut self.as_mut().rust_mut().cache {
+                            cache.update(data.clone());
+                            if let Err(e) = cache.save() {
+                                tracing::warn!("Failed to save weather cache: {}", e);
+                            }
+                        }
+
+                        self.as_mut().rust_mut().clear_error();
+                        self.as_mut().update_from_data(&data);
+                        self.as_mut().set_is_stale(false);
+                        self.as_mut().weather_changed();
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to fetch weather: {}", e);
+                        self.as_mut()
+                            .rust_mut()
+                            .set_error(&format!("Weather error: {}", e));
+                        self.as_mut().error_occurred();
+
+                        // If we have cached data, mark as stale but keep showing it
+                        if self.as_ref().rust().has_data {
+                            self.as_mut().set_is_stale(true);
+                        }
+                    }
                 }
             }
         }

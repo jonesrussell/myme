@@ -39,6 +39,7 @@ impl GitOperations {
     /// # Arguments
     /// * `base_path` - Base directory to search for repositories
     /// * `max_depth` - Maximum directory depth to search (default: 3)
+    #[tracing::instrument(skip(base_path), fields(path = %base_path.display()), level = "info")]
     pub fn discover_repositories(base_path: &Path, max_depth: Option<usize>) -> Result<Vec<LocalRepo>> {
         let max_depth = max_depth.unwrap_or(3);
         let mut repos = Vec::new();
@@ -162,6 +163,7 @@ impl GitOperations {
     /// # Arguments
     /// * `url` - Repository URL to clone
     /// * `target_path` - Target directory for cloning
+    #[tracing::instrument(skip(target_path), fields(target = %target_path.display()), level = "info")]
     pub fn clone_repository(url: &str, target_path: &Path) -> Result<LocalRepo> {
         tracing::info!("Cloning repository from {} to {:?}", url, target_path);
 
@@ -177,6 +179,7 @@ impl GitOperations {
     ///
     /// # Arguments
     /// * `path` - Repository path
+    #[tracing::instrument(skip(path), fields(repo = %path.display()), level = "info")]
     pub fn fetch(path: &Path) -> Result<()> {
         let repo = Git2Repository::open(path)
             .context("Failed to open git repository")?;
@@ -198,6 +201,7 @@ impl GitOperations {
     ///
     /// # Arguments
     /// * `path` - Repository path
+    #[tracing::instrument(skip(path), fields(repo = %path.display()), level = "info")]
     pub fn pull(path: &Path) -> Result<()> {
         Self::fetch(path)?;
 
@@ -266,6 +270,7 @@ impl GitOperations {
     ///
     /// # Arguments
     /// * `path` - Repository path
+    #[tracing::instrument(skip(path), fields(repo = %path.display()), level = "info")]
     pub fn push(path: &Path) -> Result<()> {
         let repo = Git2Repository::open(path)
             .context("Failed to open git repository")?;

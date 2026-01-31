@@ -1,10 +1,13 @@
 //! Repo backend: discover local, fetch GitHub, match, clone, pull.
 //! All heavy work runs off the UI thread; results sent via mpsc.
+//! Supports cancellation for long-running operations.
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 
 use myme_integrations::{match_repos, GitOperations, RepoEntry};
+use tokio_util::sync::CancellationToken;
 
 use crate::bridge;
 
@@ -14,6 +17,7 @@ pub enum RepoError {
     GitHub(String),
     Io(String),
     Config(String),
+    Cancelled,
 }
 
 impl std::fmt::Display for RepoError {
@@ -23,6 +27,7 @@ impl std::fmt::Display for RepoError {
             RepoError::GitHub(s) => write!(f, "GitHub: {}", s),
             RepoError::Io(s) => write!(f, "IO: {}", s),
             RepoError::Config(s) => write!(f, "Config: {}", s),
+            RepoError::Cancelled => write!(f, "Operation cancelled"),
         }
     }
 }
@@ -151,11 +156,15 @@ pub fn request_refresh(
 
 /// Request clone for a GitHub-only repo. Sends `CloneDone { index, result }`, then
 /// the pump should trigger a refresh.
+///
+/// If a `cancel_token` is provided, the operation will check for cancellation
+/// before starting the actual clone.
 pub fn request_clone(
     tx: &std::sync::mpsc::Sender<RepoServiceMessage>,
     index: usize,
     clone_url: String,
     target_path: PathBuf,
+    cancel_token: Option<Arc<CancellationToken>>,
 ) {
     let tx = tx.clone();
     let runtime = match bridge::get_runtime() {
@@ -170,6 +179,17 @@ pub fn request_clone(
     };
 
     runtime.spawn_blocking(move || {
+        // Check for cancellation before starting the expensive operation
+        if let Some(ref token) = cancel_token {
+            if token.is_cancelled() {
+                let _ = tx.send(RepoServiceMessage::CloneDone {
+                    index,
+                    result: Err(RepoError::Cancelled),
+                });
+                return;
+            }
+        }
+
         let result = GitOperations::clone_repository(&clone_url, &target_path)
             .map(|_| ())
             .map_err(|e| RepoError::Git(e.to_string()));
@@ -179,10 +199,14 @@ pub fn request_clone(
 
 /// Request pull for a local repo. Sends `PullDone { index, result }`, then
 /// the pump should trigger a refresh.
+///
+/// If a `cancel_token` is provided, the operation will check for cancellation
+/// before starting the actual pull.
 pub fn request_pull(
     tx: &std::sync::mpsc::Sender<RepoServiceMessage>,
     index: usize,
     path: PathBuf,
+    cancel_token: Option<Arc<CancellationToken>>,
 ) {
     let tx = tx.clone();
     let runtime = match bridge::get_runtime() {
@@ -197,6 +221,17 @@ pub fn request_pull(
     };
 
     runtime.spawn_blocking(move || {
+        // Check for cancellation before starting the expensive operation
+        if let Some(ref token) = cancel_token {
+            if token.is_cancelled() {
+                let _ = tx.send(RepoServiceMessage::PullDone {
+                    index,
+                    result: Err(RepoError::Cancelled),
+                });
+                return;
+            }
+        }
+
         let result = GitOperations::pull(&path)
             .map_err(|e| RepoError::Git(e.to_string()));
         let _ = tx.send(RepoServiceMessage::PullDone { index, result });
@@ -213,6 +248,7 @@ mod tests {
         assert!(format!("{}", RepoError::GitHub("y".into())).contains("GitHub"));
         assert!(format!("{}", RepoError::Io("i".into())).contains("IO"));
         assert!(format!("{}", RepoError::Config("z".into())).contains("Config"));
+        assert!(format!("{}", RepoError::Cancelled).contains("cancelled"));
     }
 
     #[test]

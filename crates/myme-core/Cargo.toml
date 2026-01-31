@@ -11,8 +11,15 @@ anyhow.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+reqwest.workspace = true
 
 # Config management
 config = "0.14"
 dirs = "5.0"
 toml = "0.8"
+
+# URL validation
+url.workspace = true
+
+# Database (for error type conversions)
+rusqlite = { version = "0.31", features = ["bundled"] }
