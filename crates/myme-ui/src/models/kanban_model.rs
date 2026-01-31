@@ -9,6 +9,12 @@ use myme_services::{
     CreateIssueRequest, GitHubClient, ProjectStore, Task, TaskStatus, UpdateIssueRequest,
 };
 
+use crate::bridge;
+use crate::services::{
+    request_kanban_create, request_kanban_sync, request_kanban_update, KanbanIssueResult,
+    KanbanServiceMessage,
+};
+
 #[cxx_qt::bridge]
 pub mod qobject {
     unsafe extern "C++" {
@@ -67,9 +73,36 @@ pub mod qobject {
         #[qinvokable]
         fn sync_tasks(self: Pin<&mut KanbanModel>);
 
+        /// Poll for async operation results. Call this from a QML Timer.
+        #[qinvokable]
+        fn poll_channel(self: Pin<&mut KanbanModel>);
+
         #[qsignal]
         fn tasks_changed(self: Pin<&mut KanbanModel>);
     }
+}
+
+/// Operation state tracking
+#[derive(Clone, PartialEq, Eq, Default)]
+enum OpState {
+    #[default]
+    Idle,
+    MovingTask {
+        index: i32,
+        new_status: TaskStatus,
+        new_labels: Vec<String>,
+    },
+    CreatingTask {
+        title: String,
+        body: Option<String>,
+        status: TaskStatus,
+    },
+    UpdatingTask {
+        index: i32,
+        title: String,
+        body: Option<String>,
+    },
+    Syncing,
 }
 
 #[derive(Default)]
@@ -81,13 +114,13 @@ pub struct KanbanModelRust {
     tasks: Vec<Task>,
     client: Option<Arc<GitHubClient>>,
     store: Option<Arc<std::sync::Mutex<ProjectStore>>>,
-    runtime: Option<tokio::runtime::Handle>,
+    op_state: OpState,
 }
 
 impl KanbanModelRust {
     /// Auto-initialize from global services if not already initialized
     fn ensure_initialized(&mut self) {
-        if self.store.is_some() && self.runtime.is_some() {
+        if self.store.is_some() {
             return;
         }
 
@@ -99,16 +132,11 @@ impl KanbanModelRust {
             tracing::warn!("KanbanModel: project store not available");
         }
 
-        // Get GitHub client and runtime
-        if let Some((client, runtime)) = crate::bridge::get_github_client_and_runtime() {
+        // Get GitHub client
+        if let Some((client, _runtime)) = crate::bridge::get_github_client_and_runtime() {
             self.client = Some(client);
-            self.runtime = Some(runtime);
             tracing::info!("KanbanModel: GitHub client initialized");
         } else {
-            // Get runtime from bridge (must use global runtime, not Handle::current())
-            if let Some(runtime) = crate::bridge::get_runtime() {
-                self.runtime = Some(runtime);
-            }
             tracing::info!("KanbanModel: GitHub client not available (not authenticated)");
         }
     }
@@ -156,10 +184,18 @@ impl KanbanModelRust {
             TaskStatus::Done => "done",
         }
     }
+
+    fn set_error(&mut self, msg: &str) {
+        self.error_message = QString::from(msg);
+    }
+
+    fn clear_error(&mut self) {
+        self.error_message = QString::from("");
+    }
 }
 
 impl qobject::KanbanModel {
-    /// Load a project and its tasks
+    /// Load a project and its tasks (synchronous - local database)
     pub fn load_project(mut self: Pin<&mut Self>, project_id: QString) {
         self.as_mut().rust_mut().ensure_initialized();
 
@@ -173,7 +209,7 @@ impl qobject::KanbanModel {
         };
 
         self.as_mut().set_loading(true);
-        self.as_mut().set_error_message(QString::from(""));
+        self.as_mut().rust_mut().clear_error();
         self.as_mut().set_project_id(project_id.clone());
 
         let project_id_str = project_id.to_string();
@@ -183,7 +219,8 @@ impl qobject::KanbanModel {
             Ok(g) => g,
             Err(e) => {
                 self.as_mut()
-                    .set_error_message(QString::from(format!("Failed to access store: {}", e)));
+                    .rust_mut()
+                    .set_error(&format!("Failed to access store: {}", e));
                 self.as_mut().set_loading(false);
                 return;
             }
@@ -203,7 +240,8 @@ impl qobject::KanbanModel {
             }
             Err(e) => {
                 self.as_mut()
-                    .set_error_message(QString::from(format!("Failed to load project: {}", e)));
+                    .rust_mut()
+                    .set_error(&format!("Failed to load project: {}", e));
                 self.as_mut().set_loading(false);
                 return;
             }
@@ -222,7 +260,8 @@ impl qobject::KanbanModel {
                 tracing::error!("Failed to load tasks: {}", e);
                 drop(store_guard);
                 self.as_mut()
-                    .set_error_message(QString::from(format!("Failed to load tasks: {}", e)));
+                    .rust_mut()
+                    .set_error(&format!("Failed to load tasks: {}", e));
                 self.as_mut().set_loading(false);
             }
         }
@@ -311,9 +350,15 @@ impl qobject::KanbanModel {
         QString::from(json)
     }
 
-    /// Move task to new status (updates GitHub)
+    /// Move task to new status (updates GitHub) - non-blocking
     pub fn move_task(mut self: Pin<&mut Self>, index: i32, new_status: QString) {
         self.as_mut().rust_mut().ensure_initialized();
+
+        // Prevent concurrent operations
+        if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
+            tracing::warn!("move_task: operation already in progress");
+            return;
+        }
 
         let task = match self.as_ref().rust().get_task(index) {
             Some(t) => t.clone(),
@@ -327,20 +372,6 @@ impl qobject::KanbanModel {
                     .set_error_message(QString::from("GitHub not authenticated"));
                 return;
             }
-        };
-
-        let store = match &self.as_ref().rust().store {
-            Some(s) => s.clone(),
-            None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Project store not initialized"));
-                return;
-            }
-        };
-
-        let runtime = match &self.as_ref().rust().runtime {
-            Some(r) => r.clone(),
-            None => return,
         };
 
         let (owner, repo) = match self.as_ref().rust().parse_owner_repo() {
@@ -360,8 +391,16 @@ impl qobject::KanbanModel {
             return;
         }
 
-        self.as_mut().set_loading(true);
-        self.as_mut().set_error_message(QString::from(""));
+        // Initialize channel if needed
+        bridge::init_kanban_service_channel();
+        let tx = match bridge::get_kanban_service_tx() {
+            Some(t) => t,
+            None => {
+                self.as_mut()
+                    .set_error_message(QString::from("Service channel not ready"));
+                return;
+            }
+        };
 
         // Build new labels: remove old status label, add new status label
         let status_labels = [
@@ -392,73 +431,27 @@ impl qobject::KanbanModel {
             None
         };
 
+        self.as_mut().set_loading(true);
+        self.as_mut().rust_mut().clear_error();
+        self.as_mut().rust_mut().op_state = OpState::MovingTask {
+            index,
+            new_status: new_status_enum,
+            new_labels: new_labels.clone(),
+        };
+
         // Update GitHub issue
         let update_req = UpdateIssueRequest {
             title: None,
             body: None,
             state: new_state,
-            labels: Some(new_labels.clone()),
+            labels: Some(new_labels),
         };
 
-        let result = runtime.block_on(async {
-            client
-                .update_issue(&owner, &repo, task.github_issue_number, update_req)
-                .await
-        });
-
-        match result {
-            Ok(updated_issue) => {
-                tracing::info!(
-                    "Moved task #{} to {} in {}/{}",
-                    task.github_issue_number,
-                    new_status.to_string(),
-                    owner,
-                    repo
-                );
-
-                // Update local task
-                let mut updated_task = task.clone();
-                updated_task.status = new_status_enum;
-                updated_task.labels = new_labels;
-                updated_task.updated_at = updated_issue.updated_at;
-
-                // Save to store
-                let store_guard = match store.lock() {
-                    Ok(g) => g,
-                    Err(e) => {
-                        self.as_mut().set_error_message(QString::from(format!(
-                            "Failed to access store: {}",
-                            e
-                        )));
-                        self.as_mut().set_loading(false);
-                        return;
-                    }
-                };
-
-                if let Err(e) = store_guard.upsert_task(&updated_task) {
-                    tracing::warn!("Failed to save task update: {}", e);
-                }
-
-                drop(store_guard);
-
-                // Update in-memory task
-                if let Some(t) = self.as_mut().rust_mut().tasks.get_mut(index as usize) {
-                    *t = updated_task;
-                }
-
-                self.as_mut().set_loading(false);
-                self.as_mut().tasks_changed();
-            }
-            Err(e) => {
-                tracing::error!("Failed to move task on GitHub: {}", e);
-                self.as_mut()
-                    .set_error_message(QString::from(format!("Failed to move task: {}", e)));
-                self.as_mut().set_loading(false);
-            }
-        }
+        // Spawn async operation (non-blocking)
+        request_kanban_update(&tx, client, index, owner, repo, task.github_issue_number, update_req);
     }
 
-    /// Create new task (GitHub issue)
+    /// Create new task (GitHub issue) - non-blocking
     pub fn create_task(
         mut self: Pin<&mut Self>,
         title: QString,
@@ -467,6 +460,12 @@ impl qobject::KanbanModel {
     ) {
         self.as_mut().rust_mut().ensure_initialized();
 
+        // Prevent concurrent operations
+        if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
+            tracing::warn!("create_task: operation already in progress");
+            return;
+        }
+
         let client = match &self.as_ref().rust().client {
             Some(c) => c.clone(),
             None => {
@@ -474,20 +473,6 @@ impl qobject::KanbanModel {
                     .set_error_message(QString::from("GitHub not authenticated"));
                 return;
             }
-        };
-
-        let store = match &self.as_ref().rust().store {
-            Some(s) => s.clone(),
-            None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Project store not initialized"));
-                return;
-            }
-        };
-
-        let runtime = match &self.as_ref().rust().runtime {
-            Some(r) => r.clone(),
-            None => return,
         };
 
         let (owner, repo) = match self.as_ref().rust().parse_owner_repo() {
@@ -499,7 +484,17 @@ impl qobject::KanbanModel {
             }
         };
 
-        let project_id_str = self.as_ref().rust().project_id.to_string();
+        // Initialize channel if needed
+        bridge::init_kanban_service_channel();
+        let tx = match bridge::get_kanban_service_tx() {
+            Some(t) => t,
+            None => {
+                self.as_mut()
+                    .set_error_message(QString::from("Service channel not ready"));
+                return;
+            }
+        };
+
         let title_str = title.to_string();
         let body_str = body.to_string();
         let status_enum = KanbanModelRust::status_from_string(&status.to_string());
@@ -508,81 +503,40 @@ impl qobject::KanbanModel {
         let labels: Option<Vec<String>> = status_enum.to_label().map(|l| vec![l.to_string()]);
 
         self.as_mut().set_loading(true);
-        self.as_mut().set_error_message(QString::from(""));
-
-        let create_req = CreateIssueRequest {
+        self.as_mut().rust_mut().clear_error();
+        self.as_mut().rust_mut().op_state = OpState::CreatingTask {
             title: title_str.clone(),
             body: if body_str.is_empty() {
                 None
             } else {
                 Some(body_str.clone())
             },
+            status: status_enum,
+        };
+
+        let create_req = CreateIssueRequest {
+            title: title_str,
+            body: if body_str.is_empty() {
+                None
+            } else {
+                Some(body_str)
+            },
             labels,
         };
 
-        let result = runtime.block_on(async { client.create_issue(&owner, &repo, create_req).await });
-
-        match result {
-            Ok(issue) => {
-                tracing::info!(
-                    "Created issue #{} in {}/{}",
-                    issue.number,
-                    owner,
-                    repo
-                );
-
-                // Create local task
-                let label_names: Vec<String> = issue.labels.iter().map(|l| l.name.clone()).collect();
-                let task = Task {
-                    id: uuid::Uuid::new_v4().to_string(),
-                    project_id: project_id_str,
-                    github_issue_number: issue.number,
-                    title: issue.title,
-                    body: issue.body,
-                    status: status_enum,
-                    labels: label_names,
-                    html_url: issue.html_url,
-                    created_at: issue.created_at,
-                    updated_at: issue.updated_at,
-                };
-
-                // Save to store
-                let store_guard = match store.lock() {
-                    Ok(g) => g,
-                    Err(e) => {
-                        self.as_mut().set_error_message(QString::from(format!(
-                            "Failed to access store: {}",
-                            e
-                        )));
-                        self.as_mut().set_loading(false);
-                        return;
-                    }
-                };
-
-                if let Err(e) = store_guard.upsert_task(&task) {
-                    tracing::warn!("Failed to save new task: {}", e);
-                }
-
-                drop(store_guard);
-
-                // Add to in-memory list
-                self.as_mut().rust_mut().tasks.push(task);
-
-                self.as_mut().set_loading(false);
-                self.as_mut().tasks_changed();
-            }
-            Err(e) => {
-                tracing::error!("Failed to create issue on GitHub: {}", e);
-                self.as_mut()
-                    .set_error_message(QString::from(format!("Failed to create task: {}", e)));
-                self.as_mut().set_loading(false);
-            }
-        }
+        // Spawn async operation (non-blocking)
+        request_kanban_create(&tx, client, owner, repo, create_req);
     }
 
-    /// Update task title/body
+    /// Update task title/body - non-blocking
     pub fn update_task(mut self: Pin<&mut Self>, index: i32, title: QString, body: QString) {
         self.as_mut().rust_mut().ensure_initialized();
+
+        // Prevent concurrent operations
+        if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
+            tracing::warn!("update_task: operation already in progress");
+            return;
+        }
 
         let task = match self.as_ref().rust().get_task(index) {
             Some(t) => t.clone(),
@@ -598,18 +552,69 @@ impl qobject::KanbanModel {
             }
         };
 
-        let store = match &self.as_ref().rust().store {
-            Some(s) => s.clone(),
+        let (owner, repo) = match self.as_ref().rust().parse_owner_repo() {
+            Some(pair) => pair,
             None => {
                 self.as_mut()
-                    .set_error_message(QString::from("Project store not initialized"));
+                    .set_error_message(QString::from("Invalid github_repo format"));
                 return;
             }
         };
 
-        let runtime = match &self.as_ref().rust().runtime {
-            Some(r) => r.clone(),
-            None => return,
+        // Initialize channel if needed
+        bridge::init_kanban_service_channel();
+        let tx = match bridge::get_kanban_service_tx() {
+            Some(t) => t,
+            None => {
+                self.as_mut()
+                    .set_error_message(QString::from("Service channel not ready"));
+                return;
+            }
+        };
+
+        let title_str = title.to_string();
+        let body_str = body.to_string();
+
+        self.as_mut().set_loading(true);
+        self.as_mut().rust_mut().clear_error();
+        self.as_mut().rust_mut().op_state = OpState::UpdatingTask {
+            index,
+            title: title_str.clone(),
+            body: if body_str.is_empty() {
+                None
+            } else {
+                Some(body_str.clone())
+            },
+        };
+
+        let update_req = UpdateIssueRequest {
+            title: Some(title_str),
+            body: Some(body_str),
+            state: None,
+            labels: None,
+        };
+
+        // Spawn async operation (non-blocking)
+        request_kanban_update(&tx, client, index, owner, repo, task.github_issue_number, update_req);
+    }
+
+    /// Refresh tasks from GitHub - non-blocking
+    pub fn sync_tasks(mut self: Pin<&mut Self>) {
+        self.as_mut().rust_mut().ensure_initialized();
+
+        // Prevent concurrent operations
+        if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
+            tracing::warn!("sync_tasks: operation already in progress");
+            return;
+        }
+
+        let client = match &self.as_ref().rust().client {
+            Some(c) => c.clone(),
+            None => {
+                self.as_mut()
+                    .set_error_message(QString::from("GitHub not authenticated"));
+                return;
+            }
         };
 
         let (owner, repo) = match self.as_ref().rust().parse_owner_repo() {
@@ -621,62 +626,104 @@ impl qobject::KanbanModel {
             }
         };
 
-        let title_str = title.to_string();
-        let body_str = body.to_string();
-
-        self.as_mut().set_loading(true);
-        self.as_mut().set_error_message(QString::from(""));
-
-        let update_req = UpdateIssueRequest {
-            title: Some(title_str.clone()),
-            body: Some(body_str.clone()),
-            state: None,
-            labels: None,
+        // Initialize channel if needed
+        bridge::init_kanban_service_channel();
+        let tx = match bridge::get_kanban_service_tx() {
+            Some(t) => t,
+            None => {
+                self.as_mut()
+                    .set_error_message(QString::from("Service channel not ready"));
+                return;
+            }
         };
 
-        let result = runtime.block_on(async {
-            client
-                .update_issue(&owner, &repo, task.github_issue_number, update_req)
-                .await
-        });
+        self.as_mut().set_loading(true);
+        self.as_mut().rust_mut().clear_error();
+        self.as_mut().rust_mut().op_state = OpState::Syncing;
+
+        // Spawn async operation (non-blocking)
+        request_kanban_sync(&tx, client, owner, repo);
+    }
+
+    /// Poll for async operation results. Call this from a QML Timer (e.g., every 100ms).
+    pub fn poll_channel(mut self: Pin<&mut Self>) {
+        let msg = match bridge::try_recv_kanban_message() {
+            Some(m) => m,
+            None => return,
+        };
+
+        match msg {
+            KanbanServiceMessage::UpdateIssueDone { index, result } => {
+                self.as_mut().handle_update_done(index, result);
+            }
+            KanbanServiceMessage::CreateIssueDone(result) => {
+                self.as_mut().handle_create_done(result);
+            }
+            KanbanServiceMessage::SyncDone(result) => {
+                self.as_mut().handle_sync_done(result);
+            }
+        }
+    }
+
+    /// Handle update issue completion (move_task or update_task)
+    fn handle_update_done(
+        mut self: Pin<&mut Self>,
+        index: i32,
+        result: Result<KanbanIssueResult, crate::services::KanbanError>,
+    ) {
+        let op_state = self.as_ref().rust().op_state.clone();
+        self.as_mut().rust_mut().op_state = OpState::Idle;
 
         match result {
             Ok(updated_issue) => {
-                tracing::info!(
-                    "Updated task #{} in {}/{}",
-                    task.github_issue_number,
-                    owner,
-                    repo
-                );
-
-                // Update local task
-                let mut updated_task = task.clone();
-                updated_task.title = title_str;
-                updated_task.body = if body_str.is_empty() {
-                    None
-                } else {
-                    Some(body_str)
-                };
-                updated_task.updated_at = updated_issue.updated_at;
-
-                // Save to store
-                let store_guard = match store.lock() {
-                    Ok(g) => g,
-                    Err(e) => {
-                        self.as_mut().set_error_message(QString::from(format!(
-                            "Failed to access store: {}",
-                            e
-                        )));
+                let store = match &self.as_ref().rust().store {
+                    Some(s) => s.clone(),
+                    None => {
                         self.as_mut().set_loading(false);
                         return;
                     }
                 };
 
-                if let Err(e) = store_guard.upsert_task(&updated_task) {
-                    tracing::warn!("Failed to save task update: {}", e);
+                let task = match self.as_ref().rust().get_task(index) {
+                    Some(t) => t.clone(),
+                    None => {
+                        self.as_mut().set_loading(false);
+                        return;
+                    }
+                };
+
+                // Determine what changed based on op_state
+                let mut updated_task = task.clone();
+                updated_task.updated_at = updated_issue.updated_at;
+
+                match op_state {
+                    OpState::MovingTask {
+                        new_status,
+                        new_labels,
+                        ..
+                    } => {
+                        tracing::info!(
+                            "Moved task #{} to {:?}",
+                            task.github_issue_number,
+                            new_status
+                        );
+                        updated_task.status = new_status;
+                        updated_task.labels = new_labels;
+                    }
+                    OpState::UpdatingTask { title, body, .. } => {
+                        tracing::info!("Updated task #{}", task.github_issue_number);
+                        updated_task.title = title;
+                        updated_task.body = body;
+                    }
+                    _ => {}
                 }
 
-                drop(store_guard);
+                // Save to store
+                if let Ok(store_guard) = store.lock() {
+                    if let Err(e) = store_guard.upsert_task(&updated_task) {
+                        tracing::warn!("Failed to save task update: {}", e);
+                    }
+                }
 
                 // Update in-memory task
                 if let Some(t) = self.as_mut().rust_mut().tasks.get_mut(index as usize) {
@@ -689,72 +736,98 @@ impl qobject::KanbanModel {
             Err(e) => {
                 tracing::error!("Failed to update task on GitHub: {}", e);
                 self.as_mut()
-                    .set_error_message(QString::from(format!("Failed to update task: {}", e)));
+                    .rust_mut()
+                    .set_error(&format!("Failed to update task: {}", e));
                 self.as_mut().set_loading(false);
             }
         }
     }
 
-    /// Refresh tasks from GitHub
-    pub fn sync_tasks(mut self: Pin<&mut Self>) {
-        self.as_mut().rust_mut().ensure_initialized();
+    /// Handle create issue completion
+    fn handle_create_done(
+        mut self: Pin<&mut Self>,
+        result: Result<KanbanIssueResult, crate::services::KanbanError>,
+    ) {
+        let op_state = self.as_ref().rust().op_state.clone();
+        self.as_mut().rust_mut().op_state = OpState::Idle;
 
-        let client = match &self.as_ref().rust().client {
-            Some(c) => c.clone(),
-            None => {
-                self.as_mut()
-                    .set_error_message(QString::from("GitHub not authenticated"));
-                return;
+        match result {
+            Ok(issue) => {
+                tracing::info!("Created issue #{}", issue.number);
+
+                let project_id_str = self.as_ref().rust().project_id.to_string();
+
+                // Get status from op_state
+                let status = match op_state {
+                    OpState::CreatingTask { status, .. } => status,
+                    _ => TaskStatus::Todo,
+                };
+
+                // Create local task
+                let task = Task {
+                    id: uuid::Uuid::new_v4().to_string(),
+                    project_id: project_id_str,
+                    github_issue_number: issue.number,
+                    title: issue.title,
+                    body: issue.body,
+                    status,
+                    labels: issue.labels,
+                    html_url: issue.html_url,
+                    created_at: issue.created_at,
+                    updated_at: issue.updated_at,
+                };
+
+                // Save to store
+                if let Some(store) = &self.as_ref().rust().store {
+                    if let Ok(store_guard) = store.lock() {
+                        if let Err(e) = store_guard.upsert_task(&task) {
+                            tracing::warn!("Failed to save new task: {}", e);
+                        }
+                    }
+                }
+
+                // Add to in-memory list
+                self.as_mut().rust_mut().tasks.push(task);
+
+                self.as_mut().set_loading(false);
+                self.as_mut().tasks_changed();
             }
-        };
-
-        let store = match &self.as_ref().rust().store {
-            Some(s) => s.clone(),
-            None => {
+            Err(e) => {
+                tracing::error!("Failed to create issue on GitHub: {}", e);
                 self.as_mut()
-                    .set_error_message(QString::from("Project store not initialized"));
-                return;
+                    .rust_mut()
+                    .set_error(&format!("Failed to create task: {}", e));
+                self.as_mut().set_loading(false);
             }
-        };
+        }
+    }
 
-        let runtime = match &self.as_ref().rust().runtime {
-            Some(r) => r.clone(),
-            None => return,
-        };
-
-        let (owner, repo) = match self.as_ref().rust().parse_owner_repo() {
-            Some(pair) => pair,
-            None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Invalid github_repo format"));
-                return;
-            }
-        };
-
-        let project_id_str = self.as_ref().rust().project_id.to_string();
-
-        self.as_mut().set_loading(true);
-        self.as_mut().set_error_message(QString::from(""));
-
-        // Fetch all issues from GitHub
-        let result = runtime.block_on(async { client.list_issues(&owner, &repo).await });
+    /// Handle sync completion
+    fn handle_sync_done(
+        mut self: Pin<&mut Self>,
+        result: Result<Vec<KanbanIssueResult>, crate::services::KanbanError>,
+    ) {
+        self.as_mut().rust_mut().op_state = OpState::Idle;
 
         match result {
             Ok(issues) => {
-                tracing::info!(
-                    "Fetched {} issues for {}/{}",
-                    issues.len(),
-                    owner,
-                    repo
-                );
+                tracing::info!("Fetched {} issues", issues.len());
+
+                let project_id_str = self.as_ref().rust().project_id.to_string();
+                let store = match &self.as_ref().rust().store {
+                    Some(s) => s.clone(),
+                    None => {
+                        self.as_mut().set_loading(false);
+                        return;
+                    }
+                };
 
                 let store_guard = match store.lock() {
                     Ok(g) => g,
                     Err(e) => {
-                        self.as_mut().set_error_message(QString::from(format!(
-                            "Failed to access store: {}",
-                            e
-                        )));
+                        self.as_mut()
+                            .rust_mut()
+                            .set_error(&format!("Failed to access store: {}", e));
                         self.as_mut().set_loading(false);
                         return;
                     }
@@ -764,9 +837,7 @@ impl qobject::KanbanModel {
 
                 // Convert issues to tasks and save
                 for issue in &issues {
-                    let label_names: Vec<String> =
-                        issue.labels.iter().map(|l| l.name.clone()).collect();
-                    let status = TaskStatus::from_github(&issue.state, &label_names);
+                    let status = TaskStatus::from_github(&issue.state, &issue.labels);
 
                     let task = Task {
                         id: uuid::Uuid::new_v4().to_string(),
@@ -775,7 +846,7 @@ impl qobject::KanbanModel {
                         title: issue.title.clone(),
                         body: issue.body.clone(),
                         status,
-                        labels: label_names,
+                        labels: issue.labels.clone(),
                         html_url: issue.html_url.clone(),
                         created_at: issue.created_at.clone(),
                         updated_at: issue.updated_at.clone(),
@@ -796,12 +867,13 @@ impl qobject::KanbanModel {
                 self.as_mut().set_loading(false);
                 self.as_mut().tasks_changed();
 
-                tracing::info!("Synced tasks for {}/{}", owner, repo);
+                tracing::info!("Synced tasks");
             }
             Err(e) => {
                 tracing::error!("Failed to fetch issues from GitHub: {}", e);
                 self.as_mut()
-                    .set_error_message(QString::from(format!("Failed to sync tasks: {}", e)));
+                    .rust_mut()
+                    .set_error(&format!("Failed to sync tasks: {}", e));
                 self.as_mut().set_loading(false);
             }
         }

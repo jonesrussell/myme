@@ -8,11 +8,35 @@ use oauth2::{
 };
 use oauth2::basic::BasicClient;
 use oauth2::reqwest::async_http_client;
+use std::net::TcpListener;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 use warp::Filter;
 
 use crate::storage::{SecureStorage, TokenSet};
+
+/// Type alias for the OAuth callback sender, wrapped for thread-safe sharing
+type CallbackSender = Arc<tokio::sync::Mutex<Option<oneshot::Sender<(String, String)>>>>;
+
+/// Port range for OAuth callback server
+const OAUTH_PORT_START: u16 = 8080;
+const OAUTH_PORT_END: u16 = 8090;
+
+/// Find an available port for the OAuth callback server.
+fn find_available_port() -> Option<u16> {
+    for port in OAUTH_PORT_START..OAUTH_PORT_END {
+        if TcpListener::bind(("127.0.0.1", port)).is_ok() {
+            tracing::info!("Found available OAuth callback port: {}", port);
+            return Some(port);
+        }
+    }
+    tracing::error!(
+        "No available port in range {}-{}",
+        OAUTH_PORT_START,
+        OAUTH_PORT_END - 1
+    );
+    None
+}
 
 /// OAuth2 configuration
 #[derive(Debug, Clone)]
@@ -87,6 +111,7 @@ pub trait OAuth2Provider: Send + Sync {
     /// # Arguments
     /// * `code` - Authorization code from callback
     /// * `pkce_verifier` - PKCE verifier from authorization step
+    #[tracing::instrument(skip(self, code, pkce_verifier), level = "info")]
     async fn exchange_code(&self, code: String, pkce_verifier: PkceCodeVerifier) -> Result<TokenSet> {
         let config = self.config();
 
@@ -133,13 +158,68 @@ pub trait OAuth2Provider: Send + Sync {
         Ok(token_set)
     }
 
-    /// Perform full OAuth2 flow with browser and local callback server
+    /// Perform full OAuth2 flow with browser and local callback server.
+    ///
+    /// This method:
+    /// 1. Finds an available port for the callback server (8080-8089)
+    /// 2. Generates the authorization URL with that port as the redirect
+    /// 3. Opens the browser to the authorization URL
+    /// 4. Waits for the OAuth callback
+    /// 5. Exchanges the code for tokens
+    ///
+    /// If browser opening fails, the authorization URL is logged so the user
+    /// can manually copy and paste it.
+    #[tracing::instrument(skip(self), level = "info")]
     async fn authenticate(&self) -> Result<TokenSet> {
-        // Generate authorization URL and PKCE verifier
-        let (auth_url, csrf_token, pkce_verifier) = self.authorize()?;
+        // Find an available port for the callback server
+        let port = find_available_port()
+            .context("No available port for OAuth callback server")?;
+
+        // Build redirect URI with the discovered port
+        let redirect_uri = format!("http://127.0.0.1:{}/callback", port);
+
+        // Create a modified config with the dynamic redirect URI
+        let config = self.config();
+        let dynamic_config = OAuth2Config {
+            client_id: config.client_id.clone(),
+            client_secret: config.client_secret.clone(),
+            auth_url: config.auth_url.clone(),
+            token_url: config.token_url.clone(),
+            redirect_uri: redirect_uri.clone(),
+            scopes: config.scopes.clone(),
+        };
+
+        // Generate authorization URL with dynamic config
+        let client = BasicClient::new(
+            ClientId::new(dynamic_config.client_id.clone()),
+            Some(ClientSecret::new(dynamic_config.client_secret.clone())),
+            AuthUrl::new(dynamic_config.auth_url.clone())
+                .context("Invalid auth URL")?,
+            Some(TokenUrl::new(dynamic_config.token_url.clone())
+                .context("Invalid token URL")?),
+        )
+        .set_redirect_uri(
+            RedirectUrl::new(dynamic_config.redirect_uri.clone())
+                .context("Invalid redirect URI")?,
+        );
+
+        // Generate PKCE challenge for additional security
+        let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
+
+        // Generate authorization URL
+        let mut auth_request = client.authorize_url(CsrfToken::new_random);
+
+        // Add scopes
+        for scope in &dynamic_config.scopes {
+            auth_request = auth_request.add_scope(Scope::new(scope.clone()));
+        }
+
+        let (auth_url, csrf_token) = auth_request
+            .set_pkce_challenge(pkce_challenge)
+            .url();
 
         tracing::info!("Opening browser for OAuth2 authorization...");
-        tracing::info!("Auth URL: {}", auth_url);
+        tracing::info!("Callback server on port {}", port);
 
         // Start local callback server
         let (tx, rx) = oneshot::channel();
@@ -149,7 +229,7 @@ pub trait OAuth2Provider: Send + Sync {
             .and(warp::path("callback"))
             .and(warp::query::<std::collections::HashMap<String, String>>())
             .and(warp::any().map(move || tx.clone()))
-            .and_then(|params: std::collections::HashMap<String, String>, tx: Arc<tokio::sync::Mutex<Option<oneshot::Sender<(String, String)>>>>| async move {
+            .and_then(|params: std::collections::HashMap<String, String>, tx: CallbackSender| async move {
                 let code = params.get("code").cloned().unwrap_or_default();
                 let state = params.get("state").cloned().unwrap_or_default();
 
@@ -234,13 +314,23 @@ pub trait OAuth2Provider: Send + Sync {
 </html>"#))
             });
 
-        // Start server in background
-        let server = warp::serve(routes).bind(([127, 0, 0, 1], 8080));
+        // Start server on the discovered port
+        let server = warp::serve(routes).bind(([127, 0, 0, 1], port));
         tokio::spawn(server);
 
-        // Open browser
-        webbrowser::open(&auth_url)
-            .context("Failed to open browser")?;
+        // Open browser - if this fails, log the URL so user can copy it
+        let auth_url_str = auth_url.to_string();
+        match webbrowser::open(&auth_url_str) {
+            Ok(()) => {
+                tracing::info!("Browser opened for authentication");
+            }
+            Err(e) => {
+                tracing::warn!("Failed to open browser: {}", e);
+                tracing::info!("Please manually open this URL to authenticate:");
+                tracing::info!("{}", auth_url_str);
+                // Continue anyway - user might paste the URL manually
+            }
+        }
 
         // Wait for callback
         let (code, state) = rx.await
@@ -253,8 +343,47 @@ pub trait OAuth2Provider: Send + Sync {
 
         tracing::info!("Received OAuth callback, exchanging code for token...");
 
-        // Exchange code for token with PKCE verifier
-        self.exchange_code(code, pkce_verifier).await
+        // Exchange code for token - use the exchange_code_with_redirect helper
+        // since we have a dynamic redirect URI
+        let exchange_client = BasicClient::new(
+            ClientId::new(dynamic_config.client_id.clone()),
+            Some(ClientSecret::new(dynamic_config.client_secret.clone())),
+            AuthUrl::new(dynamic_config.auth_url.clone())?,
+            Some(TokenUrl::new(dynamic_config.token_url.clone())?),
+        )
+        .set_redirect_uri(RedirectUrl::new(dynamic_config.redirect_uri.clone())?);
+
+        let token_result = exchange_client
+            .exchange_code(AuthorizationCode::new(code))
+            .set_pkce_verifier(pkce_verifier)
+            .request_async(async_http_client)
+            .await
+            .context("Failed to exchange authorization code")?;
+
+        // Calculate expiration
+        let expires_in = token_result.expires_in()
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(365 * 24 * 3600); // Default 1 year for non-expiring tokens
+        let expires_at = chrono::Utc::now().timestamp() + expires_in;
+
+        // Extract scopes
+        let scopes = token_result.scopes()
+            .map(|s| s.iter().map(|scope| scope.to_string()).collect())
+            .unwrap_or_else(Vec::new);
+
+        let token_set = TokenSet {
+            access_token: token_result.access_token().secret().clone(),
+            refresh_token: token_result.refresh_token()
+                .map(|t| t.secret().clone()),
+            expires_at,
+            scopes,
+        };
+
+        // Store token securely
+        SecureStorage::store_token(self.service_id(), &token_set)?;
+
+        tracing::info!("OAuth2 flow completed for {}", self.service_id());
+        Ok(token_set)
     }
 
     /// Get stored token, or None if not authenticated

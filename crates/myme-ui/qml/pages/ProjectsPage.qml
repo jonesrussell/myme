@@ -25,6 +25,24 @@ Page {
         id: authModel
     }
 
+    // Timer to poll for async project operation results
+    Timer {
+        id: projectPollTimer
+        interval: 100
+        running: projectModel.loading
+        repeat: true
+        onTriggered: projectModel.poll_channel()
+    }
+
+    // Timer to poll for async auth operation results
+    Timer {
+        id: authPollTimer
+        interval: 100
+        running: authModel.loading
+        repeat: true
+        onTriggered: authModel.poll_channel()
+    }
+
     // Update project count when loading finishes
     Connections {
         target: projectModel

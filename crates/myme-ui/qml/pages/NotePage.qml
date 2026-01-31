@@ -20,9 +20,21 @@ Page {
         id: noteModel
     }
 
-    // Update note count when loading state changes
+    // Timer to poll for async operation results (non-blocking)
+    Timer {
+        id: pollTimer
+        interval: 100  // Poll every 100ms
+        running: true  // Always running to check for results
+        repeat: true
+        onTriggered: noteModel.poll_channel()
+    }
+
+    // Update note count when notes change
     Connections {
         target: noteModel
+        function onNotes_changed() {
+            notePage.noteCount = noteModel.row_count();
+        }
         function onLoadingChanged() {
             if (!noteModel.loading) {
                 notePage.noteCount = noteModel.row_count();

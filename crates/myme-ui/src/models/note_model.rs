@@ -3,7 +3,13 @@ use std::sync::Arc;
 
 use cxx_qt::CxxQtType;
 use cxx_qt_lib::QString;
-use myme_services::{Todo as Note, TodoClient as NoteClient, TodoCreateRequest as NoteCreateRequest, TodoUpdateRequest as NoteUpdateRequest};
+use myme_services::{Todo as Note, TodoClient as NoteClient};
+
+use crate::bridge;
+use crate::services::{
+    request_note_create, request_note_delete, request_note_fetch, request_note_toggle,
+    NoteServiceMessage,
+};
 
 #[cxx_qt::bridge]
 pub mod qobject {
@@ -31,6 +37,10 @@ pub mod qobject {
         #[qinvokable]
         fn delete_note(self: Pin<&mut NoteModel>, index: i32);
 
+        /// Poll for async operation results. Call this from a QML Timer.
+        #[qinvokable]
+        fn poll_channel(self: Pin<&mut NoteModel>);
+
         #[qinvokable]
         fn row_count(self: &NoteModel) -> i32;
 
@@ -48,7 +58,21 @@ pub mod qobject {
 
         #[qsignal]
         fn notes_changed(self: Pin<&mut NoteModel>);
+
+        #[qsignal]
+        fn error_occurred(self: Pin<&mut NoteModel>);
     }
+}
+
+/// Operation state tracking to prevent concurrent operations
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+enum OpState {
+    #[default]
+    Idle,
+    Fetching,
+    Creating,
+    Updating(usize),
+    Deleting(usize),
 }
 
 #[derive(Default)]
@@ -57,24 +81,23 @@ pub struct NoteModelRust {
     error_message: QString,
     notes: Vec<Note>,
     client: Option<Arc<NoteClient>>,
-    runtime: Option<tokio::runtime::Handle>,
+    op_state: OpState,
 }
 
 impl NoteModelRust {
-    pub fn initialize(&mut self, client: Arc<NoteClient>, runtime: tokio::runtime::Handle) {
+    pub fn initialize(&mut self, client: Arc<NoteClient>) {
         self.client = Some(client);
-        self.runtime = Some(runtime);
     }
 
     /// Auto-initialize from global services if not already initialized
     fn ensure_initialized(&mut self) {
-        if self.client.is_some() && self.runtime.is_some() {
+        if self.client.is_some() {
             return;
         }
 
         match crate::bridge::get_todo_client_and_runtime() {
-            Some((client, runtime)) => {
-                self.initialize(client, runtime);
+            Some((client, _runtime)) => {
+                self.initialize(client);
                 tracing::info!("NoteModel auto-initialized from global services");
             }
             None => {
@@ -90,80 +113,112 @@ impl NoteModelRust {
         }
         self.notes.get(index as usize)
     }
+
+    fn set_error(&mut self, msg: &str) {
+        self.error_message = QString::from(msg);
+    }
+
+    fn clear_error(&mut self) {
+        self.error_message = QString::from("");
+    }
 }
 
 impl qobject::NoteModel {
+    /// Fetch all notes asynchronously (non-blocking)
     pub fn fetch_notes(mut self: Pin<&mut Self>) {
         // Auto-initialize if needed
         self.as_mut().rust_mut().ensure_initialized();
 
+        // Prevent concurrent operations
+        if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
+            tracing::warn!("fetch_notes: operation already in progress");
+            return;
+        }
+
         let client = match &self.as_ref().rust().client {
             Some(c) => c.clone(),
             None => {
-                self.as_mut().set_error_message(QString::from("Not initialized"));
+                self.as_mut()
+                    .set_error_message(QString::from("Not initialized"));
+                self.as_mut().error_occurred();
                 return;
             }
         };
 
-        let runtime = match &self.as_ref().rust().runtime {
-            Some(r) => r.clone(),
-            None => return,
+        // Initialize channel if needed
+        bridge::init_note_service_channel();
+        let tx = match bridge::get_note_service_tx() {
+            Some(t) => t,
+            None => {
+                self.as_mut()
+                    .set_error_message(QString::from("Service channel not ready"));
+                self.as_mut().error_occurred();
+                return;
+            }
         };
 
         self.as_mut().set_loading(true);
-        self.as_mut().set_error_message(QString::from(""));
+        self.as_mut().rust_mut().clear_error();
+        self.as_mut().rust_mut().op_state = OpState::Fetching;
 
-        // Use block_on to make this synchronous for simplicity
-        // TODO: Implement proper async callbacks with signals
-        match runtime.block_on(async { client.list_todos().await }) {
-            Ok(notes) => {
-                tracing::info!("Successfully fetched {} notes", notes.len());
-                self.as_mut().rust_mut().notes = notes;
-                self.as_mut().set_loading(false);
-                self.notes_changed();
-            }
-            Err(e) => {
-                tracing::error!("Failed to fetch notes: {}", e);
-                self.as_mut().set_error_message(QString::from(format!("Failed to fetch notes: {}", e)));
-                self.as_mut().set_loading(false);
-            }
-        }
+        // Spawn async operation (non-blocking)
+        request_note_fetch(&tx, client);
     }
 
+    /// Add a new note asynchronously (non-blocking)
     pub fn add_note(mut self: Pin<&mut Self>, content: &QString) {
+        // Auto-initialize if needed
+        self.as_mut().rust_mut().ensure_initialized();
+
+        // Prevent concurrent operations
+        if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
+            tracing::warn!("add_note: operation already in progress");
+            return;
+        }
+
         let client = match &self.as_ref().rust().client {
             Some(c) => c.clone(),
             None => {
-                self.as_mut().set_error_message(QString::from("Not initialized"));
+                self.as_mut()
+                    .set_error_message(QString::from("Not initialized"));
+                self.as_mut().error_occurred();
                 return;
             }
         };
 
-        let runtime = match &self.as_ref().rust().runtime {
-            Some(r) => r.clone(),
-            None => return,
+        // Initialize channel if needed
+        bridge::init_note_service_channel();
+        let tx = match bridge::get_note_service_tx() {
+            Some(t) => t,
+            None => {
+                self.as_mut()
+                    .set_error_message(QString::from("Service channel not ready"));
+                self.as_mut().error_occurred();
+                return;
+            }
         };
 
         let content_str = content.to_string();
-        self.as_mut().set_loading(true);
-
-        let request = NoteCreateRequest { content: content_str };
-        match runtime.block_on(async { client.create_todo(request).await }) {
-            Ok(note) => {
-                tracing::info!("Created note: {}", note.id);
-                self.as_mut().rust_mut().notes.push(note);
-                self.as_mut().set_loading(false);
-                self.notes_changed();
-            }
-            Err(e) => {
-                tracing::error!("Failed to create note: {}", e);
-                self.as_mut().set_error_message(QString::from(format!("Failed to create note: {}", e)));
-                self.as_mut().set_loading(false);
-            }
+        if content_str.is_empty() {
+            return;
         }
+
+        self.as_mut().set_loading(true);
+        self.as_mut().rust_mut().clear_error();
+        self.as_mut().rust_mut().op_state = OpState::Creating;
+
+        // Spawn async operation (non-blocking)
+        request_note_create(&tx, client, content_str);
     }
 
+    /// Toggle a note's done status asynchronously (non-blocking)
     pub fn toggle_done(mut self: Pin<&mut Self>, index: i32) {
+        // Prevent concurrent operations
+        if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
+            tracing::warn!("toggle_done: operation already in progress");
+            return;
+        }
+
         let binding = self.as_ref();
         let notes = &binding.rust().notes;
         if index < 0 || index >= notes.len() as i32 {
@@ -178,34 +233,28 @@ impl qobject::NoteModel {
             None => return,
         };
 
-        let runtime = match &self.as_ref().rust().runtime {
-            Some(r) => r.clone(),
+        // Initialize channel if needed
+        bridge::init_note_service_channel();
+        let tx = match bridge::get_note_service_tx() {
+            Some(t) => t,
             None => return,
         };
 
         let index_usize = index as usize;
+        self.as_mut().rust_mut().op_state = OpState::Updating(index_usize);
 
-        let request = NoteUpdateRequest {
-            content: None,
-            done: Some(!current_done),
-        };
-
-        match runtime.block_on(async { client.update_todo(&note_id, request).await }) {
-            Ok(_) => {
-                tracing::info!("Toggled note {} done status", note_id);
-                if index_usize < self.rust().notes.len() {
-                    self.as_mut().rust_mut().notes[index_usize].done = !current_done;
-                    self.notes_changed();
-                }
-            }
-            Err(e) => {
-                tracing::error!("Failed to update note: {}", e);
-                self.as_mut().set_error_message(QString::from(format!("Failed to toggle note: {}", e)));
-            }
-        }
+        // Spawn async operation (non-blocking)
+        request_note_toggle(&tx, client, index_usize, note_id, current_done);
     }
 
+    /// Delete a note asynchronously (non-blocking)
     pub fn delete_note(mut self: Pin<&mut Self>, index: i32) {
+        // Prevent concurrent operations
+        if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
+            tracing::warn!("delete_note: operation already in progress");
+            return;
+        }
+
         let binding = self.as_ref();
         let notes = &binding.rust().notes;
         if index < 0 || index >= notes.len() as i32 {
@@ -219,24 +268,97 @@ impl qobject::NoteModel {
             None => return,
         };
 
-        let runtime = match &self.as_ref().rust().runtime {
-            Some(r) => r.clone(),
+        // Initialize channel if needed
+        bridge::init_note_service_channel();
+        let tx = match bridge::get_note_service_tx() {
+            Some(t) => t,
             None => return,
         };
 
         let index_usize = index as usize;
+        self.as_mut().rust_mut().op_state = OpState::Deleting(index_usize);
 
-        match runtime.block_on(async { client.delete_todo(&note_id).await }) {
-            Ok(_) => {
-                tracing::info!("Deleted note {}", note_id);
-                if index_usize < self.rust().notes.len() {
-                    self.as_mut().rust_mut().notes.remove(index_usize);
-                    self.notes_changed();
+        // Spawn async operation (non-blocking)
+        request_note_delete(&tx, client, index_usize, note_id);
+    }
+
+    /// Poll for async operation results. Call this from a QML Timer (e.g., every 100ms).
+    pub fn poll_channel(mut self: Pin<&mut Self>) {
+        let msg = match bridge::try_recv_note_message() {
+            Some(m) => m,
+            None => return,
+        };
+
+        match msg {
+            NoteServiceMessage::FetchDone(result) => {
+                self.as_mut().set_loading(false);
+                self.as_mut().rust_mut().op_state = OpState::Idle;
+                match result {
+                    Ok(notes) => {
+                        tracing::info!("Successfully fetched {} notes", notes.len());
+                        self.as_mut().rust_mut().clear_error();
+                        self.as_mut().rust_mut().notes = notes;
+                        self.as_mut().notes_changed();
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to fetch notes: {}", e);
+                        self.as_mut().rust_mut().set_error(&format!("Failed to fetch notes: {}", e));
+                        self.as_mut().error_occurred();
+                    }
                 }
             }
-            Err(e) => {
-                tracing::error!("Failed to delete note: {}", e);
-                self.as_mut().set_error_message(QString::from(format!("Failed to delete note: {}", e)));
+            NoteServiceMessage::CreateDone(result) => {
+                self.as_mut().set_loading(false);
+                self.as_mut().rust_mut().op_state = OpState::Idle;
+                match result {
+                    Ok(note) => {
+                        tracing::info!("Created note: {}", note.id);
+                        self.as_mut().rust_mut().clear_error();
+                        self.as_mut().rust_mut().notes.push(note);
+                        self.as_mut().notes_changed();
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to create note: {}", e);
+                        self.as_mut().rust_mut().set_error(&format!("Failed to create note: {}", e));
+                        self.as_mut().error_occurred();
+                    }
+                }
+            }
+            NoteServiceMessage::UpdateDone { index, result } => {
+                self.as_mut().rust_mut().op_state = OpState::Idle;
+                match result {
+                    Ok(updated_note) => {
+                        tracing::info!("Updated note at index {}", index);
+                        self.as_mut().rust_mut().clear_error();
+                        if index < self.as_ref().rust().notes.len() {
+                            self.as_mut().rust_mut().notes[index] = updated_note;
+                            self.as_mut().notes_changed();
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to update note: {}", e);
+                        self.as_mut().rust_mut().set_error(&format!("Failed to toggle note: {}", e));
+                        self.as_mut().error_occurred();
+                    }
+                }
+            }
+            NoteServiceMessage::DeleteDone { index, result } => {
+                self.as_mut().rust_mut().op_state = OpState::Idle;
+                match result {
+                    Ok(_) => {
+                        tracing::info!("Deleted note at index {}", index);
+                        self.as_mut().rust_mut().clear_error();
+                        if index < self.as_ref().rust().notes.len() {
+                            self.as_mut().rust_mut().notes.remove(index);
+                            self.as_mut().notes_changed();
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to delete note: {}", e);
+                        self.as_mut().rust_mut().set_error(&format!("Failed to delete note: {}", e));
+                        self.as_mut().error_occurred();
+                    }
+                }
             }
         }
     }

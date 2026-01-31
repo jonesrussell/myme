@@ -34,6 +34,15 @@ Page {
         id: kanbanModel
     }
 
+    // Poll timer for async kanban operations
+    Timer {
+        id: kanbanPollTimer
+        interval: 100
+        running: kanbanModel.loading
+        repeat: true
+        onTriggered: kanbanModel.poll_channel()
+    }
+
     // Force UI update when loading finishes
     Connections {
         target: kanbanModel

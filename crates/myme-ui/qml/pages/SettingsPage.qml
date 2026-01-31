@@ -14,6 +14,15 @@ Page {
         Component.onCompleted: authModel.check_auth()
     }
 
+    // Timer to poll for async auth operation results
+    Timer {
+        id: authPollTimer
+        interval: 100
+        running: authModel.loading
+        repeat: true
+        onTriggered: authModel.poll_channel()
+    }
+
     background: Rectangle {
         color: Theme.background
     }

@@ -45,6 +45,9 @@ pub mod qobject {
         fn pull_repo(self: Pin<&mut RepoModel>, index: i32);
 
         #[qinvokable]
+        fn cancel_operation(self: Pin<&mut RepoModel>);
+
+        #[qinvokable]
         fn poll_channel(self: Pin<&mut RepoModel>);
 
         #[qinvokable]
@@ -216,13 +219,16 @@ impl qobject::RepoModel {
             None => return,
         };
 
+        // Create a cancellation token for this operation
+        let cancel_token = bridge::new_repo_cancel_token();
+
         self.as_mut().rust_mut().op_state = OpState::BusyClone(i);
         if let Some(e) = self.as_mut().rust_mut().entries.get_mut(i) {
             e.busy = true;
         }
         self.as_mut().repos_changed();
 
-        request_clone(&tx, i, clone_url, target_path);
+        request_clone(&tx, i, clone_url, target_path, Some(cancel_token));
     }
 
     pub fn pull_repo(mut self: Pin<&mut Self>, index: i32) {
@@ -248,13 +254,38 @@ impl qobject::RepoModel {
             None => return,
         };
 
+        // Create a cancellation token for this operation
+        let cancel_token = bridge::new_repo_cancel_token();
+
         self.as_mut().rust_mut().op_state = OpState::BusyPull(i);
         if let Some(e) = self.as_mut().rust_mut().entries.get_mut(i) {
             e.busy = true;
         }
         self.as_mut().repos_changed();
 
-        request_pull(&tx, i, path);
+        request_pull(&tx, i, path, Some(cancel_token));
+    }
+
+    pub fn cancel_operation(mut self: Pin<&mut Self>) {
+        // Cancel any active operation
+        bridge::cancel_repo_operation();
+
+        // Reset state based on current operation
+        match self.as_ref().rust().op_state {
+            OpState::BusyClone(idx) | OpState::BusyPull(idx) => {
+                if let Some(e) = self.as_mut().rust_mut().entries.get_mut(idx) {
+                    e.busy = false;
+                }
+            }
+            OpState::BusyRefresh => {
+                self.as_mut().set_loading(false);
+            }
+            OpState::Idle => {}
+        }
+
+        self.as_mut().rust_mut().op_state = OpState::Idle;
+        self.as_mut().repos_changed();
+        tracing::info!("Repo operation cancelled by user");
     }
 
     pub fn poll_channel(mut self: Pin<&mut Self>) {
@@ -282,38 +313,61 @@ impl qobject::RepoModel {
                 }
             }
             RepoServiceMessage::CloneDone { index, result } => {
+                // Clear cancellation token
+                bridge::clear_repo_cancel_token();
+
                 if let Some(e) = self.as_mut().rust_mut().entries.get_mut(index) {
                     e.busy = false;
                 }
                 self.as_mut().rust_mut().op_state = OpState::Idle;
                 self.as_mut().repos_changed();
 
-                if let Err(e) = result {
-                    self.as_mut().rust_mut().set_error(e.to_string());
-                    self.as_mut().error_occurred();
-                }
-                // Trigger refresh after clone
-                if let Some(tx) = bridge::get_repo_service_tx() {
-                    self.as_mut().set_loading(true);
-                    self.as_mut().rust_mut().op_state = OpState::BusyRefresh;
-                    request_refresh(&tx);
+                match &result {
+                    Ok(()) => {
+                        // Trigger refresh after successful clone
+                        if let Some(tx) = bridge::get_repo_service_tx() {
+                            self.as_mut().set_loading(true);
+                            self.as_mut().rust_mut().op_state = OpState::BusyRefresh;
+                            request_refresh(&tx);
+                        }
+                    }
+                    Err(crate::services::RepoError::Cancelled) => {
+                        // Silently handle cancellation - no error, no refresh
+                        tracing::info!("Clone operation was cancelled");
+                    }
+                    Err(e) => {
+                        self.as_mut().rust_mut().set_error(e.to_string());
+                        self.as_mut().error_occurred();
+                    }
                 }
             }
             RepoServiceMessage::PullDone { index, result } => {
+                // Clear cancellation token
+                bridge::clear_repo_cancel_token();
+
                 if let Some(e) = self.as_mut().rust_mut().entries.get_mut(index) {
                     e.busy = false;
                 }
                 self.as_mut().rust_mut().op_state = OpState::Idle;
                 self.as_mut().repos_changed();
 
-                if let Err(e) = result {
-                    self.as_mut().rust_mut().set_error(e.to_string());
-                    self.as_mut().error_occurred();
-                }
-                if let Some(tx) = bridge::get_repo_service_tx() {
-                    self.as_mut().set_loading(true);
-                    self.as_mut().rust_mut().op_state = OpState::BusyRefresh;
-                    request_refresh(&tx);
+                match &result {
+                    Ok(()) => {
+                        // Trigger refresh after successful pull
+                        if let Some(tx) = bridge::get_repo_service_tx() {
+                            self.as_mut().set_loading(true);
+                            self.as_mut().rust_mut().op_state = OpState::BusyRefresh;
+                            request_refresh(&tx);
+                        }
+                    }
+                    Err(crate::services::RepoError::Cancelled) => {
+                        // Silently handle cancellation - no error, no refresh
+                        tracing::info!("Pull operation was cancelled");
+                    }
+                    Err(e) => {
+                        self.as_mut().rust_mut().set_error(e.to_string());
+                        self.as_mut().error_occurred();
+                    }
                 }
             }
         }

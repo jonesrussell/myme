@@ -29,3 +29,6 @@ webbrowser = "1.0"
 
 # Time handling
 chrono = { version = "0.4", features = ["serde"] }
+
+# Secure token storage (system keyring)
+keyring.workspace = true

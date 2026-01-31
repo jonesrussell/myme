@@ -1,10 +1,14 @@
 pub mod app;
 pub mod config;
+pub mod error;
 pub mod plugin;
 pub mod repo_op_state;
 
 pub use app::App;
 pub use config::{Config, GitHubConfig, TemperatureUnit, WeatherConfig};
+pub use error::{
+    AppError, AuthError, ConfigError, DatabaseError, GitHubError, NetworkError, WeatherError,
+};
 pub use plugin::{PluginContext, PluginProvider, UiComponent};
 
 use anyhow::Result;

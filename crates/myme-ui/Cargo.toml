@@ -6,9 +6,11 @@ edition.workspace = true
 [dependencies]
 # Workspace dependencies
 tokio.workspace = true
+tokio-util.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+parking_lot.workspace = true
 
 # cxx-qt for Qt/QML integration
 cxx = "1.0"

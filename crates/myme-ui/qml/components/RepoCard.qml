@@ -168,6 +168,22 @@ Rectangle {
 
             Item { Layout.fillWidth: true }
 
+            Button {
+                visible: repoModel && repoModel.getBusy(index)
+                text: "Cancel"
+                onClicked: repoModel.cancel_operation()
+                background: Rectangle {
+                    radius: Theme.buttonRadius
+                    color: parent.hovered ? Theme.errorHover : Theme.error
+                }
+                contentItem: Label {
+                    text: parent.text
+                    color: Theme.primaryText
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+
             BusyIndicator {
                 visible: repoModel && repoModel.getBusy(index)
                 running: visible

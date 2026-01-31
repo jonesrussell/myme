@@ -13,6 +13,9 @@ extern "C" bool initialize_weather_services();
 extern "C" bool initialize_github_auth();
 extern "C" bool initialize_github_client();
 
+// Rust shutdown function (called on app exit for graceful cleanup)
+extern "C" void shutdown_app_services();
+
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
@@ -45,6 +48,12 @@ int main(int argc, char *argv[])
 
     // Initialize GitHub client (requires prior OAuth authentication)
     initialize_github_client();
+
+    // Connect shutdown handler to aboutToQuit signal
+    // This ensures graceful cleanup of Rust services before the app exits
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, []() {
+        shutdown_app_services();
+    });
 
     QQmlApplicationEngine engine;
 

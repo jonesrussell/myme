@@ -3,18 +3,13 @@
 //! Ensures only one operation runs at a time. Used by RepoModel.
 
 /// Operation state for serializing refresh, clone, and pull.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum OpState {
+    #[default]
     Idle,
     BusyRefresh,
     BusyClone(usize),
     BusyPull(usize),
-}
-
-impl Default for OpState {
-    fn default() -> Self {
-        OpState::Idle
-    }
 }
 
 impl OpState {

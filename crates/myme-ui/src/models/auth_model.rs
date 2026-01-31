@@ -7,6 +7,9 @@ use cxx_qt::CxxQtType;
 use cxx_qt_lib::QString;
 use myme_auth::{GitHubAuth, OAuth2Provider};
 
+use crate::bridge;
+use crate::services::{request_auth, AuthServiceMessage};
+
 #[cxx_qt::bridge]
 pub mod qobject {
     unsafe extern "C++" {
@@ -32,12 +35,24 @@ pub mod qobject {
         #[qinvokable]
         fn sign_out(self: Pin<&mut AuthModel>);
 
+        /// Poll for async operation results. Call this from a QML Timer.
+        #[qinvokable]
+        fn poll_channel(self: Pin<&mut AuthModel>);
+
         #[qsignal]
         fn auth_changed(self: Pin<&mut AuthModel>);
 
         #[qsignal]
         fn auth_completed(self: Pin<&mut AuthModel>);
     }
+}
+
+/// Operation state tracking
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+enum OpState {
+    #[default]
+    Idle,
+    Authenticating,
 }
 
 #[derive(Default)]
@@ -47,32 +62,45 @@ pub struct AuthModelRust {
     error_message: QString,
     provider_name: QString,
     provider: Option<Arc<GitHubAuth>>,
-    runtime: Option<tokio::runtime::Handle>,
+    op_state: OpState,
 }
 
 impl AuthModelRust {
     /// Auto-initialize from global services
     fn ensure_initialized(&mut self) {
-        if self.provider.is_some() && self.runtime.is_some() {
+        if self.provider.is_some() {
             return;
         }
 
         // Default to GitHub provider
-        if let Some((provider, runtime)) = crate::bridge::get_github_auth_and_runtime() {
+        if let Some((provider, _runtime)) = crate::bridge::get_github_auth_and_runtime() {
             self.provider = Some(provider);
-            self.runtime = Some(runtime);
             self.provider_name = QString::from("GitHub");
             tracing::info!("AuthModel initialized for GitHub");
         } else {
             tracing::warn!("AuthModel: GitHub auth provider not available");
         }
     }
+
+    fn set_error(&mut self, msg: &str) {
+        self.error_message = QString::from(msg);
+    }
+
+    fn clear_error(&mut self) {
+        self.error_message = QString::from("");
+    }
 }
 
 impl qobject::AuthModel {
-    /// Start OAuth authentication flow
+    /// Start OAuth authentication flow (non-blocking)
     pub fn authenticate(mut self: Pin<&mut Self>) {
         self.as_mut().rust_mut().ensure_initialized();
+
+        // Prevent concurrent operations
+        if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
+            tracing::warn!("authenticate: operation already in progress");
+            return;
+        }
 
         let provider = match &self.as_ref().rust().provider {
             Some(p) => p.clone(),
@@ -84,38 +112,59 @@ impl qobject::AuthModel {
             }
         };
 
-        let runtime = match &self.as_ref().rust().runtime {
-            Some(r) => r.clone(),
+        // Initialize channel if needed
+        bridge::init_auth_service_channel();
+        let tx = match bridge::get_auth_service_tx() {
+            Some(t) => t,
             None => {
                 self.as_mut()
-                    .set_error_message(QString::from("Runtime not initialized"));
+                    .set_error_message(QString::from("Service channel not ready"));
                 return;
             }
         };
 
         self.as_mut().set_loading(true);
-        self.as_mut().set_error_message(QString::from(""));
+        self.as_mut().rust_mut().clear_error();
+        self.as_mut().rust_mut().op_state = OpState::Authenticating;
 
         tracing::info!("Starting GitHub OAuth authentication flow...");
 
-        // Run OAuth flow (blocks UI thread - acceptable for auth)
-        match runtime.block_on(async { provider.authenticate().await }) {
-            Ok(_token) => {
-                tracing::info!("GitHub authentication successful");
+        // Spawn async operation (non-blocking)
+        request_auth(&tx, provider);
+    }
 
-                // Reinitialize GitHub client with new token
-                crate::bridge::reinitialize_github_client();
+    /// Poll for async operation results. Call this from a QML Timer (e.g., every 100ms).
+    pub fn poll_channel(mut self: Pin<&mut Self>) {
+        let msg = match bridge::try_recv_auth_message() {
+            Some(m) => m,
+            None => return,
+        };
 
-                self.as_mut().set_authenticated(true);
+        match msg {
+            AuthServiceMessage::AuthenticateDone(result) => {
                 self.as_mut().set_loading(false);
-                self.as_mut().auth_changed();
-                self.as_mut().auth_completed();
-            }
-            Err(e) => {
-                tracing::error!("GitHub authentication failed: {}", e);
-                self.as_mut()
-                    .set_error_message(QString::from(format!("Authentication failed: {}", e)));
-                self.as_mut().set_loading(false);
+                self.as_mut().rust_mut().op_state = OpState::Idle;
+
+                match result {
+                    Ok(_token) => {
+                        tracing::info!("GitHub authentication successful");
+
+                        // Reinitialize GitHub client with new token
+                        crate::bridge::reinitialize_github_client();
+
+                        self.as_mut().rust_mut().clear_error();
+                        self.as_mut().set_authenticated(true);
+                        self.as_mut().auth_changed();
+                        self.as_mut().auth_completed();
+                    }
+                    Err(e) => {
+                        tracing::error!("GitHub authentication failed: {}", e);
+                        self.as_mut()
+                            .rust_mut()
+                            .set_error(&format!("Authentication failed: {}", e));
+                        self.as_mut().set_authenticated(false);
+                    }
+                }
             }
         }
     }
@@ -151,13 +200,14 @@ impl qobject::AuthModel {
             Ok(_) => {
                 tracing::info!("Signed out from GitHub successfully");
                 self.as_mut().set_authenticated(false);
-                self.as_mut().set_error_message(QString::from(""));
+                self.as_mut().rust_mut().clear_error();
                 self.as_mut().auth_changed();
             }
             Err(e) => {
                 tracing::error!("Sign out failed: {}", e);
                 self.as_mut()
-                    .set_error_message(QString::from(format!("Sign out failed: {}", e)));
+                    .rust_mut()
+                    .set_error(&format!("Sign out failed: {}", e));
             }
         }
     }
