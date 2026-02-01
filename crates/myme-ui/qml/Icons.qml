@@ -80,4 +80,9 @@ QtObject {
     readonly property string key: "\uebae"
     readonly property string lock: "\uebd1"
     readonly property string user: "\ueda0"
+
+    // Text & Documents
+    readonly property string scissors: "\uecb8"
+    readonly property string textT: "\ued5c"
+    readonly property string article: "\ue958"
 }

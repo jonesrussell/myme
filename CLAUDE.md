@@ -300,6 +300,18 @@ Default config is created automatically on first run. Configuration is loaded us
 - cxx-qt exposes Rust methods to QML using the **exact snake_case names** from Rust (no camelCase conversion)
 - In QML, always call invokable methods with snake_case: `model.check_auth()`, `model.fetch_repos()`, `model.poll_channel()` — not `checkAuth`, `fetchRepos`, or `pollChannel`
 
+### Dev Tools Page
+The Dev Tools page (`DevToolsPage.qml`) provides utility tools for developers:
+- **JWT Generator**: Generate and verify JSON Web Tokens
+- **Encoding Hub**: Encode/decode Base64, Hex, URL strings
+- **UUID Generator**: Generate UUIDs v1, v4, v5, v7
+- **JSON Toolkit**: Format, validate, minify, convert JSON
+- **Hash Generator**: Generate MD5, SHA-1, SHA-256, SHA-512 hashes
+- **Time Toolkit**: Parse timestamps, convert timezones
+- **Text Chunker**: Split large text into ≤10,000 char chunks for AI tools with character limits
+
+Tools follow a consistent pattern: add entry to `tools` array, create `Component`, register in `Loader` switch. QML-only tools (no Rust backend) are preferred for simple utilities.
+
 ## Important Files
 
 ### Core Infrastructure

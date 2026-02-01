@@ -55,6 +55,13 @@ Page {
             description: "Parse timestamps, convert timezones, and perform date arithmetic",
             icon: Icons.arrowsClockwise,
             category: "Conversion"
+        },
+        {
+            id: "chunker",
+            name: "Text Chunker",
+            description: "Split large text into copyable chunks for pasting into AI tools with character limits",
+            icon: Icons.scissors,
+            category: "Text"
         }
     ]
 
@@ -400,6 +407,7 @@ Page {
                 if (currentTool === "hash") return hashToolComponent;
                 if (currentTool === "timestamp") return timeToolComponent;
                 if (currentTool === "json") return jsonToolComponent;
+                if (currentTool === "chunker") return chunkerToolComponent;
                 return null;
             }
         }
@@ -3167,6 +3175,432 @@ Page {
                 }
 
                 Item { Layout.fillHeight: true }
+            }
+        }
+    }
+
+    // Text Chunker Component
+    Component {
+        id: chunkerToolComponent
+
+        Item {
+            anchors.fill: parent
+
+            // State
+            property string inputText: ""
+            property var chunks: []
+            property int maxChunkSize: 10000
+            property int copiedChunkIndex: -1
+
+            // Smart chunking function - breaks at natural boundaries
+            function chunkText(text, maxSize) {
+                if (!text || text.length === 0 || maxSize <= 0) {
+                    return [];
+                }
+
+                const result = [];
+                let remaining = text;
+                const minBreakPoint = maxSize * 0.5;
+
+                while (remaining.length > 0) {
+                    if (remaining.length <= maxSize) {
+                        result.push(remaining);
+                        break;
+                    }
+
+                    // Find the best break point within maxSize
+                    let breakPoint = maxSize;
+                    const searchArea = remaining.substring(0, maxSize);
+
+                    // Try paragraph break first (\n\n)
+                    const paragraphBreak = searchArea.lastIndexOf("\n\n");
+                    if (paragraphBreak > minBreakPoint) {
+                        breakPoint = paragraphBreak + 2;
+                    } else {
+                        // Try single newline
+                        const lineBreak = searchArea.lastIndexOf("\n");
+                        if (lineBreak > minBreakPoint) {
+                            breakPoint = lineBreak + 1;
+                        } else {
+                            // Try sentence break (". " or ".\n")
+                            const dotSpace = searchArea.lastIndexOf(". ");
+                            const dotNewline = searchArea.lastIndexOf(".\n");
+                            const sentenceBreak = Math.max(dotSpace, dotNewline);
+                            if (sentenceBreak > minBreakPoint) {
+                                breakPoint = sentenceBreak + 2;
+                            } else {
+                                // Try word break (space)
+                                const wordBreak = searchArea.lastIndexOf(" ");
+                                if (wordBreak > minBreakPoint) {
+                                    breakPoint = wordBreak + 1;
+                                }
+                                // Otherwise, hard cut at maxSize
+                            }
+                        }
+                    }
+
+                    result.push(remaining.substring(0, breakPoint));
+                    remaining = remaining.substring(breakPoint);
+                }
+
+                return result;
+            }
+
+            // Debounce chunking for large text performance
+            Timer {
+                id: chunkingTimer
+                interval: 150
+                onTriggered: chunks = chunkText(inputText, maxChunkSize)
+            }
+
+            // Update chunks when input changes (debounced)
+            onInputTextChanged: {
+                chunkingTimer.restart();
+            }
+
+            // Copy feedback timer
+            Timer {
+                id: copyFeedbackTimer
+                interval: 2000
+                onTriggered: copiedChunkIndex = -1
+            }
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: Theme.spacingLg
+                spacing: Theme.spacingLg
+
+                // Left column - Input area
+                Rectangle {
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: parent.width * 0.45
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingMd
+                        spacing: Theme.spacingSm
+
+                        // Header
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.spacingSm
+
+                            Label {
+                                text: "Input Text"
+                                font.pixelSize: Theme.fontSizeMedium
+                                font.bold: true
+                                color: Theme.text
+                                Layout.fillWidth: true
+                            }
+
+                            // Character count
+                            Label {
+                                text: inputText.length.toLocaleString() + " chars"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.textSecondary
+                            }
+
+                            // Clear button
+                            Rectangle {
+                                visible: inputText.length > 0
+                                width: 28
+                                height: 28
+                                radius: Theme.buttonRadius
+                                color: clearMouseArea.containsMouse ? Theme.errorBg : "transparent"
+
+                                Label {
+                                    anchors.centerIn: parent
+                                    text: Icons.trash
+                                    font.family: Icons.family
+                                    font.pixelSize: 16
+                                    color: clearMouseArea.containsMouse ? Theme.error : Theme.textSecondary
+                                }
+
+                                MouseArea {
+                                    id: clearMouseArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: inputText = ""
+                                }
+
+                                ToolTip.visible: clearMouseArea.containsMouse
+                                ToolTip.text: "Clear input"
+                                ToolTip.delay: 500
+                            }
+                        }
+
+                        // Input TextArea
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            color: Theme.inputBg
+                            border.color: inputArea.activeFocus ? Theme.primary : Theme.inputBorder
+                            border.width: inputArea.activeFocus ? 2 : 1
+                            radius: Theme.inputRadius
+
+                            Behavior on border.color {
+                                ColorAnimation { duration: 100 }
+                            }
+
+                            ScrollView {
+                                anchors.fill: parent
+                                anchors.margins: 2
+
+                                TextArea {
+                                    id: inputArea
+                                    text: inputText
+                                    placeholderText: "Paste your large text here...\n\nThe text will be automatically split into chunks of up to " + maxChunkSize.toLocaleString() + " characters, breaking at natural boundaries (paragraphs, sentences, words)."
+                                    wrapMode: TextEdit.Wrap
+                                    font.family: "Consolas, Monaco, monospace"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Theme.text
+                                    placeholderTextColor: Theme.textMuted
+                                    onTextChanged: inputText = text
+
+                                    background: Rectangle {
+                                        color: "transparent"
+                                    }
+                                }
+                            }
+                        }
+
+                        // Info bar
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 36
+                            color: Theme.infoBg
+                            border.color: Theme.info
+                            radius: Theme.buttonRadius
+                            visible: inputText.length > 0
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: Theme.spacingSm
+                                spacing: Theme.spacingSm
+
+                                Label {
+                                    text: Icons.info
+                                    font.family: Icons.family
+                                    font.pixelSize: 16
+                                    color: Theme.info
+                                }
+
+                                Label {
+                                    text: chunks.length + " chunk" + (chunks.length !== 1 ? "s" : "") + " • Max " + maxChunkSize.toLocaleString() + " chars each"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Theme.info
+                                    Layout.fillWidth: true
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Right column - Chunks display
+                Rectangle {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.cardRadius
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingMd
+                        spacing: Theme.spacingSm
+
+                        // Header
+                        Label {
+                            text: "Chunks"
+                            font.pixelSize: Theme.fontSizeMedium
+                            font.bold: true
+                            color: Theme.text
+                        }
+
+                        // Empty state
+                        ColumnLayout {
+                            visible: chunks.length === 0
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            spacing: Theme.spacingMd
+
+                            Item { Layout.fillHeight: true }
+
+                            Label {
+                                text: Icons.scissors
+                                font.family: Icons.family
+                                font.pixelSize: 48
+                                color: Theme.textMuted
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+
+                            Label {
+                                text: "No text to chunk"
+                                font.pixelSize: Theme.fontSizeLarge
+                                font.bold: true
+                                color: Theme.text
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+
+                            Label {
+                                text: "Paste text in the left panel to split it into copyable chunks"
+                                font.pixelSize: Theme.fontSizeNormal
+                                color: Theme.textSecondary
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+
+                            Item { Layout.fillHeight: true }
+                        }
+
+                        // Chunks list
+                        ScrollView {
+                            visible: chunks.length > 0
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            clip: true
+
+                            ColumnLayout {
+                                width: parent.width
+                                spacing: Theme.spacingMd
+
+                                Repeater {
+                                    model: chunks
+
+                                    Rectangle {
+                                        required property int index
+                                        required property string modelData
+
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: chunkContent.implicitHeight + Theme.spacingMd * 2
+                                        color: copiedChunkIndex === index ? Theme.successBg : Theme.surfaceAlt
+                                        border.color: copiedChunkIndex === index ? Theme.success : Theme.border
+                                        border.width: copiedChunkIndex === index ? 2 : 1
+                                        radius: Theme.cardRadius
+
+                                        Behavior on color {
+                                            ColorAnimation { duration: 150 }
+                                        }
+
+                                        Behavior on border.color {
+                                            ColorAnimation { duration: 150 }
+                                        }
+
+                                        ColumnLayout {
+                                            id: chunkContent
+                                            anchors.fill: parent
+                                            anchors.margins: Theme.spacingMd
+                                            spacing: Theme.spacingSm
+
+                                            // Chunk header
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                spacing: Theme.spacingSm
+
+                                                // Chunk number badge
+                                                Rectangle {
+                                                    width: chunkLabel.implicitWidth + Theme.spacingSm * 2
+                                                    height: chunkLabel.implicitHeight + Theme.spacingXs
+                                                    radius: 4
+                                                    color: Theme.primary + "20"
+
+                                                    Label {
+                                                        id: chunkLabel
+                                                        anchors.centerIn: parent
+                                                        text: "Chunk " + (index + 1) + "/" + chunks.length
+                                                        font.pixelSize: Theme.fontSizeSmall
+                                                        font.bold: true
+                                                        color: Theme.primary
+                                                    }
+                                                }
+
+                                                // Character count
+                                                Label {
+                                                    text: modelData.length.toLocaleString() + " chars"
+                                                    font.pixelSize: Theme.fontSizeSmall
+                                                    color: Theme.textSecondary
+                                                }
+
+                                                Item { Layout.fillWidth: true }
+
+                                                // Copy button
+                                                Button {
+                                                    id: copyBtn
+                                                    text: copiedChunkIndex === index ? (Icons.check + " Copied!") : (Icons.copy + " Copy")
+                                                    font.family: Icons.family
+
+                                                    onClicked: {
+                                                        // Use hidden TextArea for copying
+                                                        hiddenCopyArea.text = modelData;
+                                                        hiddenCopyArea.selectAll();
+                                                        hiddenCopyArea.copy();
+                                                        hiddenCopyArea.deselect();
+                                                        copiedChunkIndex = index;
+                                                        copyFeedbackTimer.restart();
+                                                    }
+
+                                                    background: Rectangle {
+                                                        radius: Theme.buttonRadius
+                                                        color: copiedChunkIndex === index ? Theme.success : (parent.hovered ? Theme.primaryHover : Theme.primary)
+                                                    }
+
+                                                    contentItem: Text {
+                                                        text: parent.text
+                                                        font.family: Icons.family
+                                                        color: Theme.primaryText
+                                                        font.pixelSize: Theme.fontSizeSmall
+                                                        font.bold: true
+                                                        horizontalAlignment: Text.AlignHCenter
+                                                        verticalAlignment: Text.AlignVCenter
+                                                    }
+                                                }
+                                            }
+
+                                            // Chunk preview
+                                            Rectangle {
+                                                Layout.fillWidth: true
+                                                Layout.preferredHeight: 100
+                                                color: Theme.inputBg
+                                                border.color: Theme.inputBorder
+                                                radius: Theme.inputRadius
+
+                                                ScrollView {
+                                                    anchors.fill: parent
+                                                    anchors.margins: Theme.spacingSm
+
+                                                    TextArea {
+                                                        text: modelData
+                                                        readOnly: true
+                                                        wrapMode: TextEdit.Wrap
+                                                        font.family: "Consolas, Monaco, monospace"
+                                                        font.pixelSize: Theme.fontSizeSmall
+                                                        color: Theme.text
+                                                        selectByMouse: true
+
+                                                        background: Rectangle {
+                                                            color: "transparent"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Item { height: Theme.spacingMd }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Hidden TextArea for clipboard operations
+            TextArea {
+                id: hiddenCopyArea
+                visible: false
             }
         }
     }
