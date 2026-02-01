@@ -401,11 +401,11 @@ mod tests {
         repo.commit(Some("HEAD"), &sig, &sig, "initial", &tree, &[])
             .unwrap();
 
-        // Clone to target (file:// URL on Windows needs 3 slashes)
+        // Clone to target using path directly (git2 accepts local paths)
         let target_dir = tempfile::tempdir().expect("target temp dir");
         let target_path = target_dir.path().join("cloned");
-        let url = format!("file:///{}", remote_path.display().to_string().replace('\\', "/"));
-        let result = GitOperations::clone_repository(&url, &target_path);
+        let url = remote_path.to_str().expect("valid path");
+        let result = GitOperations::clone_repository(url, &target_path);
         assert!(result.is_ok(), "clone failed: {:?}", result.err());
         let cloned = result.unwrap();
         assert_eq!(cloned.name, "cloned");
@@ -430,11 +430,11 @@ mod tests {
             .commit(Some("HEAD"), &sig, &sig, "v1", &tree, &[])
             .unwrap();
 
-        // Clone it
+        // Clone it using path directly (git2 accepts local paths)
         let target_dir = tempfile::tempdir().expect("target");
         let target_path = target_dir.path().join("clone");
-        let url = format!("file:///{}", remote_path.display().to_string().replace('\\', "/"));
-        GitOperations::clone_repository(&url, &target_path).unwrap();
+        let url = remote_path.to_str().expect("valid path");
+        GitOperations::clone_repository(url, &target_path).unwrap();
 
         // Add another commit to remote
         fs::File::create(&readme).unwrap().write_all(b"v2").unwrap();
