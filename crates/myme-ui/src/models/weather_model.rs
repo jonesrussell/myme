@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use cxx_qt::CxxQtType;
 use cxx_qt_lib::QString;
-use myme_weather::{WeatherCache, WeatherData, WeatherProvider, TemperatureUnit};
+use myme_weather::{TemperatureUnit, WeatherCache, WeatherData, WeatherProvider};
 
 #[cxx_qt::bridge]
 pub mod qobject {
@@ -144,8 +144,10 @@ impl qobject::WeatherModel {
         self.as_mut().set_feels_like(data.current.feels_like);
         self.as_mut().set_humidity(data.current.humidity as i32);
         self.as_mut().set_wind_speed(data.current.wind_speed);
-        self.as_mut().set_condition(QString::from(data.current.condition.description()));
-        self.as_mut().set_condition_icon(QString::from(data.current.condition.icon_name()));
+        self.as_mut()
+            .set_condition(QString::from(data.current.condition.description()));
+        self.as_mut()
+            .set_condition_icon(QString::from(data.current.condition.icon_name()));
 
         let location_name = data
             .location
@@ -164,9 +166,12 @@ impl qobject::WeatherModel {
         if let Some(today) = data.forecast.first() {
             self.as_mut().set_today_high(today.high);
             self.as_mut().set_today_low(today.low);
-            self.as_mut().set_precipitation_chance(today.precipitation_chance as i32);
-            self.as_mut().set_sunrise(QString::from(today.sunrise.format("%H:%M").to_string()));
-            self.as_mut().set_sunset(QString::from(today.sunset.format("%H:%M").to_string()));
+            self.as_mut()
+                .set_precipitation_chance(today.precipitation_chance as i32);
+            self.as_mut()
+                .set_sunrise(QString::from(today.sunrise.format("%H:%M").to_string()));
+            self.as_mut()
+                .set_sunset(QString::from(today.sunset.format("%H:%M").to_string()));
         }
 
         // Store weather data for forecast methods
@@ -192,14 +197,12 @@ impl qobject::WeatherModel {
         };
 
         // Check cache first - extract data to avoid borrow conflicts
-        let cache_result: Option<(WeatherData, bool, bool)> = self
-            .as_ref()
-            .rust()
-            .cache
-            .as_ref()
-            .and_then(|cache| {
+        let cache_result: Option<(WeatherData, bool, bool)> =
+            self.as_ref().rust().cache.as_ref().and_then(|cache| {
                 if !cache.is_expired() {
-                    cache.get().map(|data| (data.clone(), cache.is_stale(), cache.is_expired()))
+                    cache
+                        .get()
+                        .map(|data| (data.clone(), cache.is_stale(), cache.is_expired()))
                 } else {
                     None
                 }

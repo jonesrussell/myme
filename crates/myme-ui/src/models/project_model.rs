@@ -453,7 +453,8 @@ impl qobject::ProjectModel {
         self.as_mut().set_error_message(QString::from(""));
 
         // Fetch issues from GitHub
-        let issues_result = runtime.block_on(async { github_client.list_issues(&owner, &repo).await });
+        let issues_result =
+            runtime.block_on(async { github_client.list_issues(&owner, &repo).await });
 
         match issues_result {
             Ok(issues) => {
@@ -554,7 +555,10 @@ impl qobject::ProjectModel {
         self.as_mut().rust_mut().ensure_initialized();
 
         let is_authenticated = crate::bridge::is_github_authenticated();
-        tracing::info!("check_auth: is_github_authenticated() = {}", is_authenticated);
+        tracing::info!(
+            "check_auth: is_github_authenticated() = {}",
+            is_authenticated
+        );
 
         self.as_mut().set_authenticated(is_authenticated);
         tracing::info!("check_auth: set_authenticated({}) called", is_authenticated);

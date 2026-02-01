@@ -26,18 +26,29 @@ static GITHUB_AUTH_PROVIDER: OnceLock<Arc<GitHubAuth>> = OnceLock::new();
 // Repo service channel
 static REPO_SERVICE_TX: OnceLock<std::sync::mpsc::Sender<crate::services::RepoServiceMessage>> =
     OnceLock::new();
-static REPO_SERVICE_RX: OnceLock<std::sync::Mutex<std::sync::mpsc::Receiver<crate::services::RepoServiceMessage>>> =
+static REPO_SERVICE_RX: OnceLock<
+    std::sync::Mutex<std::sync::mpsc::Receiver<crate::services::RepoServiceMessage>>,
+> = OnceLock::new();
+
+// Note service channel
+static NOTE_SERVICE_TX: OnceLock<std::sync::mpsc::Sender<crate::services::NoteServiceMessage>> =
     OnceLock::new();
+static NOTE_SERVICE_RX: OnceLock<
+    std::sync::Mutex<std::sync::mpsc::Receiver<crate::services::NoteServiceMessage>>,
+> = OnceLock::new();
 
 /// Initialize the tokio runtime (call once at application startup)
 fn get_or_init_runtime() -> tokio::runtime::Handle {
-    RUNTIME.get_or_init(|| {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .thread_name("myme-tokio")
-            .build()
-            .expect("Failed to create tokio runtime")
-    }).handle().clone()
+    RUNTIME
+        .get_or_init(|| {
+            tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .thread_name("myme-tokio")
+                .build()
+                .expect("Failed to create tokio runtime")
+        })
+        .handle()
+        .clone()
 }
 
 /// Initialize the NoteModel with a TodoClient
@@ -79,12 +90,17 @@ pub extern "C" fn initialize_note_model(base_url: *const c_char) -> bool {
                 tracing::info!("Using JWT token from GODO_JWT_TOKEN environment variable");
                 Some(token)
             } else {
-                tracing::warn!("No JWT token configured - API calls may fail if authentication is required");
+                tracing::warn!(
+                    "No JWT token configured - API calls may fail if authentication is required"
+                );
                 None
             }
         }
         Err(e) => {
-            tracing::warn!("Failed to load config: {}. Checking environment variable.", e);
+            tracing::warn!(
+                "Failed to load config: {}. Checking environment variable.",
+                e
+            );
             std::env::var("GODO_JWT_TOKEN").ok()
         }
     };
@@ -177,7 +193,8 @@ pub extern "C" fn initialize_weather_services() -> bool {
 }
 
 /// Get the initialized weather services for use by WeatherModels
-pub fn get_weather_services() -> Option<(Arc<WeatherProvider>, WeatherCache, tokio::runtime::Handle)> {
+pub fn get_weather_services() -> Option<(Arc<WeatherProvider>, WeatherCache, tokio::runtime::Handle)>
+{
     let provider = WEATHER_PROVIDER.get()?.clone();
     let runtime = RUNTIME.get()?.handle().clone();
 
@@ -207,7 +224,10 @@ pub extern "C" fn initialize_github_client() -> bool {
     let token = match myme_auth::SecureStorage::retrieve_token("github") {
         Ok(token_set) => {
             if token_set.is_expired() {
-                tracing::warn!("GitHub token is expired (expires_at: {})", token_set.expires_at);
+                tracing::warn!(
+                    "GitHub token is expired (expires_at: {})",
+                    token_set.expires_at
+                );
                 return false;
             }
             tracing::info!("Retrieved valid GitHub token from secure storage");
@@ -388,14 +408,38 @@ pub fn init_repo_service_channel() -> bool {
 }
 
 /// Get repo service sender for request_* calls. None if init_repo_service_channel not called yet.
-pub fn get_repo_service_tx(
-) -> Option<std::sync::mpsc::Sender<crate::services::RepoServiceMessage>> {
+pub fn get_repo_service_tx() -> Option<std::sync::mpsc::Sender<crate::services::RepoServiceMessage>>
+{
     REPO_SERVICE_TX.get().cloned()
 }
 
 /// Non-blocking recv from repo service channel. Called by RepoModel::poll_channel.
 pub fn try_recv_repo_message() -> Option<crate::services::RepoServiceMessage> {
     let rx = REPO_SERVICE_RX.get()?;
+    rx.lock().ok()?.try_recv().ok()
+}
+
+/// Initialize note service channel. Call once when NoteModel is first created.
+/// Returns true if initialized (or already initialized).
+pub fn init_note_service_channel() -> bool {
+    if NOTE_SERVICE_TX.get().is_some() {
+        return true;
+    }
+    let (tx, rx) = std::sync::mpsc::channel();
+    NOTE_SERVICE_TX.set(tx).ok();
+    NOTE_SERVICE_RX.set(std::sync::Mutex::new(rx)).ok();
+    true
+}
+
+/// Get note service sender for request_* calls. None if init_note_service_channel not called yet.
+pub fn get_note_service_tx() -> Option<std::sync::mpsc::Sender<crate::services::NoteServiceMessage>>
+{
+    NOTE_SERVICE_TX.get().cloned()
+}
+
+/// Non-blocking recv from note service channel. Called by NoteModel::poll_channel.
+pub fn try_recv_note_message() -> Option<crate::services::NoteServiceMessage> {
+    let rx = NOTE_SERVICE_RX.get()?;
     rx.lock().ok()?.try_recv().ok()
 }
 
@@ -415,6 +459,8 @@ pub fn reinitialize_github_client() {
     if success {
         tracing::info!("GitHub client initialized with new token");
     } else {
-        tracing::warn!("GitHub client initialization returned false - may need app restart for new token");
+        tracing::warn!(
+            "GitHub client initialization returned false - may need app restart for new token"
+        );
     }
 }

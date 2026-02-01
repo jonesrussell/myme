@@ -8,9 +8,9 @@ use url::Url;
 /// Matches Godo's Note model structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Todo {
-    pub id: String,  // UUID from Godo
-    pub content: String,  // Note content (1-1000 chars)
-    pub done: bool,  // Completion status
+    pub id: String,      // UUID from Godo
+    pub content: String, // Note content (1-1000 chars)
+    pub done: bool,      // Completion status
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -47,12 +47,12 @@ pub struct TodoClient {
 impl TodoClient {
     /// Create a new todo client with the given base URL and optional JWT token
     pub fn new(base_url: impl AsRef<str>, jwt_token: Option<String>) -> Result<Self> {
-        let base_url = Url::parse(base_url.as_ref())
-            .context("Invalid base URL")?;
+        let base_url = Url::parse(base_url.as_ref()).context("Invalid base URL")?;
 
         let client = Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .danger_accept_invalid_certs(true)  // For development with self-signed certs
+            .timeout(std::time::Duration::from_secs(5)) // 5 second timeout for faster failure detection
+            .connect_timeout(std::time::Duration::from_secs(3)) // 3 second connect timeout
+            .danger_accept_invalid_certs(true) // For development with self-signed certs
             .build()
             .context("Failed to build HTTP client")?;
 
@@ -79,12 +79,15 @@ impl TodoClient {
 
     /// List all notes/todos
     pub async fn list_todos(&self) -> Result<Vec<Todo>> {
-        let url = self.base_url.join("/api/v1/notes")
+        let url = self
+            .base_url
+            .join("/api/v1/notes")
             .context("Failed to construct URL")?;
 
         tracing::debug!("Fetching notes from: {}", url);
 
-        let response = self.build_request(self.client.get(url))
+        let response = self
+            .build_request(self.client.get(url))
             .send()
             .await
             .context("Failed to send request")?;
@@ -106,12 +109,15 @@ impl TodoClient {
 
     /// Get a specific note by ID
     pub async fn get_todo(&self, id: &str) -> Result<Todo> {
-        let url = self.base_url.join(&format!("/api/v1/notes/{}", id))
+        let url = self
+            .base_url
+            .join(&format!("/api/v1/notes/{}", id))
             .context("Failed to construct URL")?;
 
         tracing::debug!("Fetching note {} from: {}", id, url);
 
-        let response = self.build_request(self.client.get(url))
+        let response = self
+            .build_request(self.client.get(url))
             .send()
             .await
             .context("Failed to send request")?;
@@ -132,18 +138,18 @@ impl TodoClient {
 
     /// Create a new note
     pub async fn create_todo(&self, request: TodoCreateRequest) -> Result<Todo> {
-        let url = self.base_url.join("/api/v1/notes")
+        let url = self
+            .base_url
+            .join("/api/v1/notes")
             .context("Failed to construct URL")?;
 
         tracing::debug!("Creating note: {}", request.content);
 
-        let response = self.build_request(
-            self.client.post(url)
-                .json(&request)
-        )
-        .send()
-        .await
-        .context("Failed to send request")?;
+        let response = self
+            .build_request(self.client.post(url).json(&request))
+            .send()
+            .await
+            .context("Failed to send request")?;
 
         let status = response.status();
         if !status.is_success() {
@@ -162,18 +168,18 @@ impl TodoClient {
 
     /// Update an existing note (PATCH request for partial updates)
     pub async fn update_todo(&self, id: &str, request: TodoUpdateRequest) -> Result<Todo> {
-        let url = self.base_url.join(&format!("/api/v1/notes/{}", id))
+        let url = self
+            .base_url
+            .join(&format!("/api/v1/notes/{}", id))
             .context("Failed to construct URL")?;
 
         tracing::debug!("Updating note {}", id);
 
-        let response = self.build_request(
-            self.client.patch(url)
-                .json(&request)
-        )
-        .send()
-        .await
-        .context("Failed to send request")?;
+        let response = self
+            .build_request(self.client.patch(url).json(&request))
+            .send()
+            .await
+            .context("Failed to send request")?;
 
         let status = response.status();
         if !status.is_success() {
@@ -192,38 +198,53 @@ impl TodoClient {
 
     /// Mark a note as done
     pub async fn mark_done(&self, id: &str) -> Result<Todo> {
-        self.update_todo(id, TodoUpdateRequest {
-            content: None,
-            done: Some(true),
-        }).await
+        self.update_todo(
+            id,
+            TodoUpdateRequest {
+                content: None,
+                done: Some(true),
+            },
+        )
+        .await
     }
 
     /// Mark a note as not done
     pub async fn mark_undone(&self, id: &str) -> Result<Todo> {
-        self.update_todo(id, TodoUpdateRequest {
-            content: None,
-            done: Some(false),
-        }).await
+        self.update_todo(
+            id,
+            TodoUpdateRequest {
+                content: None,
+                done: Some(false),
+            },
+        )
+        .await
     }
 
     /// Toggle the done status of a note
     pub async fn toggle_done(&self, id: &str) -> Result<Todo> {
         // First get the current note to know its done status
         let note = self.get_todo(id).await?;
-        self.update_todo(id, TodoUpdateRequest {
-            content: None,
-            done: Some(!note.done),
-        }).await
+        self.update_todo(
+            id,
+            TodoUpdateRequest {
+                content: None,
+                done: Some(!note.done),
+            },
+        )
+        .await
     }
 
     /// Delete a note
     pub async fn delete_todo(&self, id: &str) -> Result<()> {
-        let url = self.base_url.join(&format!("/api/v1/notes/{}", id))
+        let url = self
+            .base_url
+            .join(&format!("/api/v1/notes/{}", id))
             .context("Failed to construct URL")?;
 
         tracing::debug!("Deleting note {}", id);
 
-        let response = self.build_request(self.client.delete(url))
+        let response = self
+            .build_request(self.client.delete(url))
             .send()
             .await
             .context("Failed to send request")?;
@@ -240,12 +261,15 @@ impl TodoClient {
 
     /// Check API health (no authentication required)
     pub async fn health_check(&self) -> Result<bool> {
-        let url = self.base_url.join("/api/v1/health")
+        let url = self
+            .base_url
+            .join("/api/v1/health")
             .context("Failed to construct URL")?;
 
         tracing::debug!("Checking API health: {}", url);
 
-        let response = self.client
+        let response = self
+            .client
             .get(url)
             .send()
             .await

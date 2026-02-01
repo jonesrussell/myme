@@ -193,8 +193,8 @@ impl Default for Config {
         Self {
             config_dir,
             services: ServiceConfig {
-                todo_api_url: "http://localhost:8008".to_string(),  // Godo default port
-                jwt_token: std::env::var("GODO_JWT_TOKEN").ok(),  // Read from environment
+                todo_api_url: "http://localhost:8008".to_string(), // Godo default port
+                jwt_token: std::env::var("GODO_JWT_TOKEN").ok(),   // Read from environment
             },
             ui: UiConfig {
                 window_width: 1200,
@@ -220,11 +220,10 @@ impl Config {
             return Ok(config);
         }
 
-        let contents = std::fs::read_to_string(&config_path)
-            .context("Failed to read config file")?;
+        let contents =
+            std::fs::read_to_string(&config_path).context("Failed to read config file")?;
 
-        let config: Config = toml::from_str(&contents)
-            .context("Failed to parse config file")?;
+        let config: Config = toml::from_str(&contents).context("Failed to parse config file")?;
 
         Ok(config)
     }
@@ -235,15 +234,12 @@ impl Config {
 
         // Ensure config directory exists
         if let Some(parent) = config_path.parent() {
-            std::fs::create_dir_all(parent)
-                .context("Failed to create config directory")?;
+            std::fs::create_dir_all(parent).context("Failed to create config directory")?;
         }
 
-        let contents = toml::to_string_pretty(self)
-            .context("Failed to serialize config")?;
+        let contents = toml::to_string_pretty(self).context("Failed to serialize config")?;
 
-        std::fs::write(&config_path, contents)
-            .context("Failed to write config file")?;
+        std::fs::write(&config_path, contents).context("Failed to write config file")?;
 
         Ok(())
     }

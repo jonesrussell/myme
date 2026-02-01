@@ -187,11 +187,13 @@ impl GitHubClient {
     pub async fn list_issues(&self, owner: &str, repo: &str) -> Result<Vec<GitHubIssue>> {
         tracing::debug!("Fetching issues for {}/{}", owner, repo);
 
-        let url = self.base_url.join(&format!("repos/{}/{}/issues", owner, repo))?;
+        let url = self
+            .base_url
+            .join(&format!("repos/{}/{}/issues", owner, repo))?;
         let request = self.build_request(
             self.client
                 .get(url)
-                .query(&[("state", "all"), ("per_page", "100")])
+                .query(&[("state", "all"), ("per_page", "100")]),
         );
 
         let response = request.send().await.context("Failed to fetch issues")?;
@@ -211,12 +213,14 @@ impl GitHubClient {
     ) -> Result<Vec<GitHubIssue>> {
         tracing::debug!("Fetching issues for {}/{} since {}", owner, repo, since);
 
-        let url = self.base_url.join(&format!("repos/{}/{}/issues", owner, repo))?;
-        let request = self.build_request(
-            self.client
-                .get(url)
-                .query(&[("state", "all"), ("since", since), ("per_page", "100")])
-        );
+        let url = self
+            .base_url
+            .join(&format!("repos/{}/{}/issues", owner, repo))?;
+        let request = self.build_request(self.client.get(url).query(&[
+            ("state", "all"),
+            ("since", since),
+            ("per_page", "100"),
+        ]));
 
         let response = request.send().await.context("Failed to fetch issues")?;
         let response = self.check_response(response).await?;
@@ -234,7 +238,9 @@ impl GitHubClient {
     ) -> Result<GitHubIssue> {
         tracing::debug!("Creating issue in {}/{}: {}", owner, repo, req.title);
 
-        let url = self.base_url.join(&format!("repos/{}/{}/issues", owner, repo))?;
+        let url = self
+            .base_url
+            .join(&format!("repos/{}/{}/issues", owner, repo))?;
         let request = self.build_request(self.client.post(url).json(&req));
 
         let response = request.send().await.context("Failed to create issue")?;
@@ -255,10 +261,9 @@ impl GitHubClient {
     ) -> Result<GitHubIssue> {
         tracing::debug!("Updating issue #{} in {}/{}", issue_number, owner, repo);
 
-        let url = self.base_url.join(&format!(
-            "repos/{}/{}/issues/{}",
-            owner, repo, issue_number
-        ))?;
+        let url = self
+            .base_url
+            .join(&format!("repos/{}/{}/issues/{}", owner, repo, issue_number))?;
         let request = self.build_request(self.client.patch(url).json(&req));
 
         let response = request.send().await.context("Failed to update issue")?;
@@ -269,30 +274,54 @@ impl GitHubClient {
     }
 
     /// Close an issue
-    pub async fn close_issue(&self, owner: &str, repo: &str, issue_number: i32) -> Result<GitHubIssue> {
-        self.update_issue(owner, repo, issue_number, UpdateIssueRequest {
-            title: None,
-            body: None,
-            state: Some("closed".to_string()),
-            labels: None,
-        }).await
+    pub async fn close_issue(
+        &self,
+        owner: &str,
+        repo: &str,
+        issue_number: i32,
+    ) -> Result<GitHubIssue> {
+        self.update_issue(
+            owner,
+            repo,
+            issue_number,
+            UpdateIssueRequest {
+                title: None,
+                body: None,
+                state: Some("closed".to_string()),
+                labels: None,
+            },
+        )
+        .await
     }
 
     /// Reopen an issue
-    pub async fn reopen_issue(&self, owner: &str, repo: &str, issue_number: i32) -> Result<GitHubIssue> {
-        self.update_issue(owner, repo, issue_number, UpdateIssueRequest {
-            title: None,
-            body: None,
-            state: Some("open".to_string()),
-            labels: None,
-        }).await
+    pub async fn reopen_issue(
+        &self,
+        owner: &str,
+        repo: &str,
+        issue_number: i32,
+    ) -> Result<GitHubIssue> {
+        self.update_issue(
+            owner,
+            repo,
+            issue_number,
+            UpdateIssueRequest {
+                title: None,
+                body: None,
+                state: Some("open".to_string()),
+                labels: None,
+            },
+        )
+        .await
     }
 
     /// List labels for a repository
     pub async fn list_labels(&self, owner: &str, repo: &str) -> Result<Vec<GitHubLabel>> {
         tracing::debug!("Fetching labels for {}/{}", owner, repo);
 
-        let url = self.base_url.join(&format!("repos/{}/{}/labels", owner, repo))?;
+        let url = self
+            .base_url
+            .join(&format!("repos/{}/{}/labels", owner, repo))?;
         let request = self.build_request(self.client.get(url));
 
         let response = request.send().await.context("Failed to fetch labels")?;
@@ -311,7 +340,9 @@ impl GitHubClient {
     ) -> Result<GitHubLabel> {
         tracing::debug!("Creating label {} in {}/{}", req.name, owner, repo);
 
-        let url = self.base_url.join(&format!("repos/{}/{}/labels", owner, repo))?;
+        let url = self
+            .base_url
+            .join(&format!("repos/{}/{}/labels", owner, repo))?;
         let request = self.build_request(self.client.post(url).json(&req));
 
         let response = request.send().await.context("Failed to create label")?;
@@ -329,7 +360,12 @@ impl GitHubClient {
         issue_number: i32,
         labels: Vec<String>,
     ) -> Result<Vec<GitHubLabel>> {
-        tracing::debug!("Setting labels on issue #{} in {}/{}", issue_number, owner, repo);
+        tracing::debug!(
+            "Setting labels on issue #{} in {}/{}",
+            issue_number,
+            owner,
+            repo
+        );
 
         let url = self.base_url.join(&format!(
             "repos/{}/{}/issues/{}/labels",
@@ -341,9 +377,7 @@ impl GitHubClient {
             labels: Vec<String>,
         }
 
-        let request = self.build_request(
-            self.client.put(url).json(&SetLabelsRequest { labels })
-        );
+        let request = self.build_request(self.client.put(url).json(&SetLabelsRequest { labels }));
 
         let response = request.send().await.context("Failed to set labels")?;
         let response = self.check_response(response).await?;

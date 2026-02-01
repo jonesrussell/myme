@@ -78,9 +78,7 @@ fn set_github_cache(repos: Vec<myme_services::GitHubRepo>) {
 
 /// Request a full refresh (discover local + fetch GitHub + match).
 /// Sends `RefreshDone` on the channel when done.
-pub fn request_refresh(
-    tx: &std::sync::mpsc::Sender<RepoServiceMessage>,
-) {
+pub fn request_refresh(tx: &std::sync::mpsc::Sender<RepoServiceMessage>) {
     let tx = tx.clone();
     let runtime = match bridge::get_runtime() {
         Some(r) => r,
@@ -92,8 +90,8 @@ pub fn request_refresh(
         }
     };
 
-    let (effective_path, _invalid) = bridge::get_repos_local_search_path()
-        .unwrap_or_else(|| (PathBuf::from("."), true));
+    let (effective_path, _invalid) =
+        bridge::get_repos_local_search_path().unwrap_or_else(|| (PathBuf::from("."), true));
 
     let github_client = bridge::get_github_client_and_runtime().map(|(c, _)| c);
     let authenticated = bridge::is_github_authenticated();
@@ -131,9 +129,9 @@ pub fn request_refresh(
                         repos
                     }
                     Err(e) => {
-                        let _ = tx.send(RepoServiceMessage::RefreshDone(Err(
-                            RepoError::GitHub(e.to_string()),
-                        )));
+                        let _ = tx.send(RepoServiceMessage::RefreshDone(Err(RepoError::GitHub(
+                            e.to_string(),
+                        ))));
                         return;
                     }
                 }
@@ -179,11 +177,7 @@ pub fn request_clone(
 
 /// Request pull for a local repo. Sends `PullDone { index, result }`, then
 /// the pump should trigger a refresh.
-pub fn request_pull(
-    tx: &std::sync::mpsc::Sender<RepoServiceMessage>,
-    index: usize,
-    path: PathBuf,
-) {
+pub fn request_pull(tx: &std::sync::mpsc::Sender<RepoServiceMessage>, index: usize, path: PathBuf) {
     let tx = tx.clone();
     let runtime = match bridge::get_runtime() {
         Some(r) => r,
@@ -197,8 +191,7 @@ pub fn request_pull(
     };
 
     runtime.spawn_blocking(move || {
-        let result = GitOperations::pull(&path)
-            .map_err(|e| RepoError::Git(e.to_string()));
+        let result = GitOperations::pull(&path).map_err(|e| RepoError::Git(e.to_string()));
         let _ = tx.send(RepoServiceMessage::PullDone { index, result });
     });
 }
@@ -218,13 +211,16 @@ mod tests {
     #[test]
     fn repo_service_message_variants() {
         // Verify we can construct and match all message variants
-        let _refresh_ok: RepoServiceMessage =
-            RepoServiceMessage::RefreshDone(Ok(vec![]));
+        let _refresh_ok: RepoServiceMessage = RepoServiceMessage::RefreshDone(Ok(vec![]));
         let _refresh_err: RepoServiceMessage =
             RepoServiceMessage::RefreshDone(Err(RepoError::Config("x".into())));
-        let _clone: RepoServiceMessage =
-            RepoServiceMessage::CloneDone { index: 0, result: Ok(()) };
-        let _pull: RepoServiceMessage =
-            RepoServiceMessage::PullDone { index: 1, result: Err(RepoError::Git("e".into())) };
+        let _clone: RepoServiceMessage = RepoServiceMessage::CloneDone {
+            index: 0,
+            result: Ok(()),
+        };
+        let _pull: RepoServiceMessage = RepoServiceMessage::PullDone {
+            index: 1,
+            result: Err(RepoError::Git("e".into())),
+        };
     }
 }

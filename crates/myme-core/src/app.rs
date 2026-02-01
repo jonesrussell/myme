@@ -32,7 +32,10 @@ impl App {
 
     /// Initialize all registered plugins
     pub fn initialize(&mut self) -> Result<()> {
-        tracing::info!("Initializing application with {} plugins", self.plugins.len());
+        tracing::info!(
+            "Initializing application with {} plugins",
+            self.plugins.len()
+        );
 
         for plugin in &mut self.plugins {
             tracing::debug!("Initializing plugin: {}", plugin.name());

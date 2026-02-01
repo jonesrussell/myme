@@ -20,13 +20,19 @@ Page {
         id: noteModel
     }
 
-    // Update note count when loading state changes
+    // Timer to poll for async results (non-blocking)
+    Timer {
+        interval: 100
+        running: true
+        repeat: true
+        onTriggered: noteModel.poll_channel()
+    }
+
+    // Update note count when notes change
     Connections {
         target: noteModel
-        function onLoadingChanged() {
-            if (!noteModel.loading) {
-                notePage.noteCount = noteModel.row_count();
-            }
+        function onNotesChanged() {
+            notePage.noteCount = noteModel.row_count();
         }
     }
 
@@ -389,14 +395,17 @@ Page {
                     width: connectedLabel.implicitWidth + Theme.spacingMd
                     height: connectedLabel.implicitHeight + Theme.spacingXs
                     radius: 4
-                    color: Theme.success + "20"
+                    color: noteModel.loading ? Theme.warning + "20" :
+                           noteModel.connected ? Theme.success + "20" : Theme.error + "20"
 
                     Label {
                         id: connectedLabel
                         anchors.centerIn: parent
-                        text: "● Godo API Connected"
+                        text: noteModel.loading ? "● Connecting..." :
+                              noteModel.connected ? "● Godo API Connected" : "● Godo API Disconnected"
                         font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.success
+                        color: noteModel.loading ? Theme.warning :
+                               noteModel.connected ? Theme.success : Theme.error
                     }
                 }
             }

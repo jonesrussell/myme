@@ -129,11 +129,7 @@ mod tests {
 
     #[test]
     fn test_local_only() {
-        let local_repos = vec![local(
-            None,
-            "my-local",
-            "/home/user/dev/my-local",
-        )];
+        let local_repos = vec![local(None, "my-local", "/home/user/dev/my-local")];
         let remote: Vec<GitHubRepo> = vec![];
         let out = match_repos(&local_repos, &remote);
         assert_eq!(out.len(), 1);
@@ -146,7 +142,10 @@ mod tests {
     #[test]
     fn test_github_only() {
         let local: Vec<LocalRepo> = vec![];
-        let remote = vec![github("owner/repo", Some("https://github.com/owner/repo.git"))];
+        let remote = vec![github(
+            "owner/repo",
+            Some("https://github.com/owner/repo.git"),
+        )];
         let out = match_repos(&local, &remote);
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].state, RepoState::GitHubOnly);
@@ -162,7 +161,10 @@ mod tests {
             "repo",
             "/home/user/dev/repo",
         )];
-        let remote = vec![github("owner/repo", Some("https://github.com/owner/repo.git"))];
+        let remote = vec![github(
+            "owner/repo",
+            Some("https://github.com/owner/repo.git"),
+        )];
         let out = match_repos(&local_repos, &remote);
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].state, RepoState::Both);

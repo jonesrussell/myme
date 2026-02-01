@@ -46,8 +46,7 @@ impl SecureStorage {
             .join("tokens");
 
         // Ensure directory exists
-        fs::create_dir_all(&config_dir)
-            .context("Failed to create tokens directory")?;
+        fs::create_dir_all(&config_dir).context("Failed to create tokens directory")?;
 
         Ok(config_dir.join(format!("{}.json", service)))
     }
@@ -60,11 +59,10 @@ impl SecureStorage {
     pub fn store_token(service: &str, token_set: &TokenSet) -> Result<()> {
         let path = Self::token_path(service)?;
 
-        let json = serde_json::to_string_pretty(token_set)
-            .context("Failed to serialize token set")?;
+        let json =
+            serde_json::to_string_pretty(token_set).context("Failed to serialize token set")?;
 
-        fs::write(&path, &json)
-            .context("Failed to write token file")?;
+        fs::write(&path, &json).context("Failed to write token file")?;
 
         tracing::info!("Stored token for service: {} at {:?}", service, path);
         Ok(())
@@ -77,11 +75,10 @@ impl SecureStorage {
     pub fn retrieve_token(service: &str) -> Result<TokenSet> {
         let path = Self::token_path(service)?;
 
-        let json = fs::read_to_string(&path)
-            .context("Failed to read token file")?;
+        let json = fs::read_to_string(&path).context("Failed to read token file")?;
 
-        let token_set: TokenSet = serde_json::from_str(&json)
-            .context("Failed to deserialize token set")?;
+        let token_set: TokenSet =
+            serde_json::from_str(&json).context("Failed to deserialize token set")?;
 
         tracing::info!("Retrieved token for service: {}", service);
         Ok(token_set)
@@ -95,8 +92,7 @@ impl SecureStorage {
         let path = Self::token_path(service)?;
 
         if path.exists() {
-            fs::remove_file(&path)
-                .context("Failed to delete token file")?;
+            fs::remove_file(&path).context("Failed to delete token file")?;
             tracing::info!("Deleted token for service: {}", service);
         }
 

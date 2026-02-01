@@ -39,9 +39,7 @@ pub async fn is_available() -> bool {
 #[cfg(target_os = "windows")]
 mod windows_impl {
     use super::*;
-    use windows::Devices::Geolocation::{
-        GeolocationAccessStatus, Geolocator, PositionAccuracy,
-    };
+    use windows::Devices::Geolocation::{GeolocationAccessStatus, Geolocator, PositionAccuracy};
 
     pub async fn is_available() -> bool {
         match Geolocator::RequestAccessAsync() {
@@ -67,8 +65,7 @@ mod windows_impl {
         }
 
         // Create geolocator
-        let geolocator =
-            Geolocator::new().map_err(|e| LocationError::Other(e.to_string()))?;
+        let geolocator = Geolocator::new().map_err(|e| LocationError::Other(e.to_string()))?;
 
         geolocator
             .SetDesiredAccuracy(PositionAccuracy::Default)

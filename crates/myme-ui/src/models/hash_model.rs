@@ -166,14 +166,14 @@ impl qobject::HashModel {
 
         let result = match algorithm.as_str() {
             "sha256" => {
-                let mut mac =
-                    Hmac::<Sha256>::new_from_slice(key.as_bytes()).expect("HMAC can take key of any size");
+                let mut mac = Hmac::<Sha256>::new_from_slice(key.as_bytes())
+                    .expect("HMAC can take key of any size");
                 mac.update(input.as_bytes());
                 hex::encode(mac.finalize().into_bytes())
             }
             "sha512" => {
-                let mut mac =
-                    Hmac::<Sha512>::new_from_slice(key.as_bytes()).expect("HMAC can take key of any size");
+                let mut mac = Hmac::<Sha512>::new_from_slice(key.as_bytes())
+                    .expect("HMAC can take key of any size");
                 mac.update(input.as_bytes());
                 hex::encode(mac.finalize().into_bytes())
             }

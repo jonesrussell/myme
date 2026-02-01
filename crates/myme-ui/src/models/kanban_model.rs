@@ -212,7 +212,11 @@ impl qobject::KanbanModel {
         // Load tasks for this project
         match store_guard.list_tasks(&project_id_str) {
             Ok(tasks) => {
-                tracing::info!("Loaded {} tasks for project {}", tasks.len(), project_id_str);
+                tracing::info!(
+                    "Loaded {} tasks for project {}",
+                    tasks.len(),
+                    project_id_str
+                );
                 drop(store_guard);
                 self.as_mut().rust_mut().tasks = tasks;
                 self.as_mut().set_loading(false);
@@ -364,13 +368,7 @@ impl qobject::KanbanModel {
         self.as_mut().set_error_message(QString::from(""));
 
         // Build new labels: remove old status label, add new status label
-        let status_labels = [
-            "backlog",
-            "todo",
-            "in-progress",
-            "blocked",
-            "review",
-        ];
+        let status_labels = ["backlog", "todo", "in-progress", "blocked", "review"];
         let mut new_labels: Vec<String> = task
             .labels
             .iter()
@@ -459,12 +457,7 @@ impl qobject::KanbanModel {
     }
 
     /// Create new task (GitHub issue)
-    pub fn create_task(
-        mut self: Pin<&mut Self>,
-        title: QString,
-        body: QString,
-        status: QString,
-    ) {
+    pub fn create_task(mut self: Pin<&mut Self>, title: QString, body: QString, status: QString) {
         self.as_mut().rust_mut().ensure_initialized();
 
         let client = match &self.as_ref().rust().client {
@@ -520,19 +513,16 @@ impl qobject::KanbanModel {
             labels,
         };
 
-        let result = runtime.block_on(async { client.create_issue(&owner, &repo, create_req).await });
+        let result =
+            runtime.block_on(async { client.create_issue(&owner, &repo, create_req).await });
 
         match result {
             Ok(issue) => {
-                tracing::info!(
-                    "Created issue #{} in {}/{}",
-                    issue.number,
-                    owner,
-                    repo
-                );
+                tracing::info!("Created issue #{} in {}/{}", issue.number, owner, repo);
 
                 // Create local task
-                let label_names: Vec<String> = issue.labels.iter().map(|l| l.name.clone()).collect();
+                let label_names: Vec<String> =
+                    issue.labels.iter().map(|l| l.name.clone()).collect();
                 let task = Task {
                     id: uuid::Uuid::new_v4().to_string(),
                     project_id: project_id_str,
@@ -741,12 +731,7 @@ impl qobject::KanbanModel {
 
         match result {
             Ok(issues) => {
-                tracing::info!(
-                    "Fetched {} issues for {}/{}",
-                    issues.len(),
-                    owner,
-                    repo
-                );
+                tracing::info!("Fetched {} issues for {}/{}", issues.len(), owner, repo);
 
                 let store_guard = match store.lock() {
                     Ok(g) => g,

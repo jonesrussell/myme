@@ -31,8 +31,8 @@ impl WeatherCache {
         let contents = std::fs::read_to_string(&self.cache_path)
             .map_err(|e| WeatherError::Cache(e.to_string()))?;
 
-        self.data = serde_json::from_str(&contents)
-            .map_err(|e| WeatherError::Cache(e.to_string()))?;
+        self.data =
+            serde_json::from_str(&contents).map_err(|e| WeatherError::Cache(e.to_string()))?;
 
         Ok(())
     }
@@ -41,8 +41,7 @@ impl WeatherCache {
     pub fn save(&self) -> Result<(), WeatherError> {
         if let Some(data) = &self.data {
             if let Some(parent) = self.cache_path.parent() {
-                std::fs::create_dir_all(parent)
-                    .map_err(|e| WeatherError::Cache(e.to_string()))?;
+                std::fs::create_dir_all(parent).map_err(|e| WeatherError::Cache(e.to_string()))?;
             }
 
             let contents = serde_json::to_string_pretty(data)
