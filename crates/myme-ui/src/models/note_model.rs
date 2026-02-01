@@ -22,6 +22,7 @@ pub mod qobject {
         #[qobject]
         #[qml_element]
         #[qproperty(bool, loading)]
+        #[qproperty(bool, connected)]
         #[qproperty(QString, error_message)]
         type NoteModel = super::NoteModelRust;
 
@@ -78,6 +79,7 @@ enum OpState {
 #[derive(Default)]
 pub struct NoteModelRust {
     loading: bool,
+    connected: bool,
     error_message: QString,
     notes: Vec<Note>,
     client: Option<Arc<NoteClient>>,
@@ -298,11 +300,13 @@ impl qobject::NoteModel {
                         tracing::info!("Successfully fetched {} notes", notes.len());
                         self.as_mut().rust_mut().clear_error();
                         self.as_mut().rust_mut().notes = notes;
+                        self.as_mut().set_connected(true);
                         self.as_mut().notes_changed();
                     }
                     Err(e) => {
                         tracing::error!("Failed to fetch notes: {}", e);
                         self.as_mut().rust_mut().set_error(&format!("Failed to fetch notes: {}", e));
+                        self.as_mut().set_connected(false);
                         self.as_mut().error_occurred();
                     }
                 }

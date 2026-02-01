@@ -82,7 +82,9 @@ impl TodoClient {
         let base_url = Url::parse(&config.base_url).context("Invalid base URL")?;
 
         #[allow(unused_mut)]
-        let mut builder = Client::builder().timeout(std::time::Duration::from_secs(30));
+        let mut builder = Client::builder()
+            .timeout(std::time::Duration::from_secs(5))
+            .connect_timeout(std::time::Duration::from_secs(3));
 
         // Only allow invalid certs in debug builds AND when explicitly configured
         #[cfg(debug_assertions)]
