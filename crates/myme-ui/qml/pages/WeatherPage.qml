@@ -17,6 +17,15 @@ Page {
         Component.onCompleted: refresh()
     }
 
+    // Timer to poll for async weather operation results
+    Timer {
+        id: weatherPollTimer
+        interval: 100
+        running: weatherModel.loading
+        repeat: true
+        onTriggered: weatherModel.poll_channel()
+    }
+
     // Helper function to get icon character from icon name
     function getWeatherIcon(iconName) {
         const iconMap = {
