@@ -24,6 +24,15 @@ ApplicationWindow {
         Component.onCompleted: refresh()
     }
 
+    // Timer to poll for async weather operation results
+    Timer {
+        id: weatherPollTimer
+        interval: 100
+        running: weatherModel.loading
+        repeat: true
+        onTriggered: weatherModel.poll_channel()
+    }
+
     // Apply theme background
     color: Theme.background
 
