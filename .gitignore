@@ -26,3 +26,5 @@ Thumbs.db
 build-qt/
 
 settings.local.json
+# Git worktrees
+.worktrees/
