@@ -243,11 +243,12 @@ impl qobject::CalendarModel {
 
     /// Get event at index as JSON
     pub fn get_event(self: Pin<&mut Self>, index: i32) -> QString {
-        if index < 0 || index as usize >= self.as_ref().rust().events.len() {
+        let rust = self.rust();
+        if index < 0 || index as usize >= rust.events.len() {
             return QString::from("{}");
         }
 
-        let event = &self.as_ref().rust().events[index as usize];
+        let event = &rust.events[index as usize];
         let json = serde_json::json!({
             "id": event.id,
             "summary": event.summary,
@@ -301,9 +302,8 @@ impl qobject::CalendarModel {
                             .min_by_key(|e| e.start.as_datetime());
 
                         if let Some(event) = next_event {
-                            self.as_mut().set_next_event_summary(QString::from(
-                                event.summary.as_deref().unwrap_or("(No title)")
-                            ));
+                            let summary = if event.summary.is_empty() { "(No title)" } else { &event.summary };
+                            self.as_mut().set_next_event_summary(QString::from(summary));
                             let time_str = event.start.as_datetime()
                                 .format("%H:%M")
                                 .to_string();

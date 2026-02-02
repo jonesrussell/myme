@@ -283,12 +283,12 @@ async fn wait_for_callback(port: u16, expected_state: &str) -> Result<String, St
         .map_err(|e| format!("URL parse failed: {}", e))?;
 
     let code = url.query_pairs()
-        .find(|(k, _)| k == "code")
+        .find(|(k, _): &(std::borrow::Cow<str>, std::borrow::Cow<str>)| k == "code")
         .map(|(_, v)| v.to_string())
         .ok_or("No code in callback")?;
 
     let state = url.query_pairs()
-        .find(|(k, _)| k == "state")
+        .find(|(k, _): &(std::borrow::Cow<str>, std::borrow::Cow<str>)| k == "state")
         .map(|(_, v)| v.to_string())
         .ok_or("No state in callback")?;
 

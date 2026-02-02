@@ -200,11 +200,12 @@ impl qobject::GmailModel {
 
     /// Get message at index as JSON
     pub fn get_message(self: Pin<&mut Self>, index: i32) -> QString {
-        if index < 0 || index as usize >= self.as_ref().rust().messages.len() {
+        let rust = self.rust();
+        if index < 0 || index as usize >= rust.messages.len() {
             return QString::from("{}");
         }
 
-        let msg = &self.as_ref().rust().messages[index as usize];
+        let msg = &rust.messages[index as usize];
         let json = serde_json::json!({
             "id": msg.id,
             "from": msg.from,
