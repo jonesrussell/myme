@@ -84,6 +84,10 @@ pub struct Config {
     /// GitHub OAuth settings
     #[serde(default)]
     pub github: GitHubConfig,
+
+    /// Google OAuth settings
+    #[serde(default)]
+    pub google: Option<GoogleConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -249,6 +253,24 @@ impl Default for GitHubConfig {
     }
 }
 
+/// Google OAuth configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GoogleConfig {
+    /// Google OAuth Client ID
+    /// Create at: https://console.cloud.google.com/apis/credentials
+    pub client_id: Option<String>,
+    /// Google OAuth Client Secret
+    pub client_secret: Option<String>,
+}
+
+impl GoogleConfig {
+    /// Check if credentials are configured
+    pub fn is_configured(&self) -> bool {
+        self.client_id.as_ref().map(|s| !s.is_empty()).unwrap_or(false)
+            && self.client_secret.as_ref().map(|s| !s.is_empty()).unwrap_or(false)
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         let config_dir = dirs::config_dir()
@@ -271,6 +293,7 @@ impl Default for Config {
             projects: ProjectsConfig::default(),
             repos: ReposConfig::default(),
             github: GitHubConfig::default(),
+            google: None,
         }
     }
 }

@@ -8,19 +8,28 @@ Page {
     id: settingsPage
     title: "Settings"
 
-    // Auth model for connected accounts
+    // Auth model for connected accounts (GitHub)
     AuthModel {
         id: authModel
         Component.onCompleted: authModel.check_auth()
+    }
+
+    // Google Auth model
+    GoogleAuthModel {
+        id: googleAuthModel
+        Component.onCompleted: googleAuthModel.check_auth()
     }
 
     // Timer to poll for async auth operation results
     Timer {
         id: authPollTimer
         interval: 100
-        running: authModel.loading
+        running: authModel.loading || googleAuthModel.loading
         repeat: true
-        onTriggered: authModel.poll_channel()
+        onTriggered: {
+            authModel.poll_channel()
+            googleAuthModel.poll_channel()
+        }
     }
 
     background: Rectangle {
@@ -582,10 +591,114 @@ Page {
                         }
                     }
 
-                    // Error message
+                    // GitHub Error message
                     Label {
                         visible: authModel.error_message !== ""
                         text: authModel.error_message
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.error
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+
+                    // Google Account
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Theme.spacingMd
+                        height: 72
+                        radius: Theme.cardRadius
+                        color: Theme.surfaceAlt
+                        border.color: googleAuthModel.authenticated ? Theme.success : Theme.border
+                        border.width: googleAuthModel.authenticated ? 2 : 1
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: Theme.spacingMd
+                            spacing: Theme.spacingMd
+
+                            // Google icon
+                            Rectangle {
+                                width: 44
+                                height: 44
+                                radius: 22
+                                color: "#ffffff"
+                                border.color: Theme.border
+                                border.width: 1
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "G"
+                                    font.pixelSize: 24
+                                    font.bold: true
+                                    color: "#4285F4"
+                                }
+                            }
+
+                            // Account info
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+
+                                Label {
+                                    text: "Google"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    font.bold: true
+                                    color: Theme.text
+                                }
+
+                                Label {
+                                    text: googleAuthModel.authenticated ? (googleAuthModel.user_email || "Connected") : "Not connected"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: googleAuthModel.authenticated ? Theme.success : Theme.textSecondary
+                                }
+                            }
+
+                            // Connect/Disconnect button
+                            Button {
+                                text: googleAuthModel.loading ? "Connecting..." : (googleAuthModel.authenticated ? "Disconnect" : "Connect")
+                                enabled: !googleAuthModel.loading
+                                Layout.preferredWidth: 110
+                                Layout.preferredHeight: 36
+
+                                background: Rectangle {
+                                    radius: Theme.buttonRadius
+                                    color: {
+                                        if (!parent.enabled) return Theme.surfaceAlt
+                                        if (googleAuthModel.authenticated) return Theme.error + "20"
+                                        return parent.hovered ? Theme.primaryHover : Theme.primary
+                                    }
+                                    border.color: googleAuthModel.authenticated ? Theme.error : "transparent"
+                                    border.width: googleAuthModel.authenticated ? 1 : 0
+                                }
+
+                                contentItem: Label {
+                                    text: parent.text
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.bold: true
+                                    color: {
+                                        if (!parent.enabled) return Theme.textMuted
+                                        if (googleAuthModel.authenticated) return Theme.error
+                                        return Theme.primaryText
+                                    }
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+
+                                onClicked: {
+                                    if (googleAuthModel.authenticated) {
+                                        googleAuthModel.sign_out()
+                                    } else {
+                                        googleAuthModel.authenticate()
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Google Error message
+                    Label {
+                        visible: googleAuthModel.error_message !== ""
+                        text: googleAuthModel.error_message
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.error
                         wrapMode: Text.WordWrap
@@ -596,25 +709,37 @@ Page {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.topMargin: Theme.spacingSm
-                        height: 40
+                        height: 56
                         radius: Theme.inputRadius
                         color: Theme.surfaceAlt
 
-                        RowLayout {
+                        ColumnLayout {
                             anchors.fill: parent
                             anchors.margins: Theme.spacingSm
+                            spacing: 2
 
-                            Text {
-                                text: Icons.info
-                                font.family: Icons.family
-                                font.pixelSize: Theme.fontSizeNormal
-                                color: Theme.textMuted
+                            RowLayout {
+                                Text {
+                                    text: Icons.info
+                                    font.family: Icons.family
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    color: Theme.textMuted
+                                }
+
+                                Label {
+                                    text: "GitHub enables project tracking and repository management"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Theme.textSecondary
+                                }
                             }
 
-                            Label {
-                                text: "GitHub connection enables project tracking and repository management"
-                                font.pixelSize: Theme.fontSizeSmall
-                                color: Theme.textSecondary
+                            RowLayout {
+                                Item { width: Theme.fontSizeNormal + 4 }
+                                Label {
+                                    text: "Google enables Gmail and Calendar integration"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Theme.textSecondary
+                                }
                             }
                         }
                     }

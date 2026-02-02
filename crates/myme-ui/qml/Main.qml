@@ -33,6 +33,46 @@ ApplicationWindow {
         onTriggered: weatherModel.poll_channel()
     }
 
+    // Global Gmail model for dashboard
+    GmailModel {
+        id: gmailModel
+        Component.onCompleted: {
+            check_auth()
+            if (authenticated) {
+                fetch_messages()
+            }
+        }
+    }
+
+    // Timer to poll for async Gmail operation results
+    Timer {
+        id: gmailPollTimer
+        interval: 100
+        running: gmailModel.loading
+        repeat: true
+        onTriggered: gmailModel.poll_channel()
+    }
+
+    // Global Calendar model for dashboard
+    CalendarModel {
+        id: calendarModel
+        Component.onCompleted: {
+            check_auth()
+            if (authenticated) {
+                fetch_today_events()
+            }
+        }
+    }
+
+    // Timer to poll for async Calendar operation results
+    Timer {
+        id: calendarPollTimer
+        interval: 100
+        running: calendarModel.loading
+        repeat: true
+        onTriggered: calendarModel.poll_channel()
+    }
+
     // Apply theme background
     color: Theme.background
 
@@ -165,6 +205,18 @@ ApplicationWindow {
                             enabled: true
                         },
                         {
+                            id: "gmail",
+                            icon: Icons.envelopeSimple,
+                            label: "Gmail",
+                            enabled: true
+                        },
+                        {
+                            id: "calendar",
+                            icon: Icons.calendarBlank,
+                            label: "Calendar",
+                            enabled: true
+                        },
+                        {
                             id: "projects",
                             icon: Icons.squaresFour,
                             label: "Projects",
@@ -213,6 +265,10 @@ ApplicationWindow {
                                     currentPage = modelData.id;
                                     if (modelData.id === "notes")
                                         stackView.replace("pages/NotePage.qml");
+                                    else if (modelData.id === "gmail")
+                                        stackView.replace("pages/GmailPage.qml");
+                                    else if (modelData.id === "calendar")
+                                        stackView.replace("pages/CalendarPage.qml");
                                     else if (modelData.id === "projects")
                                         stackView.replace("pages/ProjectsPage.qml");
                                     else if (modelData.id === "repos")
@@ -760,10 +816,47 @@ ApplicationWindow {
                             }
                         }
 
+                        // Google services widgets row
+                        RowLayout {
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.topMargin: Theme.spacingLg
+                            spacing: Theme.spacingMd
+
+                            // Email widget
+                            EmailWidget {
+                                loading: gmailModel.loading
+                                authenticated: gmailModel.authenticated
+                                unreadCount: gmailModel.unread_count
+
+                                onClicked: {
+                                    currentPage = "gmail";
+                                    stackView.replace("pages/GmailPage.qml");
+                                }
+
+                                onRefreshRequested: gmailModel.fetch_messages()
+                            }
+
+                            // Calendar widget
+                            CalendarWidget {
+                                loading: calendarModel.loading
+                                authenticated: calendarModel.authenticated
+                                todayEventCount: calendarModel.today_event_count
+                                nextEventSummary: calendarModel.next_event_summary
+                                nextEventTime: calendarModel.next_event_time
+
+                                onClicked: {
+                                    currentPage = "calendar";
+                                    stackView.replace("pages/CalendarPage.qml");
+                                }
+
+                                onRefreshRequested: calendarModel.fetch_today_events()
+                            }
+                        }
+
                         // Weather widget dashboard card
                         WeatherWidget {
                             Layout.alignment: Qt.AlignHCenter
-                            Layout.topMargin: Theme.spacingLg
+                            Layout.topMargin: Theme.spacingMd
                             loading: weatherModel.loading
                             hasData: weatherModel.has_data
                             isStale: weatherModel.is_stale

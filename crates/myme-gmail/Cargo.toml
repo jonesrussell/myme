@@ -1,0 +1,28 @@
+[package]
+name = "myme-gmail"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+# Workspace dependencies
+reqwest.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+
+# Gmail-specific
+rusqlite = { version = "0.31", features = ["bundled"] }
+base64 = "0.22"
+chrono = { version = "0.4", features = ["serde"] }
+urlencoding = "2.1"
+
+# Internal
+myme-auth = { path = "../myme-auth" }
+
+[dev-dependencies]
+tempfile = "3.10"
+wiremock = "0.6"
+tokio = { version = "1.42", features = ["rt-multi-thread", "macros"] }

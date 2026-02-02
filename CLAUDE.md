@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MyMe is a modular Rust desktop application using Qt/QML + Kirigami via cxx-qt that serves as a personal productivity and development hub. It integrates with external services (Godo note-taking app, GitHub, Google services) through a plugin-based architecture.
 
-**Current Status**: Phase 2 complete (GitHub + Local Git Management). 2026 Architectural Modernization complete - all 18 steps implemented including: non-blocking async callbacks, secure keyring token storage, retry logic, graceful shutdown, and comprehensive test coverage (75+ tests).
+**Current Status**: Phase 3 complete (Google Gmail/Calendar Integration). Full Gmail and Calendar integration with offline SQLite caching, OAuth2 authentication via system keyring, and dashboard widgets. Test coverage now at 120+ tests.
 
 ## Build Commands
 
@@ -55,14 +55,16 @@ cargo test -p myme-services
 cargo test -p myme-ui
 
 # Test entire workspace (excludes myme-ui which requires Qt)
-cargo test -p myme-core -p myme-services -p myme-auth -p myme-integrations
+cargo test -p myme-core -p myme-services -p myme-auth -p myme-integrations -p myme-gmail -p myme-calendar
 ```
 
 **Test Coverage:**
 - `myme-core`: 16 tests (config validation, error handling, state machine)
 - `myme-services`: 18 unit + 20 integration tests (TodoClient, GitHubClient, retry logic)
-- `myme-auth`: 4 tests (OAuth, token storage)
+- `myme-auth`: 10 tests (OAuth for GitHub and Google, token storage)
 - `myme-integrations`: 17 tests (git operations, repo discovery)
+- `myme-gmail`: 35 tests (client, cache, sync queue)
+- `myme-calendar`: 21 tests (client, cache)
 
 ### Debugging
 
@@ -80,16 +82,18 @@ $env:QT_LOGGING_RULES="*.debug=true"
 
 ### Workspace Structure
 
-This is a Rust workspace with 5 member crates:
+This is a Rust workspace with 7 member crates:
 
 ```
 myme/
 ├── crates/
 │   ├── myme-core/          # Application lifecycle, config, plugin system
-│   ├── myme-ui/            # cxx-qt bridge, QML models (NoteModel, RepoModel)
+│   ├── myme-ui/            # cxx-qt bridge, QML models (NoteModel, RepoModel, GmailModel, CalendarModel)
 │   ├── myme-services/      # HTTP API clients (Todo/Note API)
 │   ├── myme-auth/          # OAuth2 flows, secure token storage (Phase 2)
-│   └── myme-integrations/  # GitHub API, Git operations (Phase 2)
+│   ├── myme-integrations/  # GitHub API, Git operations (Phase 2)
+│   ├── myme-gmail/         # Gmail API client, SQLite cache (Phase 3)
+│   └── myme-calendar/      # Google Calendar API client, cache (Phase 3)
 ├── src/main.rs             # Rust binary entry point
 ├── qt-main/main.cpp        # C++ Qt application entry point
 └── qml.qrc                 # Qt resource file for QML
@@ -340,6 +344,18 @@ Tools follow a consistent pattern: add entry to `tools` array, create `Component
 - [crates/myme-auth/src/storage.rs](crates/myme-auth/src/storage.rs) - System keyring token storage
 - [crates/myme-auth/src/oauth.rs](crates/myme-auth/src/oauth.rs) - OAuth2 flow with dynamic port discovery
 - [crates/myme-auth/src/github.rs](crates/myme-auth/src/github.rs) - GitHub OAuth provider
+- [crates/myme-auth/src/google.rs](crates/myme-auth/src/google.rs) - Google OAuth provider for Gmail/Calendar
+
+### Gmail (Phase 3)
+- [crates/myme-gmail/src/client.rs](crates/myme-gmail/src/client.rs) - Gmail API client with full CRUD operations
+- [crates/myme-gmail/src/cache.rs](crates/myme-gmail/src/cache.rs) - SQLite offline cache for messages and labels
+- [crates/myme-gmail/src/sync.rs](crates/myme-gmail/src/sync.rs) - Offline action sync queue
+- [crates/myme-gmail/src/types.rs](crates/myme-gmail/src/types.rs) - Message, Label, and API response types
+
+### Calendar (Phase 3)
+- [crates/myme-calendar/src/client.rs](crates/myme-calendar/src/client.rs) - Google Calendar API client
+- [crates/myme-calendar/src/cache.rs](crates/myme-calendar/src/cache.rs) - SQLite offline cache for events
+- [crates/myme-calendar/src/types.rs](crates/myme-calendar/src/types.rs) - Event, Calendar, and API response types
 
 ### Integration Tests
 - [crates/myme-services/tests/todo_integration.rs](crates/myme-services/tests/todo_integration.rs) - TodoClient mock tests
@@ -367,6 +383,37 @@ curl http://localhost:8008/api/v1/health
 cd ../myme
 .\build\Release\myme-qt.exe
 ```
+
+## Integration with Google Services
+
+MyMe integrates with Gmail and Google Calendar using OAuth2:
+
+### Setup
+
+1. Create a Google Cloud project at https://console.cloud.google.com/
+2. Enable Gmail API and Google Calendar API
+3. Create OAuth 2.0 credentials (Desktop app type)
+4. Add credentials to `~/.config/myme/config.toml`:
+
+```toml
+[google]
+client_id = "YOUR_CLIENT_ID.apps.googleusercontent.com"
+client_secret = "YOUR_CLIENT_SECRET"
+```
+
+### Architecture
+
+- **OAuth Flow**: Uses `GoogleOAuth2Provider` in `myme-auth/src/google.rs`
+- **Token Storage**: Stored securely in system keyring (Windows Credential Manager, macOS Keychain, Linux Secret Service)
+- **Offline Cache**: SQLite databases in `~/.config/myme/`:
+  - `gmail_cache.db` - Messages, labels, sync state
+  - `calendar_cache.db` - Events, calendars
+- **Sync Queue**: Offline actions queued and synced when online
+
+### Scopes Requested
+
+- Gmail: `https://www.googleapis.com/auth/gmail.readonly`, `https://www.googleapis.com/auth/gmail.modify`
+- Calendar: `https://www.googleapis.com/auth/calendar.readonly`, `https://www.googleapis.com/auth/calendar.events`
 
 ## Windows-Specific Notes
 
@@ -445,12 +492,17 @@ $env:RUST_LOG="debug" # Adds detailed operation internals
 - Added `parking_lot` for better mutex performance
 - Implemented HTTP retry with exponential backoff
 - Added configuration validation with errors/warnings
-- Created comprehensive integration test suite (75+ tests)
+- Created comprehensive integration test suite (120+ tests including Gmail/Calendar)
 - Added `#[tracing::instrument]` for performance observability
 - Implemented graceful shutdown via Qt signal
 
-**Phase 3** (Planned): Google Email/Calendar Integration
-- Gmail and Calendar API clients, email/calendar QML pages
+**Phase 3** (Complete): Google Email/Calendar Integration
+- Gmail API client with offline SQLite cache and sync queue
+- Google Calendar API client with SQLite cache
+- OAuth2 authentication via GoogleOAuth2Provider
+- GmailPage and CalendarPage QML pages
+- Dashboard widgets (EmailWidget, CalendarWidget)
+- Unified Google account management in Settings
 
 **Phase 4** (Planned): Project Scaffolding + Plugin System
 - Project templates (Laravel, Drupal, Node.js), scaffold wizard UI

@@ -1,3 +1,5 @@
 WeatherCompact 1.0 WeatherCompact.qml
 WeatherWidget 1.0 WeatherWidget.qml
 RepoCard 1.0 RepoCard.qml
+EmailWidget 1.0 EmailWidget.qml
+CalendarWidget 1.0 CalendarWidget.qml

@@ -32,3 +32,8 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # Secure token storage (system keyring)
 keyring.workspace = true
+
+# Google OAuth
+uuid = { version = "1.0", features = ["v4"] }
+urlencoding = "2.1"
+reqwest.workspace = true

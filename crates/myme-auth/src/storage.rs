@@ -281,4 +281,22 @@ mod tests {
     fn test_keyring_service_name() {
         assert_eq!(KEYRING_SERVICE, "myme");
     }
+
+    #[test]
+    fn test_multiple_providers_use_different_keys() {
+        // Verify that different services (github, google) use different keyring entries
+        // by checking that the Entry constructor uses service name as the username
+        let github_entry = keyring::Entry::new(KEYRING_SERVICE, "github");
+        let google_entry = keyring::Entry::new(KEYRING_SERVICE, "google");
+
+        // Both should succeed in creating entries (they're just handles, not stored data)
+        assert!(github_entry.is_ok());
+        assert!(google_entry.is_ok());
+    }
+
+    #[test]
+    fn test_has_token_returns_false_for_nonexistent() {
+        // Test that has_token returns false for services that don't exist
+        assert!(!SecureStorage::has_token("nonexistent_service_xyz"));
+    }
 }

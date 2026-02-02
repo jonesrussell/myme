@@ -1,5 +1,8 @@
 pub mod auth_model;
+pub mod calendar_model;
 pub mod encoding_model;
+pub mod gmail_model;
+pub mod google_auth_model;
 pub mod hash_model;
 pub mod json_model;
 pub mod jwt_model;

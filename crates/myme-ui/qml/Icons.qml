@@ -85,4 +85,16 @@ QtObject {
     readonly property string scissors: "\uecb8"
     readonly property string textT: "\ued5c"
     readonly property string article: "\ue958"
+
+    // Email
+    readonly property string envelopeSimple: "\uead2"
+    readonly property string envelopeOpen: "\ueacd"
+    readonly property string star: "\ued29"
+    readonly property string starFill: "\ued28"
+
+    // Calendar
+    readonly property string calendarBlank: "\ue9d0"
+    readonly property string calendarCheck: "\ue9d5"
+    readonly property string clock: "\uea52"
+    readonly property string mapPin: "\uebe1"
 }
