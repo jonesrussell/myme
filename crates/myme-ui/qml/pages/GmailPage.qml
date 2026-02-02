@@ -136,8 +136,8 @@ Page {
                 }
 
                 onClicked: {
-                    // Navigate to settings - this would be handled by Main.qml
-                    console.log("Navigate to settings")
+                    currentPage = "settings"
+                    stackView.replace("pages/SettingsPage.qml")
                 }
             }
         }
