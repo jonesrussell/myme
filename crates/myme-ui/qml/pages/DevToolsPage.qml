@@ -3243,6 +3243,23 @@ Page {
                     remaining = remaining.substring(breakPoint);
                 }
 
+                // Add instructions if multiple chunks
+                if (result.length > 1) {
+                    const total = result.length;
+                    const remaining = total - 1;
+
+                    // First chunk - add "wait for more" header
+                    result[0] = `[CHUNK 1/${total}] WAIT FOR ${remaining} MORE PASTE${remaining > 1 ? 'S' : ''} THEN REVIEW ALL PLEASE\n\n` + result[0];
+
+                    // Middle chunks - add chunk number header
+                    for (let i = 1; i < total - 1; i++) {
+                        result[i] = `[CHUNK ${i + 1}/${total}]\n\n` + result[i];
+                    }
+
+                    // Last chunk - add header and "review all" footer
+                    result[total - 1] = `[CHUNK ${total}/${total}]\n\n` + result[total - 1] + `\n\n--- THIS IS THE LAST CHUNK - PLEASE REVIEW ALL NOW ---`;
+                }
+
                 return result;
             }
 
