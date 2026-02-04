@@ -19,6 +19,12 @@ chrono = { version = "0.4", features = ["serde"] }
 # SQLite for local storage
 rusqlite = { version = "0.31", features = ["bundled"] }
 
+# UUID generation for note IDs
+uuid = { version = "1", features = ["v4"] }
+
+# Mutex for thread-safe SQLite access
+parking_lot = "0.12"
+
 [dev-dependencies]
 tempfile = "3"
 wiremock = "0.6"

@@ -88,6 +88,10 @@ pub struct Config {
     /// Google OAuth settings
     #[serde(default)]
     pub google: Option<GoogleConfig>,
+
+    /// Notes storage settings
+    #[serde(default)]
+    pub notes: NotesConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -271,6 +275,100 @@ impl GoogleConfig {
     }
 }
 
+/// Notes storage backend type
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum NotesBackend {
+    /// Local SQLite storage (default, no Godo dependency)
+    #[default]
+    Sqlite,
+    /// Remote HTTP API (legacy Godo compatibility)
+    Api,
+}
+
+/// Notes storage configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NotesConfig {
+    /// Storage backend: "sqlite" (default) or "api"
+    #[serde(default)]
+    pub backend: NotesBackend,
+
+    /// Path to SQLite database file
+    /// Default: ~/.config/myme/notes.db
+    #[serde(default = "default_notes_sqlite_path")]
+    pub sqlite_path: String,
+
+    /// One-time migration from Godo database
+    /// Set to true to import existing notes from Godo
+    #[serde(default)]
+    pub migrate_from_godo: bool,
+
+    /// Path to Godo database for migration
+    /// Default: ~/.config/godo/godo.db
+    #[serde(default)]
+    pub godo_db_path: Option<String>,
+}
+
+fn default_notes_sqlite_path() -> String {
+    dirs::config_dir()
+        .map(|d| d.join("myme").join("notes.db"))
+        .unwrap_or_else(|| PathBuf::from("notes.db"))
+        .to_string_lossy()
+        .into_owned()
+}
+
+fn default_godo_db_path() -> PathBuf {
+    dirs::config_dir()
+        .map(|d| d.join("godo").join("godo.db"))
+        .unwrap_or_else(|| PathBuf::from("godo.db"))
+}
+
+impl Default for NotesConfig {
+    fn default() -> Self {
+        Self {
+            backend: NotesBackend::Sqlite,
+            sqlite_path: default_notes_sqlite_path(),
+            migrate_from_godo: false,
+            godo_db_path: None,
+        }
+    }
+}
+
+impl NotesConfig {
+    /// Get the effective SQLite path (expanded)
+    pub fn sqlite_path(&self) -> PathBuf {
+        expand_path(&self.sqlite_path)
+    }
+
+    /// Get the effective Godo database path for migration
+    pub fn godo_path(&self) -> PathBuf {
+        self.godo_db_path
+            .as_ref()
+            .map(|p| expand_path(p))
+            .unwrap_or_else(default_godo_db_path)
+    }
+
+    /// Check if using SQLite backend
+    pub fn is_sqlite(&self) -> bool {
+        self.backend == NotesBackend::Sqlite
+    }
+
+    /// Check if using API backend
+    pub fn is_api(&self) -> bool {
+        self.backend == NotesBackend::Api
+    }
+}
+
+/// Expand ~ in paths to home directory
+fn expand_path(path: &str) -> PathBuf {
+    if path.starts_with("~/") {
+        if let Some(home) = dirs::home_dir() {
+            return home.join(&path[2..]);
+        }
+    }
+    PathBuf::from(path)
+}
+
 impl Default for Config {
     fn default() -> Self {
         let config_dir = dirs::config_dir()
@@ -294,6 +392,7 @@ impl Default for Config {
             repos: ReposConfig::default(),
             github: GitHubConfig::default(),
             google: None,
+            notes: NotesConfig::default(),
         }
     }
 }

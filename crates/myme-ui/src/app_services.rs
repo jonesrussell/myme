@@ -15,7 +15,7 @@ use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
 use myme_auth::GitHubAuth;
-use myme_services::{GitHubClient, ProjectStore, TodoClient};
+use myme_services::{GitHubClient, NoteClient, ProjectStore, SqliteNoteStore, TodoClient};
 use myme_weather::{WeatherCache, WeatherProvider};
 
 /// Message types for the repo service channel
@@ -47,8 +47,12 @@ pub struct AppServices {
     /// Shutdown signal broadcaster
     shutdown_tx: broadcast::Sender<()>,
 
-    /// Todo/Notes API client (for Godo integration)
+    /// Todo/Notes API client (for Godo integration) - LEGACY
+    /// Use `note_client` instead for new code.
     todo_client: RwLock<Option<Arc<TodoClient>>>,
+
+    /// Unified note client (SQLite or HTTP backend)
+    note_client: RwLock<Option<Arc<NoteClient>>>,
 
     /// GitHub API client (requires authentication)
     github_client: RwLock<Option<Arc<GitHubClient>>>,
@@ -128,6 +132,7 @@ impl AppServices {
                     runtime,
                     shutdown_tx,
                     todo_client: RwLock::new(None),
+                    note_client: RwLock::new(None),
                     github_client: RwLock::new(None),
                     github_auth: RwLock::new(None),
                     project_store: RwLock::new(None),
@@ -173,6 +178,7 @@ impl AppServices {
 
         // Clear all mutable state
         *self.todo_client.write() = None;
+        *self.note_client.write() = None;
         *self.github_client.write() = None;
         *self.github_auth.write() = None;
         *self.project_store.write() = None;
@@ -235,6 +241,126 @@ impl AppServices {
             Err(e) => {
                 tracing::error!("Failed to create Todo client: {}", e);
                 false
+            }
+        }
+    }
+
+    // =========== Note Client (unified) ===========
+
+    /// Get the unified note client if initialized.
+    pub fn note_client(&self) -> Option<Arc<NoteClient>> {
+        self.note_client.read().clone()
+    }
+
+    /// Set or update the unified note client.
+    pub fn set_note_client(&self, client: Option<Arc<NoteClient>>) {
+        *self.note_client.write() = client;
+    }
+
+    /// Initialize unified note client from configuration.
+    ///
+    /// Reads the notes config and creates either a SQLite or HTTP backend.
+    /// Also runs migration from Godo if configured.
+    pub fn init_note_client(&self) -> bool {
+        // Return true if already initialized
+        if self.note_client.read().is_some() {
+            return true;
+        }
+
+        let config = match myme_core::Config::load() {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::warn!("Failed to load config for notes: {}. Using defaults.", e);
+                myme_core::Config::default()
+            }
+        };
+
+        let client = match config.notes.backend {
+            myme_core::NotesBackend::Sqlite => {
+                self.init_sqlite_note_client(&config)
+            }
+            myme_core::NotesBackend::Api => {
+                self.init_api_note_client(&config)
+            }
+        };
+
+        match client {
+            Some(c) => {
+                self.set_note_client(Some(Arc::new(c)));
+                tracing::info!("Note client initialized ({:?} backend)", config.notes.backend);
+                true
+            }
+            None => {
+                tracing::error!("Failed to initialize note client");
+                false
+            }
+        }
+    }
+
+    /// Initialize SQLite-backed note client.
+    fn init_sqlite_note_client(&self, config: &myme_core::Config) -> Option<NoteClient> {
+        let db_path = config.notes.sqlite_path();
+
+        // Ensure directory exists
+        if let Some(parent) = db_path.parent() {
+            if let Err(e) = std::fs::create_dir_all(parent) {
+                tracing::error!("Failed to create notes database directory: {}", e);
+                return None;
+            }
+        }
+
+        // Create store
+        let store = match SqliteNoteStore::new(&db_path) {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::error!("Failed to create SQLite note store at {:?}: {}", db_path, e);
+                return None;
+            }
+        };
+
+        tracing::info!("SQLite note store opened at {:?}", db_path);
+
+        // Run migration from Godo if configured
+        if config.notes.migrate_from_godo {
+            let godo_path = config.notes.godo_path();
+            if godo_path.exists() {
+                tracing::info!("Running migration from Godo database: {:?}", godo_path);
+                match myme_services::migrate_from_godo(&godo_path, &store) {
+                    Ok(result) => {
+                        tracing::info!("{}", result);
+                    }
+                    Err(e) => {
+                        tracing::warn!("Migration from Godo failed: {}", e);
+                        // Continue anyway - store is still usable
+                    }
+                }
+            } else {
+                tracing::debug!("Godo database not found at {:?}, skipping migration", godo_path);
+            }
+        }
+
+        Some(NoteClient::sqlite(store))
+    }
+
+    /// Initialize HTTP API-backed note client (legacy Godo).
+    fn init_api_note_client(&self, config: &myme_core::Config) -> Option<NoteClient> {
+        let todo_config = myme_services::TodoClientConfig {
+            base_url: config.services.todo_api_url.clone(),
+            jwt_token: config.services.jwt_token.clone(),
+            allow_invalid_certs: config.services.allow_invalid_certs,
+        };
+
+        match TodoClient::new_with_config(todo_config) {
+            Ok(client) => {
+                tracing::info!(
+                    "HTTP note client initialized with base_url: {}",
+                    config.services.todo_api_url
+                );
+                Some(NoteClient::http(client))
+            }
+            Err(e) => {
+                tracing::error!("Failed to create HTTP note client: {}", e);
+                None
             }
         }
     }
@@ -650,10 +776,24 @@ pub fn runtime() -> tokio::runtime::Handle {
     services().runtime()
 }
 
-/// Get Todo client and runtime handle.
+/// Get Todo client and runtime handle (legacy).
+/// Prefer using `note_client_and_runtime()` for new code.
 pub fn todo_client_and_runtime() -> Option<(Arc<TodoClient>, tokio::runtime::Handle)> {
     let svc = services();
     Some((svc.todo_client()?, svc.runtime()))
+}
+
+/// Get unified note client and runtime handle.
+pub fn note_client_and_runtime() -> Option<(Arc<NoteClient>, tokio::runtime::Handle)> {
+    let svc = services();
+    Some((svc.note_client()?, svc.runtime()))
+}
+
+/// Get unified note client, initializing if needed.
+pub fn note_client_or_init() -> Option<Arc<NoteClient>> {
+    let svc = services();
+    svc.init_note_client();
+    svc.note_client()
 }
 
 /// Get GitHub client and runtime handle.
