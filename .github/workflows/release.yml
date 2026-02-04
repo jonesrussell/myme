@@ -1,0 +1,124 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.10.1'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2022_64'
+          modules: 'qtquick3d'
+          cache: true
+
+      - name: Build Rust
+        run: cargo build --release
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build Qt Application
+        run: cmake --build build --config Release
+
+      - name: Create distribution directory
+        run: |
+          New-Item -ItemType Directory -Force -Path dist/myme
+          Copy-Item build/Release/myme-qt.exe dist/myme/
+
+      - name: Bundle Qt dependencies
+        shell: cmd
+        run: |
+          "%Qt6_DIR%/../../../bin/windeployqt.exe" --release --qmldir crates/myme-ui/qml dist/myme/myme-qt.exe
+
+      - name: Create portable ZIP
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          Compress-Archive -Path dist/myme/* -DestinationPath "dist/myme-v${env:VERSION}-windows.zip"
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      - name: Build Installer
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=$env:VERSION installer/myme.iss
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        with:
+          name: windows-release
+          path: |
+            dist/myme-v${{ steps.version.outputs.VERSION }}-windows.zip
+            dist/myme-${{ steps.version.outputs.VERSION }}-windows-setup.exe
+
+  release:
+    needs: build-windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-release
+          path: dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        with:
+          generate_release_notes: true
+          files: |
+            dist/myme-v${{ steps.version.outputs.VERSION }}-windows.zip
+            dist/myme-${{ steps.version.outputs.VERSION }}-windows-setup.exe
+          draft: false
+          prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc') }}
