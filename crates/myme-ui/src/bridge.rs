@@ -8,7 +8,7 @@ use std::os::raw::c_char;
 use std::sync::Arc;
 
 use myme_auth::GitHubAuth;
-use myme_services::{GitHubClient, ProjectStore, TodoClient};
+use myme_services::{GitHubClient, NoteClient, ProjectStore, TodoClient};
 use myme_weather::{WeatherCache, WeatherProvider};
 
 use crate::app_services::{self, AppServices};
@@ -81,9 +81,48 @@ pub extern "C" fn initialize_note_model(base_url: *const c_char) -> bool {
     success
 }
 
-/// Get the initialized TodoClient and runtime for use by NoteModels
+/// Get the initialized TodoClient and runtime for use by NoteModels (legacy).
+/// Prefer using `get_note_client_and_runtime()` for new code.
 pub fn get_todo_client_and_runtime() -> Option<(Arc<TodoClient>, tokio::runtime::Handle)> {
     app_services::todo_client_and_runtime()
+}
+
+/// Initialize unified note client from configuration.
+///
+/// This is the preferred initialization method. It reads the config to determine
+/// whether to use SQLite (default) or HTTP (legacy Godo) backend.
+///
+/// Must be called before QML tries to access NoteModel.
+#[no_mangle]
+pub extern "C" fn initialize_note_client() -> bool {
+    // Initialize tracing if not already done
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+        )
+        .try_init();
+
+    tracing::info!("Initializing unified note client from configuration");
+
+    let services = AppServices::init();
+    let success = services.init_note_client();
+
+    if success {
+        tracing::info!("Unified note client initialized successfully");
+    }
+
+    success
+}
+
+/// Get the unified note client and runtime for use by NoteModels.
+pub fn get_note_client_and_runtime() -> Option<(Arc<NoteClient>, tokio::runtime::Handle)> {
+    app_services::note_client_and_runtime()
+}
+
+/// Get unified note client, initializing if needed.
+pub fn get_note_client_or_init() -> Option<Arc<NoteClient>> {
+    app_services::note_client_or_init()
 }
 
 /// Initialize weather services
