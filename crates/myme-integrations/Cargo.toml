@@ -18,7 +18,7 @@ reqwest.workspace = true
 octocrab = "0.41"
 
 # Git operations
-git2 = "0.19"
+git2 = "0.20"
 
 # Path handling
 dirs = "5.0"
