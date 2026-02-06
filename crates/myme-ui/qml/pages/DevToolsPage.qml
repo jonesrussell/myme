@@ -3191,6 +3191,8 @@ Page {
             property var chunks: []
             property int maxChunkSize: 10000
             property int copiedChunkIndex: -1
+            property bool prefixEnabled: true
+            property string prefixText: "help me with my new claude code brainstorming session. i prefer you give me replies to claude code i can copy and paste. ===== i'm open to suggestions and questions."
 
             // Smart chunking function - breaks at natural boundaries
             function chunkText(text, maxSize) {
@@ -3260,6 +3262,11 @@ Page {
                     result[total - 1] = `[CHUNK ${total}/${total}]\n\n` + result[total - 1] + `\n\n--- THIS IS THE LAST CHUNK - PLEASE REVIEW ALL NOW ---`;
                 }
 
+                // Prepend prefix to first chunk if enabled
+                if (prefixEnabled && prefixText.length > 0 && result.length > 0) {
+                    result[0] = prefixText + "\n\n" + result[0];
+                }
+
                 return result;
             }
 
@@ -3270,10 +3277,10 @@ Page {
                 onTriggered: chunks = chunkText(inputText, maxChunkSize)
             }
 
-            // Update chunks when input changes (debounced)
-            onInputTextChanged: {
-                chunkingTimer.restart();
-            }
+            // Update chunks when input or prefix settings change (debounced)
+            onInputTextChanged: chunkingTimer.restart()
+            onPrefixEnabledChanged: chunkingTimer.restart()
+            onPrefixTextChanged: chunkingTimer.restart()
 
             // Copy feedback timer
             Timer {
@@ -3347,6 +3354,81 @@ Page {
                                 ToolTip.visible: clearMouseArea.containsMouse
                                 ToolTip.text: "Clear input"
                                 ToolTip.delay: 500
+                            }
+                        }
+
+                        // Prefix section
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: prefixColumn.implicitHeight + Theme.spacingSm * 2
+                            color: prefixEnabled ? Theme.primary + "10" : Theme.surfaceAlt
+                            border.color: prefixEnabled ? Theme.primary + "40" : Theme.border
+                            radius: Theme.cardRadius
+
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                            ColumnLayout {
+                                id: prefixColumn
+                                anchors.fill: parent
+                                anchors.margins: Theme.spacingSm
+                                spacing: Theme.spacingSm
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: Theme.spacingSm
+
+                                    Switch {
+                                        id: prefixSwitch
+                                        checked: prefixEnabled
+                                        onCheckedChanged: prefixEnabled = checked
+                                    }
+
+                                    Label {
+                                        text: "Prepend prefix to first chunk"
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        font.bold: true
+                                        color: prefixEnabled ? Theme.text : Theme.textSecondary
+                                        Layout.fillWidth: true
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: prefixSwitch.checked = !prefixSwitch.checked
+                                        }
+                                    }
+                                }
+
+                                Rectangle {
+                                    visible: prefixEnabled
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 60
+                                    color: Theme.inputBg
+                                    border.color: prefixInput.activeFocus ? Theme.primary : Theme.inputBorder
+                                    border.width: prefixInput.activeFocus ? 2 : 1
+                                    radius: Theme.inputRadius
+
+                                    Behavior on border.color { ColorAnimation { duration: 100 } }
+
+                                    ScrollView {
+                                        anchors.fill: parent
+                                        anchors.margins: 2
+
+                                        TextArea {
+                                            id: prefixInput
+                                            text: prefixText
+                                            wrapMode: TextEdit.Wrap
+                                            font.family: "Consolas, Monaco, monospace"
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            color: Theme.text
+                                            placeholderText: "Text to prepend to the first chunk..."
+                                            placeholderTextColor: Theme.textMuted
+                                            onTextChanged: prefixText = text
+
+                                            background: Rectangle { color: "transparent" }
+                                        }
+                                    }
+                                }
                             }
                         }
 
