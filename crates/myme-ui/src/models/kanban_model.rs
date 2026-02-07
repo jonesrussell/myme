@@ -502,7 +502,8 @@ impl qobject::KanbanModel {
             }
         };
 
-        let repo_id_str = repo_id.to_string().trim();
+        let repo_id_owned = repo_id.to_string();
+        let repo_id_str = repo_id_owned.trim();
         let target_repo = if repo_id_str.is_empty() {
             self.as_ref().rust().first_repo_id()
         } else {

@@ -722,11 +722,11 @@ impl qobject::ProjectModel {
                 }
                 // Remove this repo from pending; when empty, we're done
                 if let OpState::SyncingProject {
-                    project_id: pid,
+                    project_id: ref pid,
                     ref mut pending_repos,
                 } = self.as_mut().rust_mut().op_state
                 {
-                    if pid == project_id {
+                    if *pid == project_id {
                         pending_repos.remove(&repo_id);
                         if pending_repos.is_empty() {
                             self.as_mut().rust_mut().op_state = OpState::Idle;
@@ -784,7 +784,7 @@ impl qobject::ProjectModel {
 
     /// Handle successful issues fetch for one repo during sync_project
     fn handle_issues_fetched(
-        mut self: Pin<&mut Self>,
+        self: Pin<&mut Self>,
         _project_id: String,
         repo_id: String,
         issues: Vec<IssueInfo>,

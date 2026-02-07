@@ -51,6 +51,9 @@ Page {
                 projectsPage.projectCount = projectModel.row_count();
             }
         }
+        function onProjects_changed() {
+            projectsPage.projectCount = projectModel.row_count();
+        }
         function onAuthenticatedChanged() {
             // Re-fetch projects when auth status changes
             if (projectModel.authenticated) {
