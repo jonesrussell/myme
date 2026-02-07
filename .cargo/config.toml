@@ -1,4 +1,9 @@
 # Cargo configuration for MyMe project
+#
+# Qt path (for myme-ui / cxx-qt builds): set before `cargo build`:
+#   . .\set-qt-env.ps1
+#   cargo build --release -p myme-ui
+# Or set QT_PATH to override default C:\Qt\6.10.1\msvc2022_64
 
 # Windows-specific linker configuration
 # Uncomment and adjust the path if you encounter linker issues
