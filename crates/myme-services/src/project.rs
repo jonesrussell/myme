@@ -98,17 +98,14 @@ pub struct ProjectRepo {
     pub repo_id: String,
 }
 
-/// Local task representation (mirrors GitHub issue, belongs to a repo)
+/// Local task representation (first-class, belongs to project)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Task {
     pub id: String,
-    pub repo_id: String,
-    pub github_issue_number: i32,
+    pub project_id: String,
     pub title: String,
     pub body: Option<String>,
     pub status: TaskStatus,
-    pub labels: Vec<String>,
-    pub html_url: String,
     pub created_at: String,
     pub updated_at: String,
 }

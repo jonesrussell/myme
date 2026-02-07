@@ -6,7 +6,7 @@ use std::path::Path;
 
 use crate::project::{Project, Task, TaskStatus};
 
-const SCHEMA_VERSION: i32 = 2;
+const SCHEMA_VERSION: i32 = 3;
 
 /// Local SQLite storage for projects and tasks
 pub struct ProjectStore {
@@ -39,11 +39,14 @@ impl ProjectStore {
             .optional()?
             .unwrap_or(0);
 
-        if version < SCHEMA_VERSION {
+        if version < 2 {
             self.migrate_to_v2(version)?;
         }
+        if version < SCHEMA_VERSION {
+            self.migrate_to_v3()?;
+        }
 
-        // Ensure v2 schema exists
+        // Ensure schema exists
         self.conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS projects (
                 id TEXT PRIMARY KEY,
@@ -61,19 +64,16 @@ impl ProjectStore {
 
             CREATE TABLE IF NOT EXISTS tasks (
                 id TEXT PRIMARY KEY,
-                repo_id TEXT NOT NULL,
-                github_issue_number INTEGER NOT NULL,
+                project_id TEXT NOT NULL,
                 title TEXT NOT NULL,
                 body TEXT,
                 status TEXT NOT NULL,
-                labels TEXT NOT NULL,
-                html_url TEXT NOT NULL,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
-                UNIQUE (repo_id, github_issue_number)
+                FOREIGN KEY (project_id) REFERENCES projects(id)
             );
 
-            CREATE INDEX IF NOT EXISTS idx_tasks_repo ON tasks(repo_id);
+            CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
             CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
             CREATE INDEX IF NOT EXISTS idx_project_repos_project ON project_repos(project_id);
             CREATE INDEX IF NOT EXISTS idx_project_repos_repo ON project_repos(repo_id);"
@@ -189,6 +189,96 @@ impl ProjectStore {
         Ok(())
     }
 
+    /// Migrate from v2 (repo-based tasks) to v3 (project-based tasks)
+    fn migrate_to_v3(&self) -> Result<()> {
+        let version: i32 = self
+            .conn
+            .query_row("SELECT version FROM schema_version LIMIT 1", [], |row| row.get(0))
+            .optional()?
+            .unwrap_or(2);
+
+        if version >= SCHEMA_VERSION {
+            return Ok(());
+        }
+
+        let has_tasks: bool = self
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='tasks'",
+                [],
+                |row| row.get::<_, i32>(0),
+            )?
+            > 0;
+
+        if !has_tasks {
+            self.conn.execute("DELETE FROM schema_version", [])?;
+            self.conn.execute(
+                "INSERT INTO schema_version (version) VALUES (?1)",
+                params![SCHEMA_VERSION],
+            )?;
+            return Ok(());
+        }
+
+        let table_info: Vec<String> = self
+            .conn
+            .prepare("PRAGMA table_info(tasks)")?
+            .query_map([], |row| row.get::<_, String>(1))?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let has_project_id = table_info.iter().any(|c| c == "project_id");
+        if has_project_id {
+            self.conn.execute("DELETE FROM schema_version", [])?;
+            self.conn.execute(
+                "INSERT INTO schema_version (version) VALUES (?1)",
+                params![SCHEMA_VERSION],
+            )?;
+            return Ok(());
+        }
+
+        self.conn.execute_batch(
+            "BEGIN TRANSACTION;
+
+            CREATE TABLE IF NOT EXISTS tasks_new (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                body TEXT,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (project_id) REFERENCES projects(id)
+            );
+
+            -- Migrate: for each task with repo_id, find first project that has that repo
+            INSERT INTO tasks_new (id, project_id, title, body, status, created_at, updated_at)
+            SELECT t.id,
+                   (SELECT pr.project_id FROM project_repos pr WHERE pr.repo_id = t.repo_id LIMIT 1),
+                   t.title,
+                   t.body,
+                   t.status,
+                   t.created_at,
+                   t.updated_at
+            FROM tasks t
+            WHERE EXISTS (SELECT 1 FROM project_repos pr WHERE pr.repo_id = t.repo_id);
+
+            DROP TABLE tasks;
+            ALTER TABLE tasks_new RENAME TO tasks;
+
+            CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
+            CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+
+            COMMIT;"
+        )?;
+
+        self.conn.execute("DELETE FROM schema_version", [])?;
+        self.conn.execute(
+            "INSERT INTO schema_version (version) VALUES (?1)",
+            params![SCHEMA_VERSION],
+        )?;
+
+        Ok(())
+    }
+
     /// Insert or update a project
     pub fn upsert_project(&self, project: &Project) -> Result<()> {
         self.conn.execute(
@@ -245,9 +335,9 @@ impl ProjectStore {
         Ok(project)
     }
 
-    /// Delete a project, its project_repos links, and cached tasks for its repos
-    /// Note: Tasks are cached per repo; we only remove project_repos. Tasks stay cached.
+    /// Delete a project, its project_repos links, and its tasks
     pub fn delete_project(&self, id: &str) -> Result<()> {
+        self.conn.execute("DELETE FROM tasks WHERE project_id = ?1", [id])?;
         self.conn.execute("DELETE FROM project_repos WHERE project_id = ?1", [id])?;
         self.conn.execute("DELETE FROM projects WHERE id = ?1", [id])?;
         Ok(())
@@ -303,31 +393,24 @@ impl ProjectStore {
         Ok(projects)
     }
 
-    /// Insert or update a task (by repo_id, github_issue_number)
+    /// Insert or update a task
     pub fn upsert_task(&self, task: &Task) -> Result<()> {
-        let labels_json = serde_json::to_string(&task.labels)?;
         let status_str = serde_json::to_string(&task.status)?;
 
         self.conn.execute(
-            "INSERT INTO tasks (id, repo_id, github_issue_number, title, body, status, labels, html_url, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
-             ON CONFLICT(repo_id, github_issue_number) DO UPDATE SET
-                id = excluded.id,
+            "INSERT INTO tasks (id, project_id, title, body, status, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+             ON CONFLICT(id) DO UPDATE SET
                 title = excluded.title,
                 body = excluded.body,
                 status = excluded.status,
-                labels = excluded.labels,
-                html_url = excluded.html_url,
                 updated_at = excluded.updated_at",
             params![
                 task.id,
-                task.repo_id,
-                task.github_issue_number,
+                task.project_id,
                 task.title,
                 task.body,
                 status_str,
-                labels_json,
-                task.html_url,
                 task.created_at,
                 task.updated_at,
             ],
@@ -335,82 +418,39 @@ impl ProjectStore {
         Ok(())
     }
 
-    /// Get tasks for a project (union of tasks from all repos in the project)
+    /// Get tasks for a project
     pub fn list_tasks_for_project(&self, project_id: &str) -> Result<Vec<Task>> {
         let mut stmt = self.conn.prepare(
-            "SELECT t.id, t.repo_id, t.github_issue_number, t.title, t.body, t.status, t.labels, t.html_url, t.created_at, t.updated_at
-             FROM tasks t
-             JOIN project_repos pr ON t.repo_id = pr.repo_id
-             WHERE pr.project_id = ?1
-             ORDER BY t.repo_id, t.github_issue_number"
+            "SELECT id, project_id, title, body, status, created_at, updated_at
+             FROM tasks WHERE project_id = ?1 ORDER BY created_at"
         )?;
 
         let tasks = stmt.query_map([project_id], |row| {
-            let status_str: String = row.get(5)?;
-            let labels_json: String = row.get(6)?;
-
+            let status_str: String = row.get(4)?;
             Ok(Task {
                 id: row.get(0)?,
-                repo_id: row.get(1)?,
-                github_issue_number: row.get(2)?,
-                title: row.get(3)?,
-                body: row.get(4)?,
+                project_id: row.get(1)?,
+                title: row.get(2)?,
+                body: row.get(3)?,
                 status: serde_json::from_str(&status_str).unwrap_or(TaskStatus::Todo),
-                labels: serde_json::from_str(&labels_json).unwrap_or_default(),
-                html_url: row.get(7)?,
-                created_at: row.get(8)?,
-                updated_at: row.get(9)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
             })
         })?.collect::<Result<Vec<_>, _>>()?;
 
         Ok(tasks)
     }
 
-    /// Get tasks for a single repo (for sync/update)
-    pub fn list_tasks_for_repo(&self, repo_id: &str) -> Result<Vec<Task>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT id, repo_id, github_issue_number, title, body, status, labels, html_url, created_at, updated_at
-             FROM tasks WHERE repo_id = ?1 ORDER BY github_issue_number"
-        )?;
-
-        let tasks = stmt.query_map([repo_id], |row| {
-            let status_str: String = row.get(5)?;
-            let labels_json: String = row.get(6)?;
-
-            Ok(Task {
-                id: row.get(0)?,
-                repo_id: row.get(1)?,
-                github_issue_number: row.get(2)?,
-                title: row.get(3)?,
-                body: row.get(4)?,
-                status: serde_json::from_str(&status_str).unwrap_or(TaskStatus::Todo),
-                labels: serde_json::from_str(&labels_json).unwrap_or_default(),
-                html_url: row.get(7)?,
-                created_at: row.get(8)?,
-                updated_at: row.get(9)?,
-            })
-        })?.collect::<Result<Vec<_>, _>>()?;
-
-        Ok(tasks)
-    }
-
-    /// Delete a task by repo and issue number
-    pub fn delete_task(&self, repo_id: &str, issue_number: i32) -> Result<()> {
-        self.conn.execute(
-            "DELETE FROM tasks WHERE repo_id = ?1 AND github_issue_number = ?2",
-            params![repo_id, issue_number],
-        )?;
+    /// Delete a task by id
+    pub fn delete_task(&self, task_id: &str) -> Result<()> {
+        self.conn.execute("DELETE FROM tasks WHERE id = ?1", [task_id])?;
         Ok(())
     }
 
-    /// Count tasks by status for a project (aggregated across repos)
+    /// Count tasks by status for a project
     pub fn count_tasks_by_status(&self, project_id: &str) -> Result<Vec<(TaskStatus, i32)>> {
         let mut stmt = self.conn.prepare(
-            "SELECT t.status, COUNT(*)
-             FROM tasks t
-             JOIN project_repos pr ON t.repo_id = pr.repo_id
-             WHERE pr.project_id = ?1
-             GROUP BY t.status"
+            "SELECT status, COUNT(*) FROM tasks WHERE project_id = ?1 GROUP BY status"
         )?;
 
         let counts = stmt.query_map([project_id], |row| {
@@ -496,17 +536,13 @@ mod tests {
             created_at: "2026-01-21T00:00:00Z".to_string(),
         };
         store.upsert_project(&project).unwrap();
-        store.add_repo_to_project("proj-1", "owner/repo").unwrap();
 
         let task = Task {
             id: "task-1".to_string(),
-            repo_id: "owner/repo".to_string(),
-            github_issue_number: 42,
+            project_id: "proj-1".to_string(),
             title: "Test task".to_string(),
             body: Some("Description".to_string()),
             status: TaskStatus::InProgress,
-            labels: vec!["in-progress".to_string()],
-            html_url: "https://github.com/owner/repo/issues/42".to_string(),
             created_at: "2026-01-21T00:00:00Z".to_string(),
             updated_at: "2026-01-21T00:00:00Z".to_string(),
         };
@@ -515,6 +551,6 @@ mod tests {
         let tasks = store.list_tasks_for_project("proj-1").unwrap();
         assert_eq!(tasks.len(), 1);
         assert_eq!(tasks[0].status, TaskStatus::InProgress);
-        assert_eq!(tasks[0].repo_id, "owner/repo");
+        assert_eq!(tasks[0].project_id, "proj-1");
     }
 }

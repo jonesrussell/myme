@@ -19,9 +19,8 @@ pub use note_service::{
     NoteError, NoteServiceMessage,
 };
 pub use project_service::{
-    request_fetch_issues as request_project_fetch_issues,
-    request_fetch_repo as request_project_fetch_repo, IssueInfo, ProjectError,
-    ProjectServiceMessage, RepoInfo,
+    request_fetch_repo as request_project_fetch_repo, ProjectError, ProjectServiceMessage,
+    RepoInfo,
 };
 pub use repo_service::{request_clone, request_pull, request_refresh, RepoError, RepoServiceMessage};
 pub use weather_service::{

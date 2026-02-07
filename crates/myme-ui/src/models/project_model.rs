@@ -1,7 +1,7 @@
 // crates/myme-ui/src/models/project_model.rs
 
 use core::pin::Pin;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use cxx_qt::CxxQtType;
@@ -9,9 +9,7 @@ use cxx_qt_lib::QString;
 use myme_services::{GitHubClient, Project, ProjectStore, TaskStatus};
 
 use crate::bridge;
-use crate::services::{
-    request_project_fetch_issues, request_project_fetch_repo, IssueInfo, ProjectServiceMessage,
-};
+use crate::services::{request_project_fetch_repo, ProjectServiceMessage};
 
 #[cxx_qt::bridge]
 pub mod qobject {
@@ -127,10 +125,6 @@ enum OpState {
     AddingRepoToProject {
         project_id: String,
         repo_id: String,
-    },
-    SyncingProject {
-        project_id: String,
-        pending_repos: HashSet<String>,
     },
 }
 
@@ -591,86 +585,10 @@ impl qobject::ProjectModel {
         }
     }
 
-    /// Sync a project with GitHub (fetch issues from all repos) - non-blocking
+    /// Refresh task counts for a project (local data only)
     pub fn sync_project(mut self: Pin<&mut Self>, index: i32) {
-        self.as_mut().rust_mut().ensure_initialized();
-
-        if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
-            tracing::warn!("sync_project: operation already in progress");
-            return;
-        }
-
-        let project = match self.as_ref().rust().get_project(index) {
-            Some(p) => p.clone(),
-            None => return,
-        };
-
-        let store = match &self.as_ref().rust().project_store {
-            Some(s) => s.clone(),
-            None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Project store not initialized"));
-                return;
-            }
-        };
-
-        let repos = match store.lock().ok().and_then(|g| g.list_repos_for_project(&project.id).ok()) {
-            Some(r) => r,
-            None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Failed to get project repos"));
-                return;
-            }
-        };
-
-        if repos.is_empty() {
-            self.as_mut()
-                .set_error_message(QString::from("Project has no repos to sync"));
-            return;
-        }
-
-        let github_client = match &self.as_ref().rust().github_client {
-            Some(c) => c.clone(),
-            None => {
-                self.as_mut()
-                    .set_error_message(QString::from("GitHub not authenticated"));
-                return;
-            }
-        };
-
-        bridge::init_project_service_channel();
-        let tx = match bridge::get_project_service_tx() {
-            Some(t) => t,
-            None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Service channel not ready"));
-                return;
-            }
-        };
-
-        self.as_mut().set_loading(true);
-        self.as_mut().rust_mut().clear_error();
-        self.as_mut().rust_mut().op_state = OpState::SyncingProject {
-            project_id: project.id.clone(),
-            pending_repos: repos.iter().cloned().collect(),
-        };
-
-        for repo_id in &repos {
-            let parts: Vec<&str> = repo_id.split('/').collect();
-            if parts.len() != 2 {
-                continue;
-            }
-            let owner = parts[0].to_string();
-            let repo = parts[1].to_string();
-            request_project_fetch_issues(
-                &tx,
-                github_client.clone(),
-                project.id.clone(),
-                repo_id.clone(),
-                owner,
-                repo,
-            );
-        }
+        self.as_mut().rust_mut().load_task_counts();
+        self.as_mut().projects_changed();
     }
 
     /// Poll for async operation results. Call this from a QML Timer (e.g., every 100ms).
@@ -704,36 +622,6 @@ impl qobject::ProjectModel {
                             .rust_mut()
                             .set_error(&format!("Failed to fetch repo: {}", e));
                         self.as_mut().set_loading(false);
-                    }
-                }
-            }
-            ProjectServiceMessage::FetchIssuesDone {
-                project_id,
-                repo_id,
-                result,
-            } => {
-                if let Err(e) = &result {
-                    tracing::error!("Failed to fetch issues for {}: {}", repo_id, e);
-                    self.as_mut()
-                        .rust_mut()
-                        .set_error(&format!("Failed to sync: {}", e));
-                } else if let Ok(issues) = result {
-                    self.as_mut().handle_issues_fetched(project_id.clone(), repo_id.clone(), issues);
-                }
-                // Remove this repo from pending; when empty, we're done
-                if let OpState::SyncingProject {
-                    project_id: ref pid,
-                    ref mut pending_repos,
-                } = self.as_mut().rust_mut().op_state
-                {
-                    if *pid == project_id {
-                        pending_repos.remove(&repo_id);
-                        if pending_repos.is_empty() {
-                            self.as_mut().rust_mut().op_state = OpState::Idle;
-                            self.as_mut().rust_mut().load_task_counts();
-                            self.as_mut().projects_changed();
-                            self.as_mut().set_loading(false);
-                        }
                     }
                 }
             }
@@ -780,47 +668,6 @@ impl qobject::ProjectModel {
                 self.as_mut().set_loading(false);
             }
         }
-    }
-
-    /// Handle successful issues fetch for one repo during sync_project
-    fn handle_issues_fetched(
-        self: Pin<&mut Self>,
-        _project_id: String,
-        repo_id: String,
-        issues: Vec<IssueInfo>,
-    ) {
-        let store = match &self.as_ref().rust().project_store {
-            Some(s) => s.clone(),
-            None => return,
-        };
-
-        let store_guard = match store.lock() {
-            Ok(g) => g,
-            Err(_) => return,
-        };
-
-        for issue in &issues {
-            let status = TaskStatus::from_github(&issue.state, &issue.labels);
-
-            let task = myme_services::Task {
-                id: uuid::Uuid::new_v4().to_string(),
-                repo_id: repo_id.clone(),
-                github_issue_number: issue.number,
-                title: issue.title.clone(),
-                body: issue.body.clone(),
-                status,
-                labels: issue.labels.clone(),
-                html_url: issue.html_url.clone(),
-                created_at: issue.created_at.clone(),
-                updated_at: issue.updated_at.clone(),
-            };
-
-            if let Err(e) = store_guard.upsert_task(&task) {
-                tracing::warn!("Failed to save task for issue #{}: {}", issue.number, e);
-            }
-        }
-
-        tracing::info!("Fetched {} issues for repo {}", issues.len(), repo_id);
     }
 
     /// Check and update authentication status

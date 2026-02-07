@@ -32,30 +32,11 @@ pub struct RepoInfo {
     pub description: Option<String>,
 }
 
-/// GitHub issue info (subset of what we need)
-#[derive(Debug, Clone)]
-pub struct IssueInfo {
-    pub number: i32,
-    pub title: String,
-    pub body: Option<String>,
-    pub state: String,
-    pub labels: Vec<String>,
-    pub html_url: String,
-    pub created_at: String,
-    pub updated_at: String,
-}
-
 /// Messages sent from async operations back to the UI thread
 #[derive(Debug)]
 pub enum ProjectServiceMessage {
     /// Result of fetching repo info from GitHub (when adding repo to project)
     FetchRepoDone(Result<RepoInfo, ProjectError>),
-    /// Result of fetching issues from GitHub for one repo
-    FetchIssuesDone {
-        project_id: String,
-        repo_id: String,
-        result: Result<Vec<IssueInfo>, ProjectError>,
-    },
 }
 
 /// Request to fetch repo info asynchronously.
@@ -87,57 +68,6 @@ pub fn request_fetch_repo(
             })
             .map_err(|e| ProjectError::Network(e.to_string()));
         let _ = tx.send(ProjectServiceMessage::FetchRepoDone(result));
-    });
-}
-
-/// Request to fetch issues asynchronously for one repo.
-/// Sends `FetchIssuesDone` on the channel when complete.
-pub fn request_fetch_issues(
-    tx: &std::sync::mpsc::Sender<ProjectServiceMessage>,
-    client: Arc<GitHubClient>,
-    project_id: String,
-    repo_id: String,
-    owner: String,
-    repo: String,
-) {
-    let tx = tx.clone();
-    let runtime = match bridge::get_runtime() {
-        Some(r) => r,
-        None => {
-            let _ = tx.send(ProjectServiceMessage::FetchIssuesDone {
-                project_id,
-                repo_id,
-                result: Err(ProjectError::NotInitialized),
-            });
-            return;
-        }
-    };
-
-    runtime.spawn(async move {
-        let result = client
-            .list_issues(&owner, &repo)
-            .await
-            .map(|issues| {
-                issues
-                    .into_iter()
-                    .map(|issue| IssueInfo {
-                        number: issue.number,
-                        title: issue.title,
-                        body: issue.body,
-                        state: issue.state,
-                        labels: issue.labels.into_iter().map(|l| l.name).collect(),
-                        html_url: issue.html_url,
-                        created_at: issue.created_at,
-                        updated_at: issue.updated_at,
-                    })
-                    .collect()
-            })
-            .map_err(|e| ProjectError::Network(e.to_string()));
-        let _ = tx.send(ProjectServiceMessage::FetchIssuesDone {
-            project_id,
-            repo_id,
-            result,
-        });
     });
 }
 
