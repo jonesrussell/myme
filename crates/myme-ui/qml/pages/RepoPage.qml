@@ -19,8 +19,20 @@ Page {
         id: repoModel
     }
 
+    ProjectModel {
+        id: projectModel
+    }
+
     AuthModel {
         id: authModel
+    }
+
+    Timer {
+        id: projectPollTimer
+        interval: 100
+        running: projectModel.loading
+        repeat: true
+        onTriggered: projectModel.poll_channel()
     }
 
     Timer {
@@ -55,6 +67,8 @@ Page {
 
     Component.onCompleted: {
         repoModel.checkAuth();
+        projectModel.check_auth();
+        projectModel.fetch_projects();
     }
 
     header: ToolBar {
@@ -232,6 +246,7 @@ Page {
                     delegate: RepoCard {
                         index: modelData
                         repoModel: repoModel
+                        projectModel: projectModel
                         Layout.fillWidth: true
                     }
                 }

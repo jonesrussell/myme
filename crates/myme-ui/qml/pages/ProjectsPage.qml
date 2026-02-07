@@ -136,7 +136,7 @@ Page {
                 font.pixelSize: 18
                 enabled: projectModel.authenticated
                 onClicked: addDialog.open()
-                ToolTip.text: "Add Project"
+                ToolTip.text: "Create Project"
                 ToolTip.visible: hovered
 
                 background: Rectangle {
@@ -362,7 +362,7 @@ Page {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 const projectId = projectModel.get_id(projectCard.index);
-                                const projectName = projectModel.get_github_repo(projectCard.index);
+                                const projectName = projectModel.get_project_name(projectCard.index);
                                 stackView.push("ProjectDetailPage.qml", {
                                     projectId: projectId,
                                     projectName: projectName
@@ -391,7 +391,7 @@ Page {
                                 }
 
                                 Label {
-                                    text: projectModel.get_github_repo(projectCard.index)
+                                    text: projectModel.get_project_name(projectCard.index)
                                     font.pixelSize: Theme.fontSizeMedium
                                     font.bold: true
                                     color: Theme.text
@@ -449,7 +449,7 @@ Page {
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
                                             removeDialog.projectIndex = projectCard.index;
-                                            removeDialog.projectName = projectModel.get_github_repo(projectCard.index);
+                                            removeDialog.projectName = projectModel.get_project_name(projectCard.index);
                                             removeDialog.open();
                                         }
                                     }
@@ -458,6 +458,28 @@ Page {
                                     ToolTip.text: "Remove project"
                                     ToolTip.delay: 500
                                 }
+                            }
+
+                            // Repos (if any)
+                            Label {
+                                visible: {
+                                    const repos = projectModel.get_repos_for_project(projectCard.index);
+                                    try {
+                                        const arr = JSON.parse(repos);
+                                        return arr && arr.length > 0;
+                                    } catch (e) { return false; }
+                                }
+                                text: {
+                                    const repos = projectModel.get_repos_for_project(projectCard.index);
+                                    try {
+                                        const arr = JSON.parse(repos);
+                                        return (arr || []).join(", ");
+                                    } catch (e) { return ""; }
+                                }
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.textSecondary
+                                Layout.fillWidth: true
+                                elide: Text.ElideMiddle
                             }
 
                             // Description
@@ -620,7 +642,7 @@ Page {
                         }
 
                         Label {
-                            text: "Click + to add your first GitHub project"
+                            text: "Click + to create your first project"
                             font.pixelSize: Theme.fontSizeNormal
                             color: Theme.textSecondary
                             Layout.alignment: Qt.AlignHCenter
@@ -631,10 +653,10 @@ Page {
         }
     }
 
-    // Add project dialog
+    // Create project dialog
     Dialog {
         id: addDialog
-        title: "Add Project"
+        title: "Create Project"
         standardButtons: Dialog.Ok | Dialog.Cancel
         modal: true
 
@@ -663,7 +685,7 @@ Page {
 
             Label {
                 anchors.centerIn: parent
-                text: "Add Project"
+                text: "Create Project"
                 font.pixelSize: Theme.fontSizeMedium
                 font.bold: true
                 color: Theme.text
@@ -671,14 +693,16 @@ Page {
         }
 
         onAccepted: {
-            if (repoField.text.trim().length > 0) {
-                projectModel.add_project(repoField.text.trim());
-                repoField.text = "";
+            if (nameField.text.trim().length > 0) {
+                projectModel.create_project(nameField.text.trim(), descField.text.trim());
+                nameField.text = "";
+                descField.text = "";
             }
         }
 
         onRejected: {
-            repoField.text = "";
+            nameField.text = "";
+            descField.text = "";
         }
 
         ColumnLayout {
@@ -686,7 +710,7 @@ Page {
             spacing: Theme.spacingMd
 
             Label {
-                text: "GitHub Repository:"
+                text: "Project Name:"
                 font.pixelSize: Theme.fontSizeNormal
                 color: Theme.text
             }
@@ -695,8 +719,8 @@ Page {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 44
                 color: Theme.inputBg
-                border.color: repoField.activeFocus ? Theme.primary : Theme.inputBorder
-                border.width: repoField.activeFocus ? 2 : 1
+                border.color: nameField.activeFocus ? Theme.primary : Theme.inputBorder
+                border.width: nameField.activeFocus ? 2 : 1
                 radius: Theme.inputRadius
 
                 Behavior on border.color {
@@ -704,10 +728,10 @@ Page {
                 }
 
                 TextField {
-                    id: repoField
+                    id: nameField
                     anchors.fill: parent
                     anchors.margins: 2
-                    placeholderText: "owner/repo (e.g., facebook/react)"
+                    placeholderText: "My Project"
                     color: Theme.text
                     placeholderTextColor: Theme.textMuted
 
@@ -718,7 +742,39 @@ Page {
             }
 
             Label {
-                text: "Enter the repository in 'owner/repo' format"
+                text: "Description (optional):"
+                font.pixelSize: Theme.fontSizeNormal
+                color: Theme.text
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 44
+                color: Theme.inputBg
+                border.color: descField.activeFocus ? Theme.primary : Theme.inputBorder
+                border.width: descField.activeFocus ? 2 : 1
+                radius: Theme.inputRadius
+
+                Behavior on border.color {
+                    ColorAnimation { duration: 100 }
+                }
+
+                TextField {
+                    id: descField
+                    anchors.fill: parent
+                    anchors.margins: 2
+                    placeholderText: "Project description"
+                    color: Theme.text
+                    placeholderTextColor: Theme.textMuted
+
+                    background: Rectangle {
+                        color: "transparent"
+                    }
+                }
+            }
+
+            Label {
+                text: "Add GitHub repos in the project detail view"
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.textMuted
             }

@@ -7,6 +7,7 @@ Rectangle {
     id: card
     required property int index
     required property var repoModel
+    property var projectModel: null
 
     implicitHeight: cardContent.implicitHeight + Theme.spacingMd * 2
     radius: Theme.cardRadius
@@ -140,6 +141,42 @@ Rectangle {
                     color: Theme.text
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
+                }
+            }
+
+            Button {
+                visible: repoModel && repoModel.getHasGithub(index) && projectModel && projectModel.row_count() > 0
+                text: "Add to project"
+                onClicked: addToProjectMenu.open()
+                background: Rectangle {
+                    radius: Theme.buttonRadius
+                    color: parent.hovered ? Theme.surfaceHover : Theme.surfaceAlt
+                }
+                contentItem: Label {
+                    text: parent.text
+                    color: Theme.text
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+
+            Menu {
+                id: addToProjectMenu
+                y: parent.height
+                width: 250
+
+                Repeater {
+                    model: projectModel ? projectModel.row_count() : 0
+                    delegate: MenuItem {
+                        text: projectModel ? projectModel.get_project_name(modelData) : ""
+                        onTriggered: {
+                            const repoId = repoModel.getFullName(index);
+                            const projectId = projectModel.get_id(modelData);
+                            if (repoId && projectId) {
+                                projectModel.add_repo_to_project_by_id(projectId, repoId);
+                            }
+                        }
+                    }
                 }
             }
 

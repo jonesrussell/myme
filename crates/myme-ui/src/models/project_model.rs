@@ -1,7 +1,7 @@
 // crates/myme-ui/src/models/project_model.rs
 
 use core::pin::Pin;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use cxx_qt::CxxQtType;
@@ -11,7 +11,6 @@ use myme_services::{GitHubClient, Project, ProjectStore, TaskStatus};
 use crate::bridge;
 use crate::services::{
     request_project_fetch_issues, request_project_fetch_repo, IssueInfo, ProjectServiceMessage,
-    RepoInfo,
 };
 
 #[cxx_qt::bridge]
@@ -39,7 +38,7 @@ pub mod qobject {
         fn get_id(self: &ProjectModel, index: i32) -> QString;
 
         #[qinvokable]
-        fn get_github_repo(self: &ProjectModel, index: i32) -> QString;
+        fn get_project_name(self: &ProjectModel, index: i32) -> QString;
 
         #[qinvokable]
         fn get_description(self: &ProjectModel, index: i32) -> QString;
@@ -47,8 +46,22 @@ pub mod qobject {
         #[qinvokable]
         fn get_task_counts(self: &ProjectModel, index: i32) -> QString;
 
+        /// Returns JSON array of repo_ids for the project, e.g. ["owner/repo1","owner/repo2"]
         #[qinvokable]
-        fn add_project(self: Pin<&mut ProjectModel>, github_repo: &QString);
+        fn get_repos_for_project(self: &ProjectModel, index: i32) -> QString;
+
+        #[qinvokable]
+        fn create_project(self: Pin<&mut ProjectModel>, name: &QString, description: &QString);
+
+        #[qinvokable]
+        fn add_repo_to_project(self: Pin<&mut ProjectModel>, project_index: i32, repo_id: &QString);
+
+        /// Add repo to project by project ID (convenience when index not available)
+        #[qinvokable]
+        fn add_repo_to_project_by_id(self: Pin<&mut ProjectModel>, project_id: &QString, repo_id: &QString);
+
+        #[qinvokable]
+        fn remove_repo_from_project(self: Pin<&mut ProjectModel>, project_index: i32, repo_id: &QString);
 
         #[qinvokable]
         fn remove_project(self: Pin<&mut ProjectModel>, index: i32);
@@ -111,11 +124,13 @@ impl TaskCounts {
 enum OpState {
     #[default]
     Idle,
-    AddingProject {
-        repo_name: String,
+    AddingRepoToProject {
+        project_id: String,
+        repo_id: String,
     },
     SyncingProject {
         project_id: String,
+        pending_repos: HashSet<String>,
     },
 }
 
@@ -264,12 +279,35 @@ impl qobject::ProjectModel {
             .unwrap_or_else(|| QString::from(""))
     }
 
-    /// Get GitHub repo name at index
-    pub fn get_github_repo(&self, index: i32) -> QString {
+    /// Get project name at index
+    pub fn get_project_name(&self, index: i32) -> QString {
         self.rust()
             .get_project(index)
-            .map(|p| QString::from(&p.github_repo))
+            .map(|p| QString::from(&p.name))
             .unwrap_or_else(|| QString::from(""))
+    }
+
+    /// Get repos for project at index as JSON array, e.g. ["owner/repo1","owner/repo2"]
+    pub fn get_repos_for_project(&self, index: i32) -> QString {
+        let (store, project_id) = match self.rust().get_project(index) {
+            Some(p) => (self.rust().project_store.clone(), p.id.clone()),
+            None => return QString::from("[]"),
+        };
+        let store = match store {
+            Some(s) => s,
+            None => return QString::from("[]"),
+        };
+        let store_guard = match store.lock() {
+            Ok(g) => g,
+            Err(_) => return QString::from("[]"),
+        };
+        match store_guard.list_repos_for_project(&project_id) {
+            Ok(repos) => {
+                let json = serde_json::to_string(&repos).unwrap_or_else(|_| "[]".to_string());
+                QString::from(&json)
+            }
+            Err(_) => QString::from("[]"),
+        }
     }
 
     /// Get project description at index
@@ -290,13 +328,97 @@ impl qobject::ProjectModel {
             .unwrap_or_else(|| QString::from(TaskCounts::default().to_json()))
     }
 
-    /// Add a new project by GitHub repo name (e.g., "owner/repo") - non-blocking
-    pub fn add_project(mut self: Pin<&mut Self>, github_repo: &QString) {
+    /// Create a new project (synchronous)
+    pub fn create_project(mut self: Pin<&mut Self>, name: &QString, description: &QString) {
         self.as_mut().rust_mut().ensure_initialized();
 
-        // Prevent concurrent operations
+        let name = name.to_string().trim().to_string();
+        if name.is_empty() {
+            self.as_mut()
+                .set_error_message(QString::from("Project name cannot be empty"));
+            return;
+        }
+
+        let store = match &self.as_ref().rust().project_store {
+            Some(s) => s.clone(),
+            None => {
+                self.as_mut()
+                    .set_error_message(QString::from("Project store not initialized"));
+                return;
+            }
+        };
+
+        let project = Project {
+            id: uuid::Uuid::new_v4().to_string(),
+            name: name.clone(),
+            description: {
+                let d = description.to_string().trim().to_string();
+                if d.is_empty() {
+                    None
+                } else {
+                    Some(d)
+                }
+            },
+            created_at: chrono::Utc::now().to_rfc3339(),
+        };
+
+        let store_guard = match store.lock() {
+            Ok(g) => g,
+            Err(e) => {
+                self.as_mut()
+                    .rust_mut()
+                    .set_error(&format!("Failed to access store: {}", e));
+                return;
+            }
+        };
+
+        match store_guard.upsert_project(&project) {
+            Ok(_) => {
+                drop(store_guard);
+                self.as_mut().rust_mut().projects.push(project.clone());
+                self.as_mut()
+                    .rust_mut()
+                    .task_counts
+                    .insert(project.id.clone(), TaskCounts::default());
+                self.as_mut().projects_changed();
+                tracing::info!("Created project: {}", project.name);
+            }
+            Err(e) => {
+                drop(store_guard);
+                self.as_mut()
+                    .rust_mut()
+                    .set_error(&format!("Failed to create project: {}", e));
+            }
+        }
+    }
+
+    /// Add a repo to a project (validates repo exists on GitHub first) - non-blocking
+    pub fn add_repo_to_project(
+        mut self: Pin<&mut Self>,
+        project_index: i32,
+        repo_id: &QString,
+    ) {
+        self.as_mut().rust_mut().ensure_initialized();
+
         if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
-            tracing::warn!("add_project: operation already in progress");
+            tracing::warn!("add_repo_to_project: operation already in progress");
+            return;
+        }
+
+        let project = match self.as_ref().rust().get_project(project_index) {
+            Some(p) => p.clone(),
+            None => {
+                self.as_mut()
+                    .set_error_message(QString::from("Invalid project index"));
+                return;
+            }
+        };
+
+        let repo_id_str = repo_id.to_string();
+        let parts: Vec<&str> = repo_id_str.split('/').collect();
+        if parts.len() != 2 {
+            self.as_mut()
+                .set_error_message(QString::from("Invalid repo format. Use 'owner/repo'"));
             return;
         }
 
@@ -309,18 +431,9 @@ impl qobject::ProjectModel {
             }
         };
 
-        let repo_name = github_repo.to_string();
-        let parts: Vec<&str> = repo_name.split('/').collect();
-        if parts.len() != 2 {
-            self.as_mut()
-                .set_error_message(QString::from("Invalid repo format. Use 'owner/repo'"));
-            return;
-        }
-
         let owner = parts[0].to_string();
         let repo = parts[1].to_string();
 
-        // Initialize channel if needed
         bridge::init_project_service_channel();
         let tx = match bridge::get_project_service_tx() {
             Some(t) => t,
@@ -333,12 +446,109 @@ impl qobject::ProjectModel {
 
         self.as_mut().set_loading(true);
         self.as_mut().rust_mut().clear_error();
-        self.as_mut().rust_mut().op_state = OpState::AddingProject {
-            repo_name: repo_name.clone(),
+        self.as_mut().rust_mut().op_state = OpState::AddingRepoToProject {
+            project_id: project.id.clone(),
+            repo_id: repo_id_str.clone(),
         };
 
-        // Spawn async operation (non-blocking)
         request_project_fetch_repo(&tx, github_client, owner, repo);
+    }
+
+    /// Add repo to project by project ID
+    pub fn add_repo_to_project_by_id(
+        mut self: Pin<&mut Self>,
+        project_id: &QString,
+        repo_id: &QString,
+    ) {
+        self.as_mut().rust_mut().ensure_initialized();
+
+        if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
+            tracing::warn!("add_repo_to_project_by_id: operation already in progress");
+            return;
+        }
+
+        let project_id_str = project_id.to_string();
+        let repo_id_str = repo_id.to_string();
+        let parts: Vec<&str> = repo_id_str.split('/').collect();
+        if parts.len() != 2 {
+            self.as_mut()
+                .set_error_message(QString::from("Invalid repo format. Use 'owner/repo'"));
+            return;
+        }
+
+        let github_client = match &self.as_ref().rust().github_client {
+            Some(c) => c.clone(),
+            None => {
+                self.as_mut()
+                    .set_error_message(QString::from("GitHub not authenticated"));
+                return;
+            }
+        };
+
+        let owner = parts[0].to_string();
+        let repo = parts[1].to_string();
+
+        bridge::init_project_service_channel();
+        let tx = match bridge::get_project_service_tx() {
+            Some(t) => t,
+            None => {
+                self.as_mut()
+                    .set_error_message(QString::from("Service channel not ready"));
+                return;
+            }
+        };
+
+        self.as_mut().set_loading(true);
+        self.as_mut().rust_mut().clear_error();
+        self.as_mut().rust_mut().op_state = OpState::AddingRepoToProject {
+            project_id: project_id_str.clone(),
+            repo_id: repo_id_str.clone(),
+        };
+
+        request_project_fetch_repo(&tx, github_client, owner, repo);
+    }
+
+    /// Remove a repo from a project
+    pub fn remove_repo_from_project(
+        mut self: Pin<&mut Self>,
+        project_index: i32,
+        repo_id: &QString,
+    ) {
+        let project_id = match self.as_ref().rust().get_project(project_index) {
+            Some(p) => p.id.clone(),
+            None => return,
+        };
+
+        let repo_id_str = repo_id.to_string();
+        let store = match &self.as_ref().rust().project_store {
+            Some(s) => s.clone(),
+            None => return,
+        };
+
+        let store_guard = match store.lock() {
+            Ok(g) => g,
+            Err(e) => {
+                self.as_mut()
+                    .rust_mut()
+                    .set_error(&format!("Failed to access store: {}", e));
+                return;
+            }
+        };
+
+        match store_guard.remove_repo_from_project(&project_id, &repo_id_str) {
+            Ok(_) => {
+                drop(store_guard);
+                self.as_mut().rust_mut().load_task_counts();
+                self.as_mut().projects_changed();
+                tracing::info!("Removed repo {} from project {}", repo_id_str, project_id);
+            }
+            Err(e) => {
+                drop(store_guard);
+                self.as_mut()
+                    .rust_mut()
+                    .set_error(&format!("Failed to remove repo: {}", e));
+            }
+        }
     }
 
     /// Remove a project at index
@@ -381,11 +591,10 @@ impl qobject::ProjectModel {
         }
     }
 
-    /// Sync a project with GitHub (fetch issues and convert to tasks) - non-blocking
+    /// Sync a project with GitHub (fetch issues from all repos) - non-blocking
     pub fn sync_project(mut self: Pin<&mut Self>, index: i32) {
         self.as_mut().rust_mut().ensure_initialized();
 
-        // Prevent concurrent operations
         if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
             tracing::warn!("sync_project: operation already in progress");
             return;
@@ -396,6 +605,30 @@ impl qobject::ProjectModel {
             None => return,
         };
 
+        let store = match &self.as_ref().rust().project_store {
+            Some(s) => s.clone(),
+            None => {
+                self.as_mut()
+                    .set_error_message(QString::from("Project store not initialized"));
+                return;
+            }
+        };
+
+        let repos = match store.lock().ok().and_then(|g| g.list_repos_for_project(&project.id).ok()) {
+            Some(r) => r,
+            None => {
+                self.as_mut()
+                    .set_error_message(QString::from("Failed to get project repos"));
+                return;
+            }
+        };
+
+        if repos.is_empty() {
+            self.as_mut()
+                .set_error_message(QString::from("Project has no repos to sync"));
+            return;
+        }
+
         let github_client = match &self.as_ref().rust().github_client {
             Some(c) => c.clone(),
             None => {
@@ -405,18 +638,6 @@ impl qobject::ProjectModel {
             }
         };
 
-        // Parse owner/repo
-        let parts: Vec<&str> = project.github_repo.split('/').collect();
-        if parts.len() != 2 {
-            self.as_mut()
-                .set_error_message(QString::from("Invalid repo format in project"));
-            return;
-        }
-
-        let owner = parts[0].to_string();
-        let repo = parts[1].to_string();
-
-        // Initialize channel if needed
         bridge::init_project_service_channel();
         let tx = match bridge::get_project_service_tx() {
             Some(t) => t,
@@ -431,10 +652,25 @@ impl qobject::ProjectModel {
         self.as_mut().rust_mut().clear_error();
         self.as_mut().rust_mut().op_state = OpState::SyncingProject {
             project_id: project.id.clone(),
+            pending_repos: repos.iter().cloned().collect(),
         };
 
-        // Spawn async operation (non-blocking)
-        request_project_fetch_issues(&tx, github_client, project.id.clone(), owner, repo);
+        for repo_id in &repos {
+            let parts: Vec<&str> = repo_id.split('/').collect();
+            if parts.len() != 2 {
+                continue;
+            }
+            let owner = parts[0].to_string();
+            let repo = parts[1].to_string();
+            request_project_fetch_issues(
+                &tx,
+                github_client.clone(),
+                project.id.clone(),
+                repo_id.clone(),
+                owner,
+                repo,
+            );
+        }
     }
 
     /// Poll for async operation results. Call this from a QML Timer (e.g., every 100ms).
@@ -446,11 +682,12 @@ impl qobject::ProjectModel {
 
         match msg {
             ProjectServiceMessage::FetchRepoDone(result) => {
-                // Handle add_project completion
-                let repo_name = match &self.as_ref().rust().op_state {
-                    OpState::AddingProject { repo_name } => repo_name.clone(),
+                let (project_id, repo_id) = match &self.as_ref().rust().op_state {
+                    OpState::AddingRepoToProject { project_id, repo_id } => {
+                        (project_id.clone(), repo_id.clone())
+                    }
                     _ => {
-                        tracing::warn!("FetchRepoDone received but not in AddingProject state");
+                        tracing::warn!("FetchRepoDone received but not in AddingRepoToProject state");
                         return;
                     }
                 };
@@ -458,9 +695,8 @@ impl qobject::ProjectModel {
                 self.as_mut().rust_mut().op_state = OpState::Idle;
 
                 match result {
-                    Ok(repo_info) => {
-                        self.as_mut()
-                            .handle_repo_fetched(repo_info, repo_name.clone());
+                    Ok(_repo_info) => {
+                        self.as_mut().handle_repo_added(project_id, repo_id);
                     }
                     Err(e) => {
                         tracing::error!("Failed to fetch repo from GitHub: {}", e);
@@ -471,28 +707,41 @@ impl qobject::ProjectModel {
                     }
                 }
             }
-            ProjectServiceMessage::FetchIssuesDone { project_id, result } => {
-                // Handle sync_project completion
-                self.as_mut().rust_mut().op_state = OpState::Idle;
-
-                match result {
-                    Ok(issues) => {
-                        self.as_mut().handle_issues_fetched(project_id, issues);
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to fetch issues: {}", e);
-                        self.as_mut()
-                            .rust_mut()
-                            .set_error(&format!("Failed to sync: {}", e));
-                        self.as_mut().set_loading(false);
+            ProjectServiceMessage::FetchIssuesDone {
+                project_id,
+                repo_id,
+                result,
+            } => {
+                if let Err(e) = &result {
+                    tracing::error!("Failed to fetch issues for {}: {}", repo_id, e);
+                    self.as_mut()
+                        .rust_mut()
+                        .set_error(&format!("Failed to sync: {}", e));
+                } else if let Ok(issues) = result {
+                    self.as_mut().handle_issues_fetched(project_id.clone(), repo_id.clone(), issues);
+                }
+                // Remove this repo from pending; when empty, we're done
+                if let OpState::SyncingProject {
+                    project_id: pid,
+                    ref mut pending_repos,
+                } = self.as_mut().rust_mut().op_state
+                {
+                    if pid == project_id {
+                        pending_repos.remove(&repo_id);
+                        if pending_repos.is_empty() {
+                            self.as_mut().rust_mut().op_state = OpState::Idle;
+                            self.as_mut().rust_mut().load_task_counts();
+                            self.as_mut().projects_changed();
+                            self.as_mut().set_loading(false);
+                        }
                     }
                 }
             }
         }
     }
 
-    /// Handle successful repo fetch for add_project
-    fn handle_repo_fetched(mut self: Pin<&mut Self>, repo_info: RepoInfo, _repo_name: String) {
+    /// Handle successful repo fetch for add_repo_to_project
+    fn handle_repo_added(mut self: Pin<&mut Self>, project_id: String, repo_id: String) {
         let store = match &self.as_ref().rust().project_store {
             Some(s) => s.clone(),
             None => {
@@ -504,16 +753,6 @@ impl qobject::ProjectModel {
             }
         };
 
-        // Create project
-        let project = Project {
-            id: uuid::Uuid::new_v4().to_string(),
-            github_repo: repo_info.full_name.clone(),
-            description: repo_info.description.clone(),
-            created_at: chrono::Utc::now().to_rfc3339(),
-            last_synced: None,
-        };
-
-        // Save to store
         let store_guard = match store.lock() {
             Ok(g) => g,
             Err(e) => {
@@ -525,82 +764,47 @@ impl qobject::ProjectModel {
             }
         };
 
-        match store_guard.upsert_project(&project) {
+        match store_guard.add_repo_to_project(&project_id, &repo_id) {
             Ok(_) => {
-                tracing::info!("Added project: {}", project.github_repo);
                 drop(store_guard);
-                self.as_mut().rust_mut().projects.push(project.clone());
-                self.as_mut()
-                    .rust_mut()
-                    .task_counts
-                    .insert(project.id, TaskCounts::default());
+                self.as_mut().rust_mut().load_task_counts();
                 self.as_mut().set_loading(false);
                 self.as_mut().projects_changed();
+                tracing::info!("Added repo {} to project {}", repo_id, project_id);
             }
             Err(e) => {
-                tracing::error!("Failed to save project: {}", e);
                 drop(store_guard);
                 self.as_mut()
                     .rust_mut()
-                    .set_error(&format!("Failed to save project: {}", e));
+                    .set_error(&format!("Failed to add repo: {}", e));
                 self.as_mut().set_loading(false);
             }
         }
     }
 
-    /// Handle successful issues fetch for sync_project
-    fn handle_issues_fetched(mut self: Pin<&mut Self>, project_id: String, issues: Vec<IssueInfo>) {
+    /// Handle successful issues fetch for one repo during sync_project
+    fn handle_issues_fetched(
+        mut self: Pin<&mut Self>,
+        _project_id: String,
+        repo_id: String,
+        issues: Vec<IssueInfo>,
+    ) {
         let store = match &self.as_ref().rust().project_store {
             Some(s) => s.clone(),
-            None => {
-                self.as_mut()
-                    .rust_mut()
-                    .set_error("Project store not initialized");
-                self.as_mut().set_loading(false);
-                return;
-            }
+            None => return,
         };
-
-        // Find the project
-        let project = match self
-            .as_ref()
-            .rust()
-            .projects
-            .iter()
-            .find(|p| p.id == project_id)
-        {
-            Some(p) => p.clone(),
-            None => {
-                self.as_mut().rust_mut().set_error("Project not found");
-                self.as_mut().set_loading(false);
-                return;
-            }
-        };
-
-        tracing::info!(
-            "Fetched {} issues for {}",
-            issues.len(),
-            project.github_repo
-        );
 
         let store_guard = match store.lock() {
             Ok(g) => g,
-            Err(e) => {
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(&format!("Failed to access store: {}", e));
-                self.as_mut().set_loading(false);
-                return;
-            }
+            Err(_) => return,
         };
 
-        // Convert issues to tasks and save
         for issue in &issues {
             let status = TaskStatus::from_github(&issue.state, &issue.labels);
 
             let task = myme_services::Task {
                 id: uuid::Uuid::new_v4().to_string(),
-                project_id: project.id.clone(),
+                repo_id: repo_id.clone(),
                 github_issue_number: issue.number,
                 title: issue.title.clone(),
                 body: issue.body.clone(),
@@ -616,40 +820,7 @@ impl qobject::ProjectModel {
             }
         }
 
-        // Update project's last_synced timestamp
-        let mut updated_project = project.clone();
-        updated_project.last_synced = Some(chrono::Utc::now().to_rfc3339());
-        if let Err(e) = store_guard.upsert_project(&updated_project) {
-            tracing::warn!("Failed to update project sync time: {}", e);
-        }
-
-        // Get updated task counts
-        let counts = store_guard
-            .count_tasks_by_status(&project.id)
-            .unwrap_or_default();
-
-        drop(store_guard);
-
-        // Update local state
-        if let Some(p) = self
-            .as_mut()
-            .rust_mut()
-            .projects
-            .iter_mut()
-            .find(|p| p.id == project_id)
-        {
-            p.last_synced = updated_project.last_synced.clone();
-        }
-
-        self.as_mut()
-            .rust_mut()
-            .task_counts
-            .insert(project_id, TaskCounts::from_status_counts(&counts));
-
-        self.as_mut().set_loading(false);
-        self.as_mut().projects_changed();
-
-        tracing::info!("Synced project: {}", project.github_repo);
+        tracing::info!("Fetched {} issues for repo {}", issues.len(), repo_id);
     }
 
     /// Check and update authentication status

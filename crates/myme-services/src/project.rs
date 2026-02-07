@@ -82,21 +82,27 @@ impl TaskStatus {
     }
 }
 
-/// Local project representation
+/// Local project representation (first-class entity)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Project {
     pub id: String,
-    pub github_repo: String,
+    pub name: String,
     pub description: Option<String>,
     pub created_at: String,
-    pub last_synced: Option<String>,
 }
 
-/// Local task representation (mirrors GitHub issue)
+/// Junction for many-to-many project <-> repo association
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectRepo {
+    pub project_id: String,
+    pub repo_id: String,
+}
+
+/// Local task representation (mirrors GitHub issue, belongs to a repo)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Task {
     pub id: String,
-    pub project_id: String,
+    pub repo_id: String,
     pub github_issue_number: i32,
     pub title: String,
     pub body: Option<String>,

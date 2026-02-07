@@ -29,9 +29,22 @@ Page {
         color: Theme.background
     }
 
-    // Instantiate the KanbanModel from Rust
+    // Models
+    ProjectModel {
+        id: projectModel
+    }
+
     KanbanModel {
         id: kanbanModel
+    }
+
+    // Poll timer for async project operations (add repo)
+    Timer {
+        id: projectPollTimer
+        interval: 100
+        running: projectModel.loading
+        repeat: true
+        onTriggered: projectModel.poll_channel()
     }
 
     // Poll timer for async kanban operations
@@ -51,6 +64,14 @@ Page {
                 columnsRepeater.model = 0;
                 columnsRepeater.model = projectDetailPage.columns.length;
             }
+        }
+    }
+
+    // Reload kanban when project repos change (e.g. after adding repo)
+    Connections {
+        target: projectModel
+        function onProjects_changed() {
+            kanbanModel.load_project(projectId);
         }
     }
 
@@ -94,6 +115,33 @@ Page {
                 color: Theme.text
                 Layout.fillWidth: true
                 elide: Text.ElideMiddle
+            }
+
+            // Add repo button
+            ToolButton {
+                text: Icons.plus
+                font.family: Icons.family
+                font.pixelSize: 18
+                enabled: !projectModel.loading
+                onClicked: addRepoDialog.open()
+                ToolTip.text: "Add Repo"
+                ToolTip.visible: hovered
+
+                background: Rectangle {
+                    radius: Theme.buttonRadius
+                    color: parent.hovered ? Theme.surfaceHover : "transparent"
+                    opacity: parent.enabled ? 1.0 : 0.5
+                }
+
+                contentItem: Text {
+                    text: parent.text
+                    font.family: Icons.family
+                    color: Theme.text
+                    font.pixelSize: 18
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    opacity: parent.enabled ? 1.0 : 0.5
+                }
             }
 
             // Sync button
@@ -474,6 +522,21 @@ Page {
                                             }
                                         }
 
+                                        // Repo badge (when multiple repos)
+                                        Label {
+                                            visible: {
+                                                try {
+                                                    const repos = JSON.parse(kanbanModel.repo_ids);
+                                                    return repos && repos.length > 1;
+                                                } catch (e) { return false; }
+                                            }
+                                            text: kanbanModel.get_repo_id(taskCard.taskIndex)
+                                            font.pixelSize: Theme.fontSizeSmall - 1
+                                            color: Theme.textMuted
+                                            Layout.fillWidth: true
+                                            elide: Text.ElideMiddle
+                                        }
+
                                         // Task title
                                         Label {
                                             text: kanbanModel.get_title(taskCard.taskIndex)
@@ -552,10 +615,14 @@ Page {
         onAccepted: {
             if (newTaskTitleField.text.trim().length > 0) {
                 const statusKey = projectDetailPage.columns[newTaskStatusCombo.currentIndex].key;
+                const repoId = newTaskRepoCombo.currentIndex >= 0 && newTaskRepoCombo.count > 0
+                    ? newTaskRepoCombo.currentText
+                    : "";
                 kanbanModel.create_task(
                     newTaskTitleField.text.trim(),
                     newTaskDescField.text.trim(),
-                    statusKey
+                    statusKey,
+                    repoId
                 );
                 newTaskTitleField.text = "";
                 newTaskDescField.text = "";
@@ -638,6 +705,73 @@ Page {
                         background: Rectangle {
                             color: "transparent"
                         }
+                    }
+                }
+            }
+
+            Label {
+                text: "Repo (if multiple):"
+                visible: newTaskRepoCombo.count > 1
+                font.pixelSize: Theme.fontSizeNormal
+                color: Theme.text
+            }
+
+            ComboBox {
+                id: newTaskRepoCombo
+                visible: count > 1
+                Layout.fillWidth: true
+                model: {
+                    try {
+                        const repos = JSON.parse(kanbanModel.repo_ids);
+                        return repos || [];
+                    } catch (e) {
+                        return [];
+                    }
+                }
+
+                background: Rectangle {
+                    color: Theme.inputBg
+                    border.color: newTaskRepoCombo.pressed ? Theme.primary : Theme.inputBorder
+                    border.width: 1
+                    radius: Theme.inputRadius
+                }
+
+                contentItem: Text {
+                    leftPadding: Theme.spacingSm
+                    text: newTaskRepoCombo.displayText
+                    font.pixelSize: Theme.fontSizeNormal
+                    color: Theme.text
+                    verticalAlignment: Text.AlignVCenter
+                }
+
+                delegate: ItemDelegate {
+                    width: newTaskRepoCombo.width
+                    contentItem: Text {
+                        text: modelData
+                        font.pixelSize: Theme.fontSizeNormal
+                        color: Theme.text
+                    }
+                    background: Rectangle {
+                        color: highlighted ? Theme.surfaceHover : Theme.surface
+                    }
+                }
+
+                popup: Popup {
+                    y: newTaskRepoCombo.height
+                    width: newTaskRepoCombo.width
+                    implicitHeight: contentItem.implicitHeight
+                    padding: 1
+                    contentItem: ListView {
+                        clip: true
+                        implicitHeight: contentHeight
+                        model: newTaskRepoCombo.popup.visible ? newTaskRepoCombo.delegateModel : null
+                        currentIndex: newTaskRepoCombo.highlightedIndex
+                    }
+                    background: Rectangle {
+                        color: Theme.surface
+                        border.color: Theme.border
+                        border.width: 1
+                        radius: Theme.inputRadius
                     }
                 }
             }
@@ -889,7 +1023,97 @@ Page {
         }
     }
 
+    // Add repo dialog
+    Dialog {
+        id: addRepoDialog
+        title: "Add Repo to Project"
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        modal: true
+
+        anchors.centerIn: parent
+        width: Math.min(parent.width * 0.8, 450)
+        height: 200
+
+        background: Rectangle {
+            color: Theme.surface
+            border.color: Theme.border
+            border.width: 1
+            radius: Theme.cardRadius
+        }
+
+        header: Rectangle {
+            color: Theme.surfaceAlt
+            height: 50
+            radius: Theme.cardRadius
+
+            Rectangle {
+                anchors.bottom: parent.bottom
+                width: parent.width
+                height: Theme.cardRadius
+                color: Theme.surfaceAlt
+            }
+
+            Label {
+                anchors.centerIn: parent
+                text: "Add Repo"
+                font.pixelSize: Theme.fontSizeMedium
+                font.bold: true
+                color: Theme.text
+            }
+        }
+
+        onAccepted: {
+            if (addRepoField.text.trim().length > 0) {
+                projectModel.add_repo_to_project_by_id(projectId, addRepoField.text.trim());
+                addRepoField.text = "";
+            }
+        }
+
+        onRejected: {
+            addRepoField.text = "";
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: Theme.spacingMd
+
+            Label {
+                text: "GitHub repository (owner/repo):"
+                font.pixelSize: Theme.fontSizeNormal
+                color: Theme.text
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 44
+                color: Theme.inputBg
+                border.color: addRepoField.activeFocus ? Theme.primary : Theme.inputBorder
+                border.width: addRepoField.activeFocus ? 2 : 1
+                radius: Theme.inputRadius
+
+                TextField {
+                    id: addRepoField
+                    anchors.fill: parent
+                    anchors.margins: 2
+                    placeholderText: "owner/repo"
+                    color: Theme.text
+                    placeholderTextColor: Theme.textMuted
+
+                    background: Rectangle {
+                        color: "transparent"
+                    }
+                }
+            }
+        }
+
+        Shortcut {
+            sequence: "Ctrl+Return"
+            onActivated: addRepoDialog.accept()
+        }
+    }
+
     Component.onCompleted: {
+        projectModel.check_auth();
         kanbanModel.load_project(projectId);
     }
 }

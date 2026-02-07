@@ -48,11 +48,12 @@ pub struct IssueInfo {
 /// Messages sent from async operations back to the UI thread
 #[derive(Debug)]
 pub enum ProjectServiceMessage {
-    /// Result of fetching repo info from GitHub
+    /// Result of fetching repo info from GitHub (when adding repo to project)
     FetchRepoDone(Result<RepoInfo, ProjectError>),
-    /// Result of fetching issues from GitHub
+    /// Result of fetching issues from GitHub for one repo
     FetchIssuesDone {
         project_id: String,
+        repo_id: String,
         result: Result<Vec<IssueInfo>, ProjectError>,
     },
 }
@@ -89,12 +90,13 @@ pub fn request_fetch_repo(
     });
 }
 
-/// Request to fetch issues asynchronously.
+/// Request to fetch issues asynchronously for one repo.
 /// Sends `FetchIssuesDone` on the channel when complete.
 pub fn request_fetch_issues(
     tx: &std::sync::mpsc::Sender<ProjectServiceMessage>,
     client: Arc<GitHubClient>,
     project_id: String,
+    repo_id: String,
     owner: String,
     repo: String,
 ) {
@@ -104,6 +106,7 @@ pub fn request_fetch_issues(
         None => {
             let _ = tx.send(ProjectServiceMessage::FetchIssuesDone {
                 project_id,
+                repo_id,
                 result: Err(ProjectError::NotInitialized),
             });
             return;
@@ -130,7 +133,11 @@ pub fn request_fetch_issues(
                     .collect()
             })
             .map_err(|e| ProjectError::Network(e.to_string()));
-        let _ = tx.send(ProjectServiceMessage::FetchIssuesDone { project_id, result });
+        let _ = tx.send(ProjectServiceMessage::FetchIssuesDone {
+            project_id,
+            repo_id,
+            result,
+        });
     });
 }
 

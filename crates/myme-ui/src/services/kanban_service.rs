@@ -48,8 +48,11 @@ pub enum KanbanServiceMessage {
     },
     /// Result of creating an issue
     CreateIssueDone(Result<IssueResult, KanbanError>),
-    /// Result of syncing (fetching all issues)
-    SyncDone(Result<Vec<IssueResult>, KanbanError>),
+    /// Result of syncing one repo (fetching issues)
+    SyncDone {
+        repo_id: String,
+        result: Result<Vec<IssueResult>, KanbanError>,
+    },
 }
 
 /// Request to update an issue asynchronously.
@@ -131,10 +134,11 @@ pub fn request_create_issue(
     });
 }
 
-/// Request to sync (fetch all issues) asynchronously.
+/// Request to sync one repo (fetch all issues) asynchronously.
 pub fn request_sync(
     tx: &std::sync::mpsc::Sender<KanbanServiceMessage>,
     client: Arc<GitHubClient>,
+    repo_id: String,
     owner: String,
     repo: String,
 ) {
@@ -142,9 +146,10 @@ pub fn request_sync(
     let runtime = match bridge::get_runtime() {
         Some(r) => r,
         None => {
-            let _ = tx.send(KanbanServiceMessage::SyncDone(Err(
-                KanbanError::NotInitialized,
-            )));
+            let _ = tx.send(KanbanServiceMessage::SyncDone {
+                repo_id,
+                result: Err(KanbanError::NotInitialized),
+            });
             return;
         }
     };
@@ -169,7 +174,7 @@ pub fn request_sync(
                     .collect()
             })
             .map_err(|e| KanbanError::Network(e.to_string()));
-        let _ = tx.send(KanbanServiceMessage::SyncDone(result));
+        let _ = tx.send(KanbanServiceMessage::SyncDone { repo_id, result });
     });
 }
 
@@ -186,6 +191,9 @@ mod tests {
     #[test]
     fn kanban_service_message_variants() {
         let _sync_err: KanbanServiceMessage =
-            KanbanServiceMessage::SyncDone(Err(KanbanError::NotInitialized));
+            KanbanServiceMessage::SyncDone {
+                repo_id: "owner/repo".into(),
+                result: Err(KanbanError::NotInitialized),
+            };
     }
 }
