@@ -3,6 +3,8 @@
 //! Provides Google Sign-In for Gmail and Calendar access.
 
 use core::pin::Pin;
+use std::path::PathBuf;
+use std::process::Command;
 use std::sync::mpsc;
 
 use cxx_qt::CxxQtType;
@@ -37,6 +39,10 @@ pub mod qobject {
         /// Poll for async operation results. Call this from a QML Timer.
         #[qinvokable]
         fn poll_channel(self: Pin<&mut GoogleAuthModel>);
+
+        /// Open the application config directory in the system file manager.
+        #[qinvokable]
+        fn open_config_folder(self: Pin<&mut GoogleAuthModel>) -> bool;
 
         #[qsignal]
         fn auth_changed(self: Pin<&mut GoogleAuthModel>);
@@ -91,6 +97,15 @@ impl GoogleAuthModelRust {
             }
         }
     }
+
+    /// Path to config.toml for display in error messages (platform-specific).
+    fn config_display_path() -> String {
+        dirs::config_dir()
+            .map(|d| d.join("myme").join("config.toml"))
+            .unwrap_or_else(|| PathBuf::from("config.toml"))
+            .display()
+            .to_string()
+    }
 }
 
 impl qobject::GoogleAuthModel {
@@ -105,9 +120,11 @@ impl qobject::GoogleAuthModel {
         let (client_id, client_secret) = match GoogleAuthModelRust::get_google_config() {
             Some(config) => config,
             None => {
-                self.as_mut().set_error_message(QString::from(
-                    "Google OAuth not configured. Please add [google] section to config.toml",
-                ));
+                let path = GoogleAuthModelRust::config_display_path();
+                self.as_mut().set_error_message(QString::from(&format!(
+                    "Google OAuth not configured. Add a [google] section with client_id and client_secret to {}",
+                    path
+                )));
                 return;
             }
         };
@@ -219,6 +236,33 @@ impl qobject::GoogleAuthModel {
         }
 
         self.as_mut().set_authenticated(false);
+    }
+
+    /// Open the application config directory in the system file manager.
+    pub fn open_config_folder(self: Pin<&mut Self>) -> bool {
+        let config_dir = dirs::config_dir()
+            .map(|d| d.join("myme"))
+            .unwrap_or_else(|| PathBuf::from("."));
+        if !config_dir.exists() {
+            if let Err(e) = std::fs::create_dir_all(&config_dir) {
+                tracing::warn!("Failed to create config dir: {}", e);
+                return false;
+            }
+        }
+        let result = if cfg!(target_os = "windows") {
+            Command::new("explorer").arg(&config_dir).spawn()
+        } else if cfg!(target_os = "macos") {
+            Command::new("open").arg(&config_dir).spawn()
+        } else {
+            Command::new("xdg-open").arg(&config_dir).spawn()
+        };
+        match result {
+            Ok(_) => true,
+            Err(e) => {
+                tracing::warn!("Failed to open config folder: {}", e);
+                false
+            }
+        }
     }
 
     /// Sign out and remove stored token

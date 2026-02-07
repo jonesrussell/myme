@@ -705,6 +705,24 @@ Page {
                         Layout.fillWidth: true
                     }
 
+                    // Google setup helper
+                    Label {
+                        text: "Add Google Cloud credentials (client_id and client_secret) to config.toml before connecting. Create OAuth 2.0 credentials at console.cloud.google.com."
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.textSecondary
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                        Layout.topMargin: Theme.spacingXs
+                    }
+
+                    // Open config folder button
+                    Button {
+                        text: "Open config folder"
+                        font.pixelSize: Theme.fontSizeSmall
+                        Layout.topMargin: Theme.spacingSm
+                        onClicked: googleAuthModel.open_config_folder()
+                    }
+
                     // Info text
                     Rectangle {
                         Layout.fillWidth: true

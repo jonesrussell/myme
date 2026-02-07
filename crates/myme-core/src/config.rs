@@ -258,7 +258,7 @@ impl Default for GitHubConfig {
 }
 
 /// Google OAuth configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GoogleConfig {
     /// Google OAuth Client ID
     /// Create at: https://console.cloud.google.com/apis/credentials
@@ -391,7 +391,7 @@ impl Default for Config {
             projects: ProjectsConfig::default(),
             repos: ReposConfig::default(),
             github: GitHubConfig::default(),
-            google: None,
+            google: Some(GoogleConfig::default()),
             notes: NotesConfig::default(),
         }
     }
