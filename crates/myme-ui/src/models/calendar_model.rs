@@ -60,6 +60,7 @@ pub mod qobject {
 /// Messages for async operations
 enum CalendarMessage {
     FetchEventsDone(Result<Vec<Event>, String>),
+    #[allow(dead_code)]
     FetchCalendarsDone(Result<Vec<Calendar>, String>),
 }
 

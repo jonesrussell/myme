@@ -342,7 +342,7 @@ async fn wait_for_callback(port: u16, expected_state: &str) -> Result<String, St
 
     // Send success response
     let response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<html><body><h1>Authentication successful!</h1><p>You can close this window.</p></body></html>";
-    let (mut read_half, mut write_half) = stream.into_split();
+    let (_read_half, mut write_half) = stream.into_split();
     write_half.write_all(response.as_bytes()).await.ok();
 
     Ok(code)

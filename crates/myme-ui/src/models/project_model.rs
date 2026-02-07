@@ -586,7 +586,7 @@ impl qobject::ProjectModel {
     }
 
     /// Refresh task counts for a project (local data only)
-    pub fn sync_project(mut self: Pin<&mut Self>, index: i32) {
+    pub fn sync_project(mut self: Pin<&mut Self>, _index: i32) {
         self.as_mut().rust_mut().load_task_counts();
         self.as_mut().projects_changed();
     }
