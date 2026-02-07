@@ -11,6 +11,13 @@ Page {
     required property string projectId
     required property string projectName
 
+    readonly property bool hasRepos: {
+        try {
+            const repos = JSON.parse(kanbanModel.repo_ids);
+            return repos && repos.length > 0;
+        } catch (e) { return false; }
+    }
+
     // Kanban columns configuration
     readonly property var columns: [
         { key: "backlog", label: "Backlog", color: "#9e9e9e" },
@@ -171,14 +178,14 @@ Page {
                 }
             }
 
-            // New task button
+            // New task button (disabled when no repos - add repo first)
             ToolButton {
                 text: Icons.plus
                 font.family: Icons.family
                 font.pixelSize: 18
-                enabled: !kanbanModel.loading
+                enabled: projectDetailPage.hasRepos && !kanbanModel.loading
                 onClicked: newTaskDialog.open()
-                ToolTip.text: "New Task"
+                ToolTip.text: projectDetailPage.hasRepos ? "New Task" : "Add a repo first to create tasks"
                 ToolTip.visible: hovered
 
                 background: Rectangle {
@@ -379,15 +386,18 @@ Page {
                                         id: addMouseArea
                                         anchors.fill: parent
                                         hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
+                                        enabled: projectDetailPage.hasRepos
+                                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                                         onClicked: {
-                                            newTaskDialog.preselectedStatus = columnContainer.columnKey;
-                                            newTaskDialog.open();
+                                            if (projectDetailPage.hasRepos) {
+                                                newTaskDialog.preselectedStatus = columnContainer.columnKey;
+                                                newTaskDialog.open();
+                                            }
                                         }
                                     }
 
                                     ToolTip.visible: addMouseArea.containsMouse
-                                    ToolTip.text: "Add task to " + columnContainer.columnLabel
+                                    ToolTip.text: projectDetailPage.hasRepos ? ("Add task to " + columnContainer.columnLabel) : "Add a repo first"
                                     ToolTip.delay: 500
                                 }
                             }

@@ -514,7 +514,7 @@ impl qobject::KanbanModel {
             Some(r) => r,
             None => {
                 self.as_mut()
-                    .set_error_message(QString::from("No repo to create task in"));
+                    .set_error_message(QString::from("Add a GitHub repo to this project first (click + in header)"));
                 return;
             }
         };
