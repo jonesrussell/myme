@@ -366,7 +366,7 @@ Page {
                             onClicked: {
                                 const projectId = projectModel.get_id(projectCard.index);
                                 const projectName = projectModel.get_project_name(projectCard.index);
-                                stackView.push("ProjectDetailPage.qml", {
+                                AppContext.pageStack.push(AppContext.pageUrl("ProjectDetailPage"), {
                                     projectId: projectId,
                                     projectName: projectName
                                 });

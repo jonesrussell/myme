@@ -135,10 +135,7 @@ Page {
                     horizontalAlignment: Text.AlignHCenter
                 }
 
-                onClicked: {
-                    currentPage = "settings"
-                    stackView.replace("pages/SettingsPage.qml")
-                }
+                onClicked: AppContext.goToTopLevelPage(AppContext.pageUrl("SettingsPage"))
             }
         }
     }

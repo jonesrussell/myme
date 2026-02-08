@@ -426,6 +426,8 @@ client_secret = "YOUR_CLIENT_SECRET"
 
 **Qt Path**: CMakeLists.txt currently hardcodes Qt path to `C:/Qt/6.10.1/msvc2022_64`. Update this if your Qt installation differs.
 
+**Kirigami (KF6)**: The app uses Kirigami for native window decorations and the global drawer. On Windows, Kirigami requires KDE Frameworks 6 (KF6), which is not included with Qt. Options: install via vcpkg (`vcpkg install kf6kirigami`), or use a KDE build. Set `CMAKE_PREFIX_PATH` to include the KF6 installation path when configuring CMake. After building, ensure Breeze icons and Kirigami QML modules are in the runtime path (or bundled) for deployment.
+
 ### Threading Model
 
 **Qt Main Thread**: QML UI, Qt event loop
