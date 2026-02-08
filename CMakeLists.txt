@@ -11,11 +11,6 @@ set(CMAKE_AUTORCC ON)
 # Find Qt
 find_package(Qt6 REQUIRED COMPONENTS Core Quick QuickControls2)
 
-# Find Kirigami (KDE Frameworks 6) - on Windows: vcpkg or KDE build required
-find_package(ECM REQUIRED NO_MODULE)
-set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
-find_package(KF6 REQUIRED COMPONENTS Kirigami)
-
 # Resolve Qt path automatically from the found installation
 get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION)
 get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
@@ -97,13 +92,13 @@ add_executable(myme-qt ${APP_SOURCES})
 # Make sure Rust library is built before linking
 add_dependencies(myme-qt rust_myme_ui)
 
-# Link Qt and Kirigami libraries
+# Link Qt libraries
 target_link_libraries(myme-qt PRIVATE
     Qt6::Core
     Qt6::Quick
     Qt6::QuickControls2
-    KF6::Kirigami
 )
+
 
 # Determine which Rust lib dir to search based on generator type
 if(IS_MULTI_CONFIG)

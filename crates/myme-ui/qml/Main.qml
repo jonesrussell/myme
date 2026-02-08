@@ -1,12 +1,11 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import org.kde.kirigami as Kirigami
 import myme_ui
 import "."
 import "components"
 
-Kirigami.ApplicationWindow {
+ApplicationWindow {
     id: root
     width: 1200
     height: 800
@@ -66,65 +65,121 @@ Kirigami.ApplicationWindow {
         onTriggered: calendarModel.poll_channel()
     }
 
-    globalDrawer: Kirigami.GlobalDrawer {
-        title: "MyMe"
-        titleIcon: "applications-utilities"
-
-        actions: [
-            Kirigami.Action {
-                text: "Home"
-                icon.name: "go-home"
-                onTriggered: AppContext.goToTopLevelPage(AppContext.pageUrl("WelcomePage"))
-            },
-            Kirigami.Action {
-                text: "Notes"
-                icon.name: "view-task"
-                onTriggered: AppContext.goToTopLevelPage(AppContext.pageUrl("NotePage"))
-            },
-            Kirigami.Action {
-                text: "Gmail"
-                icon.name: "mail-message"
-                onTriggered: AppContext.goToTopLevelPage(AppContext.pageUrl("GmailPage"))
-            },
-            Kirigami.Action {
-                text: "Calendar"
-                icon.name: "view-calendar"
-                onTriggered: AppContext.goToTopLevelPage(AppContext.pageUrl("CalendarPage"))
-            },
-            Kirigami.Action {
-                text: "Projects"
-                icon.name: "project-development"
-                onTriggered: AppContext.goToTopLevelPage(AppContext.pageUrl("ProjectsPage"))
-            },
-            Kirigami.Action {
-                text: "Repos"
-                icon.name: "folder-git"
-                onTriggered: AppContext.goToTopLevelPage(AppContext.pageUrl("RepoPage"))
-            },
-            Kirigami.Action {
-                text: "Weather"
-                icon.name: "weather-clear"
-                onTriggered: AppContext.goToTopLevelPage(AppContext.pageUrl("WeatherPage"))
-            },
-            Kirigami.Action {
-                text: "Dev Tools"
-                icon.name: "utilities-development"
-                onTriggered: AppContext.goToTopLevelPage(AppContext.pageUrl("DevToolsPage"))
-            },
-            Kirigami.Action {
-                text: "Settings"
-                icon.name: "configure"
-                onTriggered: AppContext.goToTopLevelPage(AppContext.pageUrl("SettingsPage"))
+    // Navigation drawer (hamburger menu)
+    Drawer {
+        id: navDrawer
+        width: Math.min(280, root.width * 0.8)
+        height: root.height
+        interactive: true
+        edge: Qt.LeftEdge
+        dim: true
+        modal: true
+        background: Rectangle {
+            color: Theme.sidebarBg
+        }
+        contentItem: ListView {
+            clip: true
+            header: Item {
+                width: navDrawer.width - 20
+                height: 56
+                Label {
+                    anchors.centerIn: parent
+                    text: "MyMe"
+                    font.pixelSize: Theme.fontSizeLarge
+                    font.bold: true
+                    color: Theme.text
+                }
             }
-        ]
+            model: ListModel {
+                ListElement { title: "Home"; page: "WelcomePage" }
+                ListElement { title: "Notes"; page: "NotePage" }
+                ListElement { title: "Gmail"; page: "GmailPage" }
+                ListElement { title: "Calendar"; page: "CalendarPage" }
+                ListElement { title: "Projects"; page: "ProjectsPage" }
+                ListElement { title: "Repos"; page: "RepoPage" }
+                ListElement { title: "Weather"; page: "WeatherPage" }
+                ListElement { title: "Dev Tools"; page: "DevToolsPage" }
+                ListElement { title: "Settings"; page: "SettingsPage" }
+            }
+            delegate: ItemDelegate {
+                width: navDrawer.width - 20
+                text: model.title
+                font.pixelSize: Theme.fontSizeNormal
+                onClicked: {
+                    AppContext.goToTopLevelPage(AppContext.pageUrl(model.page))
+                    navDrawer.close()
+                }
+            }
+        }
     }
 
-    pageStack.initialPage: Qt.resolvedUrl("pages/WelcomePage.qml")
+    // Toolbar with hamburger button
+    header: ToolBar {
+        id: toolBar
+        background: Rectangle { color: Theme.surface }
+        RowLayout {
+            anchors.fill: parent
+            spacing: Theme.spacingSm
+            ToolButton {
+                icon.source: ""
+                text: "\u2630"
+                font.pixelSize: 20
+                onClicked: navDrawer.open()
+            }
+            Label {
+                text: root.title
+                font.pixelSize: Theme.fontSizeMedium
+                color: Theme.text
+                Layout.fillWidth: true
+            }
+        }
+    }
+
+    // Page stack (replaces Kirigami pageStack)
+    StackView {
+        id: stackView
+        anchors.fill: parent
+        clip: true
+
+        pushEnter: Transition {
+            PropertyAnimation {
+                property: "opacity"
+                from: 0
+                to: 1
+                duration: 150
+            }
+        }
+        pushExit: Transition {
+            PropertyAnimation {
+                property: "opacity"
+                from: 1
+                to: 0
+                duration: 150
+            }
+        }
+        popEnter: Transition {
+            PropertyAnimation {
+                property: "opacity"
+                from: 0
+                to: 1
+                duration: 150
+            }
+        }
+        popExit: Transition {
+            PropertyAnimation {
+                property: "opacity"
+                from: 1
+                to: 0
+                duration: 150
+            }
+        }
+    }
 
     Component.onCompleted: {
-        AppContext.pageStack = root.pageStack
+        AppContext.pageStack = stackView
         AppContext.weatherModel = weatherModel
         AppContext.gmailModel = gmailModel
         AppContext.calendarModel = calendarModel
+        stackView.push(Qt.resolvedUrl("pages/WelcomePage.qml"))
     }
 }
