@@ -3,17 +3,20 @@
     <qresource prefix="/">
         <file>assets/icon.png</file>
         <file>crates/myme-ui/qml/Main.qml</file>
+        <file>crates/myme-ui/qml/AppContext.qml</file>
         <file>crates/myme-ui/qml/Theme.qml</file>
         <file>crates/myme-ui/qml/Icons.qml</file>
         <file>crates/myme-ui/qml/qmldir</file>
         <file>crates/myme-ui/qml/fonts/Phosphor.ttf</file>
         <file>crates/myme-ui/qml/pages/CalendarPage.qml</file>
+        <file>crates/myme-ui/qml/pages/WelcomePage.qml</file>
         <file>crates/myme-ui/qml/pages/DevToolsPage.qml</file>
         <file>crates/myme-ui/qml/pages/GmailPage.qml</file>
         <file>crates/myme-ui/qml/pages/NotePage.qml</file>
         <file>crates/myme-ui/qml/pages/ProjectDetailPage.qml</file>
         <file>crates/myme-ui/qml/pages/ProjectsPage.qml</file>
         <file>crates/myme-ui/qml/pages/RepoPage.qml</file>
+        <file>crates/myme-ui/qml/pages/WorkflowsPage.qml</file>
         <file>crates/myme-ui/qml/pages/SettingsPage.qml</file>
         <file>crates/myme-ui/qml/pages/WeatherPage.qml</file>
         <file>crates/myme-ui/qml/components/qmldir</file>

@@ -378,6 +378,22 @@ pub fn try_recv_project_message() -> Option<crate::services::ProjectServiceMessa
     AppServices::init().try_recv_project_message()
 }
 
+/// Initialize workflow service channel. Call once when WorkflowModel is first created.
+pub fn init_workflow_service_channel() -> bool {
+    AppServices::init().init_workflow_service_channel()
+}
+
+/// Get workflow service sender for request_fetch_workflows. None if channel not initialized yet.
+pub fn get_workflow_service_tx(
+) -> Option<std::sync::mpsc::Sender<crate::services::WorkflowServiceMessage>> {
+    AppServices::init().workflow_service_tx()
+}
+
+/// Non-blocking recv from workflow service channel. Called by WorkflowModel::poll_channel.
+pub fn try_recv_workflow_message() -> Option<crate::services::WorkflowServiceMessage> {
+    AppServices::init().try_recv_workflow_message()
+}
+
 /// Initialize kanban service channel. Call once when KanbanModel is first created.
 /// Returns true if initialized (or already initialized).
 pub fn init_kanban_service_channel() -> bool {

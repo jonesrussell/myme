@@ -587,7 +587,7 @@ Page {
             if (repoNameField.text.trim().length > 0) {
                 // Navigate to projects page
                 // Note: Full integration would add the project via ProjectModel
-                stackView.replace("ProjectsPage.qml");
+                AppContext.pageStack.push(AppContext.pageUrl("ProjectsPage"));
             }
         }
 

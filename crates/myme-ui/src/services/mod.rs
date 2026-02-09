@@ -4,6 +4,7 @@ pub mod note_service;
 pub mod project_service;
 pub mod repo_service;
 pub mod weather_service;
+pub mod workflow_service;
 
 pub use auth_service::{
     request_authenticate as request_auth, AuthError, AuthServiceMessage,
@@ -23,6 +24,9 @@ pub use project_service::{
     RepoInfo,
 };
 pub use repo_service::{request_clone, request_pull, request_refresh, RepoError, RepoServiceMessage};
+pub use workflow_service::{
+    request_fetch_workflows, RepoWorkflows, WorkflowError, WorkflowServiceMessage,
+};
 pub use weather_service::{
     request_fetch as request_weather_fetch, WeatherError, WeatherServiceMessage,
 };

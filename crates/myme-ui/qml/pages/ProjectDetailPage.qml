@@ -96,7 +96,7 @@ Page {
                 text: Icons.caretLeft
                 font.family: Icons.family
                 font.pixelSize: 18
-                onClicked: stackView.pop()
+                onClicked: AppContext.pageStack.pop()
                 ToolTip.text: "Back to Projects"
                 ToolTip.visible: hovered
 

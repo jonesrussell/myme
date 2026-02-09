@@ -14,6 +14,7 @@ fn main() {
         .file("src/models/note_model.rs")
         .file("src/models/project_model.rs")
         .file("src/models/repo_model.rs")
+        .file("src/models/workflow_model.rs")
         .file("src/models/time_model.rs")
         .file("src/models/uuid_model.rs")
         .file("src/models/weather_model.rs")

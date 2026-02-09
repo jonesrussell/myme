@@ -99,6 +99,7 @@ target_link_libraries(myme-qt PRIVATE
     Qt6::QuickControls2
 )
 
+
 # Determine which Rust lib dir to search based on generator type
 if(IS_MULTI_CONFIG)
     # For multi-config, search release first (more common for actual builds)

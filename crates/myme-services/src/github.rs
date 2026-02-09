@@ -96,6 +96,26 @@ pub struct CreateLabelRequest {
     pub description: Option<String>,
 }
 
+/// GitHub Actions workflow (list repository workflows response item)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitHubWorkflow {
+    pub id: i64,
+    pub name: String,
+    pub path: String,
+    pub state: String,
+    #[serde(default)]
+    pub html_url: Option<String>,
+    #[serde(default)]
+    pub badge_url: Option<String>,
+}
+
+/// Response from GET /repos/{owner}/{repo}/actions/workflows
+#[derive(Debug, Deserialize)]
+pub struct ListWorkflowsResponse {
+    pub total_count: i32,
+    pub workflows: Vec<GitHubWorkflow>,
+}
+
 /// GitHub API client
 #[derive(Debug, Clone)]
 pub struct GitHubClient {
@@ -398,6 +418,33 @@ impl GitHubClient {
 
         Ok(labels)
     }
+
+    /// List GitHub Actions workflows for a repository
+    #[tracing::instrument(skip(self), level = "info")]
+    pub async fn list_workflows(&self, owner: &str, repo: &str) -> Result<Vec<GitHubWorkflow>> {
+        tracing::debug!("Fetching workflows for {}/{}", owner, repo);
+
+        let url = self
+            .base_url
+            .join(&format!("repos/{}/{}/actions/workflows", owner, repo))?;
+        let response = self.send_with_retry(|| {
+            self.build_request(
+                self.client
+                    .get(url.clone())
+                    .query(&[("per_page", "100")]),
+            )
+        })
+        .await?;
+
+        let body: ListWorkflowsResponse = response.json().await?;
+        tracing::info!(
+            "Fetched {} workflows for {}/{}",
+            body.workflows.len(),
+            owner,
+            repo
+        );
+        Ok(body.workflows)
+    }
 }
 
 #[cfg(test)]
@@ -463,5 +510,41 @@ mod tests {
         let json = serde_json::to_string(&req).unwrap();
         assert!(!json.contains("title"));
         assert!(json.contains("closed"));
+    }
+
+    #[test]
+    fn test_workflow_deserialization() {
+        let json = r#"{
+            "total_count": 2,
+            "workflows": [
+                {
+                    "id": 161335,
+                    "node_id": "MDg6V29ya2Zsb3cxNjEzMzU=",
+                    "name": "CI",
+                    "path": ".github/workflows/blank.yaml",
+                    "state": "active",
+                    "created_at": "2020-01-08T23:48:37.000-08:00",
+                    "updated_at": "2020-01-08T23:50:21.000-08:00",
+                    "url": "https://api.github.com/repos/octo-org/octo-repo/actions/workflows/161335",
+                    "html_url": "https://github.com/octo-org/octo-repo/blob/master/.github/workflows/blank.yaml",
+                    "badge_url": "https://github.com/octo-org/octo-repo/workflows/CI/badge.svg"
+                },
+                {
+                    "id": 269289,
+                    "name": "Linter",
+                    "path": ".github/workflows/linter.yaml",
+                    "state": "active"
+                }
+            ]
+        }"#;
+        let response: ListWorkflowsResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.total_count, 2);
+        assert_eq!(response.workflows.len(), 2);
+        assert_eq!(response.workflows[0].name, "CI");
+        assert_eq!(response.workflows[0].path, ".github/workflows/blank.yaml");
+        assert_eq!(response.workflows[0].state, "active");
+        assert!(response.workflows[0].html_url.is_some());
+        assert_eq!(response.workflows[1].name, "Linter");
+        assert!(response.workflows[1].html_url.is_none());
     }
 }
