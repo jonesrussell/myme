@@ -182,7 +182,8 @@ impl qobject::CalendarModel {
             "status": format!("{:?}", event.status),
         });
 
-        QString::from(json.to_string().as_str())
+        let s = json.to_string();
+        QString::from(s.as_str())
     }
 
     /// Get calendars as JSON
@@ -202,9 +203,8 @@ impl qobject::CalendarModel {
             })
             .collect();
 
-        QString::from(
-            serde_json::to_string(&calendars).unwrap_or_else(|_| "[]".to_string()).as_str(),
-        )
+        let s = serde_json::to_string(&calendars).unwrap_or_else(|_| "[]".to_string());
+        QString::from(s.as_str())
     }
 
     /// Poll for async operation results

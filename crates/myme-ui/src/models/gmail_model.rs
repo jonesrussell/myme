@@ -152,7 +152,8 @@ impl qobject::GmailModel {
             "isStarred": msg.is_starred,
         });
 
-        QString::from(json.to_string().as_str())
+        let s = json.to_string();
+        QString::from(s.as_str())
     }
 
     /// Mark message as read
