@@ -352,15 +352,17 @@ Page {
 
         // Projects grid
         ScrollView {
+            id: projectsScroll
             visible: projectModel.authenticated
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            contentWidth: projectsScroll.viewport.width
 
             GridLayout {
                 id: projectsGrid
-                width: parent.width
-                columns: Math.max(1, Math.floor(width / 350))
+                width: projectsScroll.viewport.width
+                columns: Responsive.columnsFor(projectsScroll.viewport.width, 350, 4)
                 rowSpacing: Theme.spacingMd
                 columnSpacing: Theme.spacingMd
 

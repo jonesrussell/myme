@@ -173,10 +173,12 @@ Page {
 
         // Index view with searchable cards
         ScrollView {
+            id: devToolsScroll
             clip: true
+            contentWidth: devToolsScroll.viewport.width
 
             ColumnLayout {
-                width: parent.width
+                width: devToolsScroll.viewport.width
                 spacing: Theme.spacingLg
 
                 // Search bar
@@ -253,7 +255,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.margins: Theme.spacingLg
                     Layout.topMargin: 0
-                    columns: Math.max(1, Math.floor((devToolsPage.width - Theme.spacingLg * 2) / 280))
+                    columns: Responsive.columnsFor(devToolsPage.width - Theme.spacingLg * 2, 280, 4)
                     columnSpacing: Theme.spacingMd
                     rowSpacing: Theme.spacingMd
 

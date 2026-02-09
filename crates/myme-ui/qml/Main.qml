@@ -9,6 +9,8 @@ ApplicationWindow {
     id: root
     width: 1200
     height: 800
+    minimumWidth: 480
+    minimumHeight: 400
     visible: true
     title: "MyMe"
     color: Theme.background

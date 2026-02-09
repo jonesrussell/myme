@@ -92,6 +92,11 @@ QtObject {
     property int fontSizeXLarge: 24
     property int fontSizeTitle: 32
 
+    // Responsive breakpoints
+    property int breakpointSm: 600
+    property int breakpointMd: 900
+    property int breakpointLg: 1200
+
     // Spacing
     property int spacingXs: 4
     property int spacingSm: 8

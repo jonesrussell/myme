@@ -5,6 +5,7 @@
         <file>crates/myme-ui/qml/Main.qml</file>
         <file>crates/myme-ui/qml/AppContext.qml</file>
         <file>crates/myme-ui/qml/Theme.qml</file>
+        <file>crates/myme-ui/qml/Responsive.qml</file>
         <file>crates/myme-ui/qml/Icons.qml</file>
         <file>crates/myme-ui/qml/qmldir</file>
         <file>crates/myme-ui/qml/fonts/Phosphor.ttf</file>

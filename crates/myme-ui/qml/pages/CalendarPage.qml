@@ -142,13 +142,15 @@ Page {
 
     // Event list
     ScrollView {
+        id: calendarScroll
         anchors.fill: parent
         anchors.margins: Theme.spacingMd
         visible: calendarModel.authenticated
         clip: true
+        contentWidth: calendarScroll.viewport.width
 
         ColumnLayout {
-            width: parent.width
+            width: calendarScroll.viewport.width
             spacing: Theme.spacingMd
 
             // Today section header

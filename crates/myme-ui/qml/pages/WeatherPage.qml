@@ -92,12 +92,14 @@ Page {
     }
 
     ScrollView {
+        id: weatherScroll
         anchors.fill: parent
         anchors.margins: Theme.spacingLg
         clip: true
+        contentWidth: weatherScroll.viewport.width
 
         ColumnLayout {
-            width: parent.width
+            width: weatherScroll.viewport.width
             spacing: Theme.spacingLg
 
             // Error message

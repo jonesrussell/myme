@@ -27,11 +27,13 @@ Page {
     }
 
     ScrollView {
+        id: scroll
         anchors.fill: parent
         clip: true
+        contentWidth: scroll.viewport.width
 
         ColumnLayout {
-            width: parent.width
+            width: scroll.viewport.width
             spacing: Theme.spacingLg
 
             // Greeting header
@@ -58,16 +60,19 @@ Page {
                 }
             }
 
-            // Stat cards row
-            RowLayout {
+            // Stat cards
+            GridLayout {
                 Layout.fillWidth: true
                 Layout.leftMargin: Theme.spacingXl
                 Layout.rightMargin: Theme.spacingXl
-                spacing: Theme.spacingMd
+                columns: Responsive.columnsFor(scroll.viewport.width - Theme.spacingXl * 2, 200, 3)
+                rowSpacing: Theme.spacingMd
+                columnSpacing: Theme.spacingMd
 
                 // Unread emails card
                 Rectangle {
-                    Layout.preferredWidth: 180
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 160
                     Layout.preferredHeight: 90
                     radius: Theme.cardRadius
                     color: Theme.surface
@@ -123,7 +128,8 @@ Page {
 
                 // Today's events card
                 Rectangle {
-                    Layout.preferredWidth: 180
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 160
                     Layout.preferredHeight: 90
                     radius: Theme.cardRadius
                     color: Theme.surface
@@ -179,7 +185,8 @@ Page {
 
                 // Quick action card
                 Rectangle {
-                    Layout.preferredWidth: 180
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 160
                     Layout.preferredHeight: 90
                     radius: Theme.cardRadius
                     color: Theme.surface
@@ -232,8 +239,6 @@ Page {
                         }
                     }
                 }
-
-                Item { Layout.fillWidth: true }
             }
 
             // Widget grid
@@ -241,13 +246,15 @@ Page {
                 Layout.fillWidth: true
                 Layout.leftMargin: Theme.spacingXl
                 Layout.rightMargin: Theme.spacingXl
-                columns: parent.width > 900 ? 3 : (parent.width > 550 ? 2 : 1)
+                columns: Responsive.columnsFor(scroll.viewport.width - Theme.spacingXl * 2, 300, 3)
                 rowSpacing: Theme.spacingMd
                 columnSpacing: Theme.spacingMd
 
                 // Email widget
                 EmailWidget {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 180
+                    Layout.maximumWidth: 400
                     loading: AppContext.gmailModel ? AppContext.gmailModel.loading : false
                     authenticated: AppContext.gmailModel ? AppContext.gmailModel.authenticated : false
                     unreadCount: AppContext.gmailModel ? AppContext.gmailModel.unread_count : 0
@@ -261,6 +268,8 @@ Page {
                 // Calendar widget
                 CalendarWidget {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 180
+                    Layout.maximumWidth: 400
                     loading: AppContext.calendarModel ? AppContext.calendarModel.loading : false
                     authenticated: AppContext.calendarModel ? AppContext.calendarModel.authenticated : false
                     todayEventCount: AppContext.calendarModel ? AppContext.calendarModel.today_event_count : 0
@@ -276,6 +285,8 @@ Page {
                 // Weather widget
                 WeatherWidget {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 180
+                    Layout.maximumWidth: 400
                     loading: AppContext.weatherModel ? AppContext.weatherModel.loading : false
                     hasData: AppContext.weatherModel ? AppContext.weatherModel.has_data : false
                     isStale: AppContext.weatherModel ? AppContext.weatherModel.is_stale : false
@@ -315,7 +326,9 @@ Page {
                     color: Theme.text
                 }
 
-                RowLayout {
+                Flow {
+                    Layout.fillWidth: true
+                    width: scroll.viewport.width - Theme.spacingXl * 2
                     spacing: Theme.spacingMd
 
                     Repeater {
@@ -372,8 +385,6 @@ Page {
                             }
                         }
                     }
-
-                    Item { Layout.fillWidth: true }
                 }
             }
         }

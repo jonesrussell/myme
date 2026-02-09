@@ -58,12 +58,14 @@ Page {
     }
 
     ScrollView {
+        id: scroll
         anchors.fill: parent
         anchors.margins: Theme.spacingLg
         clip: true
+        contentWidth: scroll.viewport.width
 
         ColumnLayout {
-            width: parent.width
+            width: scroll.viewport.width
             spacing: Theme.spacingLg
 
             // Appearance Section
@@ -99,14 +101,18 @@ Page {
                     }
 
                     // Theme selection
-                    RowLayout {
+                    GridLayout {
                         Layout.fillWidth: true
                         Layout.topMargin: Theme.spacingSm
-                        spacing: Theme.spacingMd
+                        columns: Responsive.columnsFor(scroll.viewport.width - Theme.spacingLg * 2 - Theme.spacingMd * 2, 160, 3)
+                        rowSpacing: Theme.spacingMd
+                        columnSpacing: Theme.spacingMd
 
                         // Light theme option
                         Rectangle {
                             Layout.preferredWidth: 140
+                            Layout.minimumWidth: 120
+                            Layout.fillWidth: true
                             Layout.preferredHeight: 100
                             radius: Theme.cardRadius
                             color: Theme.mode === "light" ? Theme.primary + "20" : Theme.surfaceAlt
@@ -155,6 +161,8 @@ Page {
                         // Dark theme option
                         Rectangle {
                             Layout.preferredWidth: 140
+                            Layout.minimumWidth: 120
+                            Layout.fillWidth: true
                             Layout.preferredHeight: 100
                             radius: Theme.cardRadius
                             color: Theme.mode === "dark" ? Theme.primary + "20" : Theme.surfaceAlt
@@ -203,6 +211,8 @@ Page {
                         // Auto theme option
                         Rectangle {
                             Layout.preferredWidth: 140
+                            Layout.minimumWidth: 120
+                            Layout.fillWidth: true
                             Layout.preferredHeight: 100
                             radius: Theme.cardRadius
                             color: Theme.mode === "auto" ? Theme.primary + "20" : Theme.surfaceAlt
@@ -256,10 +266,6 @@ Page {
                                     Layout.alignment: Qt.AlignHCenter
                                 }
                             }
-                        }
-
-                        Item {
-                            Layout.fillWidth: true
                         }
                     }
 

@@ -232,13 +232,15 @@ Page {
         }
 
         ScrollView {
+            id: repoScroll
             visible: !repoModel.loading && repoCount > 0
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            contentWidth: repoScroll.viewport.width
 
             ColumnLayout {
-                width: parent.width - 20
+                width: repoScroll.viewport.width
                 spacing: Theme.spacingMd
 
                 Repeater {
@@ -248,6 +250,7 @@ Page {
                         repoModel: repoModel
                         projectModel: projectModel
                         Layout.fillWidth: true
+                        Layout.minimumWidth: 200
                     }
                 }
             }

@@ -142,13 +142,16 @@ Page {
 
     // Message list
     ScrollView {
+        id: gmailScroll
         anchors.fill: parent
         anchors.margins: Theme.spacingMd
         visible: gmailModel.authenticated
         clip: true
+        contentWidth: gmailScroll.viewport.width
 
         ListView {
             id: messageList
+            width: gmailScroll.viewport.width
             model: gmailModel.message_count
             spacing: Theme.spacingSm
 

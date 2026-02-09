@@ -152,6 +152,9 @@ Page {
                     wrapMode: Text.WordWrap
                     horizontalAlignment: Text.AlignHCenter
                     Layout.preferredWidth: 320
+                    Layout.minimumWidth: 200
+                    Layout.fillWidth: true
+                    Layout.maximumWidth: 400
                     Layout.alignment: Qt.AlignHCenter
                 }
             }
@@ -222,6 +225,9 @@ Page {
                     wrapMode: Text.WordWrap
                     horizontalAlignment: Text.AlignHCenter
                     Layout.preferredWidth: 280
+                    Layout.minimumWidth: 200
+                    Layout.fillWidth: true
+                    Layout.maximumWidth: 400
                     Layout.alignment: Qt.AlignHCenter
                 }
             }
@@ -229,13 +235,15 @@ Page {
 
         // List of repos and their workflows
         ScrollView {
+            id: workflowsScroll
             visible: workflowModel.authenticated && workflowModel.row_count() > 0
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            contentWidth: workflowsScroll.viewport.width
 
             ColumnLayout {
-                width: parent.width - (parent.ScrollBar.vertical?.width ?? 0)
+                width: workflowsScroll.viewport.width
                 spacing: Theme.spacingLg
 
                 Repeater {
@@ -298,6 +306,7 @@ Page {
                                             font.pixelSize: Theme.fontSizeNormal
                                             color: Theme.text
                                             Layout.preferredWidth: 140
+                                            Layout.minimumWidth: 80
                                             elide: Text.ElideRight
                                         }
 

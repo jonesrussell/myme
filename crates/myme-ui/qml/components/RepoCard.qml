@@ -175,7 +175,7 @@ Rectangle {
             Menu {
                 id: addToProjectMenu
                 y: parent.height
-                width: 250
+                width: Math.min(250, card.width)
 
                 Repeater {
                     model: projectModel ? projectModel.row_count() : 0

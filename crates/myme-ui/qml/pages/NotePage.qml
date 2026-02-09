@@ -163,13 +163,17 @@ Page {
 
         // Notes list
         ScrollView {
+            id: notesScroll
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            contentWidth: notesScroll.viewport.width
 
             ListView {
                 id: notesList
-                anchors.fill: parent
+                width: notesScroll.viewport.width
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
                 spacing: Theme.spacingSm
 
                 model: notePage.noteCount
