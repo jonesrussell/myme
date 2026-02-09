@@ -134,6 +134,29 @@ Page {
             }
 
             ToolButton {
+                text: "Workflows"
+                font.pixelSize: Theme.fontSizeNormal
+                enabled: projectModel.authenticated
+                onClicked: AppContext.pageStack.push(AppContext.pageUrl("WorkflowsPage"))
+                ToolTip.text: "CI/CD Workflows"
+                ToolTip.visible: hovered
+
+                background: Rectangle {
+                    radius: Theme.buttonRadius
+                    color: parent.hovered ? Theme.surfaceHover : "transparent"
+                }
+
+                contentItem: Text {
+                    text: parent.text
+                    color: Theme.text
+                    font.pixelSize: Theme.fontSizeNormal
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    opacity: parent.enabled ? 1.0 : 0.5
+                }
+            }
+
+            ToolButton {
                 text: Icons.plus
                 font.family: Icons.family
                 font.pixelSize: 18

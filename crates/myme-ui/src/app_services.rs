@@ -33,6 +33,9 @@ pub use crate::services::AuthServiceMessage;
 /// Message types for the project service channel
 pub use crate::services::ProjectServiceMessage;
 
+/// Message types for the workflow service channel
+pub use crate::services::WorkflowServiceMessage;
+
 /// Message types for the kanban service channel
 pub use crate::services::KanbanServiceMessage;
 
@@ -99,6 +102,12 @@ pub struct AppServices {
     /// Project service channel receiver
     project_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<ProjectServiceMessage>>>>,
 
+    /// Workflow service channel sender
+    workflow_service_tx: RwLock<Option<std::sync::mpsc::Sender<WorkflowServiceMessage>>>,
+
+    /// Workflow service channel receiver
+    workflow_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<WorkflowServiceMessage>>>>,
+
     /// Kanban service channel sender
     kanban_service_tx: RwLock<Option<std::sync::mpsc::Sender<KanbanServiceMessage>>>,
 
@@ -148,6 +157,8 @@ impl AppServices {
                     auth_service_rx: RwLock::new(None),
                     project_service_tx: RwLock::new(None),
                     project_service_rx: RwLock::new(None),
+                    workflow_service_tx: RwLock::new(None),
+                    workflow_service_rx: RwLock::new(None),
                     kanban_service_tx: RwLock::new(None),
                     kanban_service_rx: RwLock::new(None),
                     repo_cancel_token: RwLock::new(None),
@@ -194,6 +205,8 @@ impl AppServices {
         *self.auth_service_rx.write() = None;
         *self.project_service_tx.write() = None;
         *self.project_service_rx.write() = None;
+        *self.workflow_service_tx.write() = None;
+        *self.workflow_service_rx.write() = None;
         *self.kanban_service_tx.write() = None;
         *self.kanban_service_rx.write() = None;
 
@@ -700,6 +713,34 @@ impl AppServices {
     /// Try to receive a message from the project service channel (non-blocking).
     pub fn try_recv_project_message(&self) -> Option<ProjectServiceMessage> {
         let guard = self.project_service_rx.read();
+        let rx_mutex = guard.as_ref()?;
+        let result = rx_mutex.lock().try_recv().ok();
+        result
+    }
+
+    // =========== Workflow Service Channel ===========
+
+    /// Get workflow service sender.
+    pub fn workflow_service_tx(&self) -> Option<std::sync::mpsc::Sender<WorkflowServiceMessage>> {
+        self.workflow_service_tx.read().clone()
+    }
+
+    /// Initialize workflow service channel.
+    pub fn init_workflow_service_channel(&self) -> bool {
+        if self.workflow_service_tx.read().is_some() {
+            return true;
+        }
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        *self.workflow_service_tx.write() = Some(tx);
+        *self.workflow_service_rx.write() = Some(parking_lot::Mutex::new(rx));
+        tracing::info!("Workflow service channel initialized");
+        true
+    }
+
+    /// Try to receive a message from the workflow service channel (non-blocking).
+    pub fn try_recv_workflow_message(&self) -> Option<WorkflowServiceMessage> {
+        let guard = self.workflow_service_rx.read();
         let rx_mutex = guard.as_ref()?;
         let result = rx_mutex.lock().try_recv().ok();
         result

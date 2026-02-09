@@ -10,3 +10,4 @@ pub use models::gmail_model::qobject::GmailModel;
 pub use models::google_auth_model::qobject::GoogleAuthModel;
 pub use models::note_model::qobject::NoteModel;
 pub use models::repo_model::qobject::RepoModel;
+pub use models::workflow_model::qobject::WorkflowModel;

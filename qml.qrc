@@ -16,6 +16,7 @@
         <file>crates/myme-ui/qml/pages/ProjectDetailPage.qml</file>
         <file>crates/myme-ui/qml/pages/ProjectsPage.qml</file>
         <file>crates/myme-ui/qml/pages/RepoPage.qml</file>
+        <file>crates/myme-ui/qml/pages/WorkflowsPage.qml</file>
         <file>crates/myme-ui/qml/pages/SettingsPage.qml</file>
         <file>crates/myme-ui/qml/pages/WeatherPage.qml</file>
         <file>crates/myme-ui/qml/components/qmldir</file>

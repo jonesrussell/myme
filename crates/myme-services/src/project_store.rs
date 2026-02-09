@@ -371,6 +371,16 @@ impl ProjectStore {
         Ok(repos)
     }
 
+    /// List all distinct repo_ids linked to any project (owner/repo format)
+    pub fn list_all_linked_repo_ids(&self) -> Result<Vec<String>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT DISTINCT repo_id FROM project_repos ORDER BY repo_id"
+        )?;
+
+        let repos = stmt.query_map([], |row| row.get(0))?.collect::<Result<Vec<_>, _>>()?;
+        Ok(repos)
+    }
+
     /// List projects that contain a repo
     pub fn list_projects_for_repo(&self, repo_id: &str) -> Result<Vec<Project>> {
         let mut stmt = self.conn.prepare(
@@ -521,6 +531,20 @@ mod tests {
 
         let projects_for_b = store.list_projects_for_repo("owner/repo-b").unwrap();
         assert_eq!(projects_for_b.len(), 2);
+
+        let all_repos = store.list_all_linked_repo_ids().unwrap();
+        assert_eq!(all_repos.len(), 2); // distinct: repo-a, repo-b
+        assert_eq!(all_repos[0], "owner/repo-a");
+        assert_eq!(all_repos[1], "owner/repo-b");
+    }
+
+    #[test]
+    fn test_list_all_linked_repo_ids_empty() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join("test.db");
+        let store = ProjectStore::open(&db_path).unwrap();
+        let all = store.list_all_linked_repo_ids().unwrap();
+        assert!(all.is_empty());
     }
 
     #[test]

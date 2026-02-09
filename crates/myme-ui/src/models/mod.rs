@@ -11,5 +11,6 @@ pub mod note_model;
 pub mod project_model;
 pub mod repo_model;
 pub mod time_model;
+pub mod workflow_model;
 pub mod uuid_model;
 pub mod weather_model;
