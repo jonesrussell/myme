@@ -201,43 +201,46 @@ Rectangle {
                     opacity: root.isStale ? 0.6 : 1.0
                 }
             }
+        }
 
-            // High/Low
-            ColumnLayout {
+        // High/Low on separate row to avoid overlap
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Theme.spacingLg
+
+            RowLayout {
                 spacing: 4
-
-                RowLayout {
-                    spacing: 4
-                    Text {
-                        font.family: Icons.family
-                        font.pixelSize: Theme.fontSizeSmall
-                        text: Icons.caretUp
-                        color: Theme.error
-                    }
-                    Text {
-                        font.pixelSize: Theme.fontSizeNormal
-                        text: root.hasData ? `${Math.round(root.todayHigh)}°` : "--"
-                        color: Theme.text
-                        opacity: root.isStale ? 0.6 : 1.0
-                    }
+                Text {
+                    font.family: Icons.family
+                    font.pixelSize: Theme.fontSizeSmall
+                    text: Icons.caretUp
+                    color: Theme.error
                 }
-
-                RowLayout {
-                    spacing: 4
-                    Text {
-                        font.family: Icons.family
-                        font.pixelSize: Theme.fontSizeSmall
-                        text: Icons.caretDown
-                        color: Theme.info
-                    }
-                    Text {
-                        font.pixelSize: Theme.fontSizeNormal
-                        text: root.hasData ? `${Math.round(root.todayLow)}°` : "--"
-                        color: Theme.text
-                        opacity: root.isStale ? 0.6 : 1.0
-                    }
+                Text {
+                    font.pixelSize: Theme.fontSizeNormal
+                    text: root.hasData ? `${Math.round(root.todayHigh)}°` : "--"
+                    color: Theme.text
+                    opacity: root.isStale ? 0.6 : 1.0
                 }
             }
+
+            RowLayout {
+                spacing: 4
+                Text {
+                    font.family: Icons.family
+                    font.pixelSize: Theme.fontSizeSmall
+                    text: Icons.caretDown
+                    color: Theme.info
+                }
+                Text {
+                    font.pixelSize: Theme.fontSizeNormal
+                    text: root.hasData ? `${Math.round(root.todayLow)}°` : "--"
+                    color: Theme.text
+                    opacity: root.isStale ? 0.6 : 1.0
+                }
+            }
+
+            Item { Layout.fillWidth: true }
         }
 
         // Divider

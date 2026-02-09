@@ -254,7 +254,6 @@ Page {
                 EmailWidget {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 180
-                    Layout.maximumWidth: 400
                     loading: AppContext.gmailModel ? AppContext.gmailModel.loading : false
                     authenticated: AppContext.gmailModel ? AppContext.gmailModel.authenticated : false
                     unreadCount: AppContext.gmailModel ? AppContext.gmailModel.unread_count : 0
@@ -269,7 +268,6 @@ Page {
                 CalendarWidget {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 180
-                    Layout.maximumWidth: 400
                     loading: AppContext.calendarModel ? AppContext.calendarModel.loading : false
                     authenticated: AppContext.calendarModel ? AppContext.calendarModel.authenticated : false
                     todayEventCount: AppContext.calendarModel ? AppContext.calendarModel.today_event_count : 0
@@ -286,7 +284,6 @@ Page {
                 WeatherWidget {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 180
-                    Layout.maximumWidth: 400
                     loading: AppContext.weatherModel ? AppContext.weatherModel.loading : false
                     hasData: AppContext.weatherModel ? AppContext.weatherModel.has_data : false
                     isStale: AppContext.weatherModel ? AppContext.weatherModel.is_stale : false
@@ -326,21 +323,20 @@ Page {
                     color: Theme.text
                 }
 
-                Flow {
+                RowLayout {
                     Layout.fillWidth: true
-                    width: scroll.viewport.width - Theme.spacingXl * 2
                     spacing: Theme.spacingMd
 
                     Repeater {
                         model: [
-                            { title: "Projects", page: "ProjectsPage", icon: "squaresFour" },
-                            { title: "Repos", page: "RepoPage", icon: "gitBranch" },
-                            { title: "Dev Tools", page: "DevToolsPage", icon: "wrench" }
+                            { title: "Projects", page: "ProjectsPage", icon: Icons.squaresFour },
+                            { title: "Repos", page: "RepoPage", icon: Icons.gitBranch },
+                            { title: "Dev Tools", page: "DevToolsPage", icon: Icons.wrench }
                         ]
 
                         delegate: Rectangle {
-                            width: 100
-                            height: 80
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 80
                             radius: Theme.cardRadius
                             color: quickLinkMouse.containsMouse ? Theme.surfaceHover : Theme.surface
                             border.color: Theme.isDark ? "#ffffff08" : "#00000008"
@@ -363,14 +359,7 @@ Page {
                                 Text {
                                     font.family: Icons.family
                                     font.pixelSize: 24
-                                    text: {
-                                        const map = {
-                                            "squaresFour": Icons.squaresFour,
-                                            "gitBranch": Icons.gitBranch,
-                                            "wrench": Icons.wrench
-                                        };
-                                        return map[modelData.icon] || Icons.house;
-                                    }
+                                    text: modelData.icon
                                     color: Theme.textSecondary
                                     Layout.alignment: Qt.AlignHCenter
                                 }
