@@ -3253,10 +3253,10 @@ Page {
                 // Add instructions if multiple chunks
                 if (result.length > 1) {
                     const total = result.length;
-                    const remaining = total - 1;
+                    const remainingChunks = total - 1;
 
                     // First chunk - add "wait for more" header
-                    result[0] = `[CHUNK 1/${total}] WAIT FOR ${remaining} MORE PASTE${remaining > 1 ? 'S' : ''} THEN REVIEW ALL PLEASE\n\n` + result[0];
+                    result[0] = `[CHUNK 1/${total}] WAIT FOR ${remainingChunks} MORE PASTE${remainingChunks > 1 ? 'S' : ''} THEN REVIEW ALL PLEASE\n\n` + result[0];
 
                     // Middle chunks - add chunk number header
                     for (let i = 1; i < total - 1; i++) {
