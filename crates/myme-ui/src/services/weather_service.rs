@@ -53,7 +53,7 @@ pub fn request_fetch(
 
     runtime.spawn(async move {
         // First get location
-        let location = match myme_weather::location::get_current_location().await {
+        let mut location = match myme_weather::location::get_current_location().await {
             Ok(loc) => {
                 tracing::info!("Got location: {}, {}", loc.latitude, loc.longitude);
                 loc
@@ -65,6 +65,13 @@ pub fn request_fetch(
                 return;
             }
         };
+
+        // Reverse geocode to get city name (coordinates only from system APIs)
+        if location.city_name.is_none() {
+            if let Some(name) = myme_weather::reverse_geocode(&location).await {
+                location.city_name = Some(name);
+            }
+        }
 
         // Then fetch weather
         let result = provider
