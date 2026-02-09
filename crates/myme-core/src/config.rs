@@ -2,7 +2,6 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
-use url::Url;
 
 /// Configuration validation errors
 #[derive(Debug, Clone)]
@@ -459,40 +458,6 @@ impl Config {
         }
 
         result
-    }
-
-    /// Validate a URL field
-    fn validate_url(&self, url_str: &str, field_name: &str, result: &mut ValidationResult) {
-        match Url::parse(url_str) {
-            Ok(url) => {
-                // Check scheme
-                if url.scheme() != "http" && url.scheme() != "https" {
-                    result.add_error(
-                        field_name,
-                        format!("URL must use http or https scheme, got: {}", url.scheme()),
-                    );
-                }
-
-                // Check host
-                if url.host().is_none() {
-                    result.add_error(field_name, "URL must have a host");
-                }
-
-                // Validate port if explicitly specified
-                if let Some(port) = url.port() {
-                    if port == 0 {
-                        result.add_error(field_name, "Port cannot be 0");
-                    }
-                    // Port is u16, so already in valid range 1-65535
-                }
-            }
-            Err(e) => {
-                result.add_error(
-                    field_name,
-                    format!("Invalid URL: {}", e),
-                );
-            }
-        }
     }
 
     /// Save configuration to file

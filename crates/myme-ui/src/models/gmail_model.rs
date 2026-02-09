@@ -156,7 +156,7 @@ impl qobject::GmailModel {
     }
 
     /// Mark message as read
-    pub fn mark_as_read(mut self: Pin<&mut Self>, message_id: QString) {
+    pub fn mark_as_read(self: Pin<&mut Self>, message_id: QString) {
         let access_token = match GmailModelRust::get_access_token() {
             Some(t) => t,
             None => return,
@@ -173,7 +173,7 @@ impl qobject::GmailModel {
     }
 
     /// Archive message
-    pub fn archive_message(mut self: Pin<&mut Self>, message_id: QString) {
+    pub fn archive_message(self: Pin<&mut Self>, message_id: QString) {
         let access_token = match GmailModelRust::get_access_token() {
             Some(t) => t,
             None => return,
@@ -190,7 +190,7 @@ impl qobject::GmailModel {
     }
 
     /// Move message to trash
-    pub fn trash_message(mut self: Pin<&mut Self>, message_id: QString) {
+    pub fn trash_message(self: Pin<&mut Self>, message_id: QString) {
         let access_token = match GmailModelRust::get_access_token() {
             Some(t) => t,
             None => return,
