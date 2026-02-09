@@ -7,6 +7,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  # Known Qt path when using dir: qt-install (avoids relying on action defaults)
+  QT_ROOT: ${{ github.workspace }}/qt-install/Qt/6.10.1/win64_msvc2022_64
 
 jobs:
   build-windows:
@@ -44,14 +46,26 @@ jobs:
           host: 'windows'
           target: 'desktop'
           arch: 'win64_msvc2022_64'
-          modules: 'qtquick3d'
+          dir: ${{ github.workspace }}/qt-install
           cache: true
 
-      - name: Build Rust
-        run: cargo build --release
+      - name: Build Rust (with MSVC and Qt env)
+        run: |
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vsPath) { Write-Error "Visual Studio with C++ tools not found"; exit 1 }
+          $vsDevCmd = Join-Path $vsPath "Common7\Tools\VsDevCmd.bat"
+          if (-not (Test-Path $vsDevCmd)) { Write-Error "VsDevCmd.bat not found"; exit 1 }
+          $env:CMAKE_PREFIX_PATH = $env:QT_ROOT
+          $env:Qt6_DIR = "$env:QT_ROOT\lib\cmake\Qt6"
+          $env:QMAKE = "$env:QT_ROOT\bin\qmake.exe"
+          cmd /c "`"$vsDevCmd`" -arch=amd64 -no_logo && set CMAKE_PREFIX_PATH=$env:QT_ROOT && set Qt6_DIR=$env:Qt6_DIR && set QMAKE=$env:QMAKE && cargo build --release"
 
       - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+        run: |
+          cmake -B build -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_PREFIX_PATH="$env:QT_ROOT" `
+            -DQt6_DIR="$env:QT_ROOT/lib/cmake/Qt6"
 
       - name: Build Qt Application
         run: cmake --build build --config Release
@@ -62,9 +76,8 @@ jobs:
           Copy-Item build/Release/myme-qt.exe dist/myme/
 
       - name: Bundle Qt dependencies
-        shell: cmd
         run: |
-          "%Qt6_DIR%/../../../bin/windeployqt.exe" --release --qmldir crates/myme-ui/qml dist/myme/myme-qt.exe
+          & "$env:QT_ROOT/bin/windeployqt.exe" --release --qmldir crates/myme-ui/qml dist/myme/myme-qt.exe
 
       - name: Create portable ZIP
         env:
@@ -113,12 +126,12 @@ jobs:
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
-        env:
-          VERSION: ${{ steps.version.outputs.VERSION }}
         with:
+          tag_name: ${{ github.ref_name }}
           generate_release_notes: true
           files: |
             dist/myme-v${{ steps.version.outputs.VERSION }}-windows.zip
             dist/myme-${{ steps.version.outputs.VERSION }}-windows-setup.exe
           draft: false
+          fail_on_unmatched_files: true
           prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc') }}
