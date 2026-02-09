@@ -119,8 +119,8 @@ Page {
             Layout.fillWidth: true
             Layout.preferredHeight: 60
             color: Theme.errorBg
-            border.color: Theme.error
-            border.width: 1
+            border.color: "transparent"
+            border.width: 0
             radius: Theme.cardRadius
 
             RowLayout {
@@ -181,9 +181,22 @@ Page {
                     width: notesList.width
                     height: noteContent.implicitHeight + Theme.spacingMd * 2
                     color: noteDelegateMouseArea.containsMouse ? Theme.surfaceHover : Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     border.width: 1
                     radius: Theme.cardRadius
+
+                    opacity: 0
+                    Component.onCompleted: {
+                        entryAnim.start();
+                    }
+                    SequentialAnimation {
+                        id: entryAnim
+                        PauseAnimation { duration: noteDelegate.index * 30 }
+                        ParallelAnimation {
+                            NumberAnimation { target: noteDelegate; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                            NumberAnimation { target: noteDelegate; property: "y"; from: noteDelegate.y + 8; to: noteDelegate.y; duration: 200; easing.type: Easing.OutCubic }
+                        }
+                    }
 
                     Behavior on color {
                         ColorAnimation {
@@ -370,7 +383,7 @@ Page {
             Layout.fillWidth: true
             Layout.preferredHeight: 44
             color: Theme.surfaceAlt
-            border.color: Theme.border
+            border.color: Theme.isDark ? "#ffffff08" : "#00000008"
             border.width: 1
             radius: Theme.cardRadius
 

@@ -122,7 +122,7 @@ Page {
             Layout.fillWidth: true
             Layout.fillHeight: true
             color: Theme.surface
-            border.color: Theme.border
+            border.color: Theme.isDark ? "#ffffff08" : "#00000008"
             border.width: 1
             radius: Theme.cardRadius
 
@@ -163,8 +163,8 @@ Page {
             Layout.fillWidth: true
             Layout.preferredHeight: 60
             color: Theme.errorBg
-            border.color: Theme.error
-            border.width: 1
+            border.color: "transparent"
+            border.width: 0
             radius: Theme.cardRadius
 
             RowLayout {
@@ -200,7 +200,7 @@ Page {
             Layout.fillWidth: true
             Layout.fillHeight: true
             color: Theme.surface
-            border.color: Theme.border
+            border.color: Theme.isDark ? "#ffffff08" : "#00000008"
             border.width: 1
             radius: Theme.cardRadius
 
@@ -242,13 +242,26 @@ Page {
                     model: workflowModel.row_count()
 
                     Rectangle {
+                        id: workflowDelegate
+                        required property int index
                         property int repoIndex: index
                         Layout.fillWidth: true
                         Layout.preferredHeight: repoColumn.implicitHeight + Theme.spacingMd * 2
                         color: Theme.surface
-                        border.color: Theme.border
+                        border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                         border.width: 1
                         radius: Theme.cardRadius
+
+                        opacity: 0
+                        Component.onCompleted: wfEntryAnim.start()
+                        SequentialAnimation {
+                            id: wfEntryAnim
+                            PauseAnimation { duration: workflowDelegate.index * 30 }
+                            ParallelAnimation {
+                                NumberAnimation { target: workflowDelegate; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                                NumberAnimation { target: workflowDelegate; property: "y"; from: workflowDelegate.y + 8; to: workflowDelegate.y; duration: 200; easing.type: Easing.OutCubic }
+                            }
+                        }
 
                         ColumnLayout {
                             id: repoColumn

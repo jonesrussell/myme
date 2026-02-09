@@ -16,58 +16,75 @@ QtObject {
     // Animation duration for theme transitions
     property int transitionDuration: 200
 
-    // Color palette
-    property color background: isDark ? "#1a1a2e" : "#f8f9fa"
-    property color surface: isDark ? "#16213e" : "#ffffff"
-    property color surfaceAlt: isDark ? "#1f3460" : "#f1f3f5"
-    property color surfaceHover: isDark ? "#253a5e" : "#e9ecef"
+    // === Typography (Outfit variable font) ===
+    property FontLoader outfitFont: FontLoader {
+        source: "fonts/Outfit-Regular.ttf"
+    }
 
-    property color text: isDark ? "#e4e6eb" : "#212529"
-    property color textSecondary: isDark ? "#a8a8b3" : "#6c757d"
-    property color textMuted: isDark ? "#6c6c7a" : "#adb5bd"
+    readonly property string fontFamily: outfitFont.status === FontLoader.Ready ? outfitFont.name : "Segoe UI"
+    readonly property string fontFamilyMedium: fontFamily
+    readonly property string fontFamilyBold: fontFamily
 
-    property color border: isDark ? "#2d3a5c" : "#dee2e6"
-    property color borderLight: isDark ? "#252f4a" : "#e9ecef"
+    // === Warm Forge Color Palette ===
 
-    property color primary: isDark ? "#6c63ff" : "#5c5ce0"
-    property color primaryHover: isDark ? "#7d75ff" : "#4a4acf"
-    property color primaryText: "#ffffff"
+    // Backgrounds
+    property color background: isDark ? "#141414" : "#faf8f5"
+    property color surface: isDark ? "#1c1c1c" : "#ffffff"
+    property color surfaceAlt: isDark ? "#242424" : "#f5f2ed"
+    property color surfaceHover: isDark ? "#2a2a2a" : "#ede8e0"
 
-    property color success: isDark ? "#4ade80" : "#22c55e"
-    property color successBg: isDark ? "#1a3a1a" : "#E8F5E9"
-    property color warning: isDark ? "#fbbf24" : "#f59e0b"
-    property color warningBg: isDark ? "#3a3a1a" : "#FFF8E1"
-    property color error: isDark ? "#f87171" : "#ef4444"
-    property color errorBg: isDark ? "#3a1a1a" : "#FFEBEE"
-    property color info: isDark ? "#60a5fa" : "#3b82f6"
-    property color infoBg: isDark ? "#1a2a3a" : "#E3F2FD"
+    // Text
+    property color text: isDark ? "#e8e4de" : "#1a1a1a"
+    property color textSecondary: isDark ? "#a8a29e" : "#6c757d"
+    property color textMuted: isDark ? "#6b6560" : "#adb5bd"
+
+    // Primary (Amber/Gold)
+    property color primary: isDark ? "#e5a54b" : "#c08832"
+    property color primaryHover: isDark ? "#d4952f" : "#a87528"
+    property color primaryText: isDark ? "#141414" : "#ffffff"
+    property color primaryGlow: isDark ? "#e5a54b40" : "#c0883240"
+
+    // Borders
+    property color border: isDark ? "#2a2a2a" : "#e5e0d8"
+    property color borderLight: isDark ? "#333333" : "#ede8e0"
+
+    // Semantic colors
+    property color success: "#5bb98c"
+    property color successBg: isDark ? "#1a2e22" : "#e8f5ed"
+    property color warning: "#e5a54b"
+    property color warningBg: isDark ? "#2e2518" : "#fef7e8"
+    property color error: "#e57373"
+    property color errorBg: isDark ? "#2e1a1a" : "#fdeaea"
+    property color info: "#64b5f6"
+    property color infoBg: isDark ? "#1a222e" : "#e8f0fe"
 
     // Sidebar specific
-    property color sidebarBg: isDark ? "#0f0f23" : "#f8f9fa"
-    property color sidebarHover: isDark ? "#1a1a3e" : "#e9ecef"
-    property color sidebarActive: isDark ? "#252545" : "#e2e4e8"
-    property color sidebarBorder: isDark ? "#1a1a3e" : "#e9ecef"
+    property color sidebarBg: isDark ? "#111111" : "#f0ece6"
+    property color sidebarHover: isDark ? "#1a1a1a" : "#e5e0d8"
+    property color sidebarActive: isDark ? "#252525" : "#e0dbd3"
+    property color sidebarBorder: isDark ? "#1a1a1a" : "#e5e0d8"
+    property color sidebarActiveIndicator: isDark ? "#e5a54b" : "#c08832"
 
     // Card styling
     property color cardBg: surface
     property color cardBorder: border
-    property int cardRadius: 8
-    property int cardPadding: 16
+    property int cardRadius: 10
+    property int cardPadding: 20
 
     // Input styling
-    property color inputBg: isDark ? "#1f3460" : "#ffffff"
-    property color inputBorder: isDark ? "#2d3a5c" : "#ced4da"
+    property color inputBg: isDark ? "#242424" : "#ffffff"
+    property color inputBorder: isDark ? "#333333" : "#d5d0c8"
     property color inputFocus: primary
-    property int inputRadius: 6
+    property int inputRadius: 8
 
     // Button styling
-    property int buttonRadius: 6
+    property int buttonRadius: 8
     property int buttonPadding: 12
 
-    // Shadows (simplified for QML)
-    property color shadowColor: isDark ? "#00000080" : "#00000020"
+    // Shadows
+    property color shadowColor: isDark ? "#00000080" : "#00000015"
 
-    // Typography
+    // Typography sizes
     property int fontSizeSmall: 12
     property int fontSizeNormal: 14
     property int fontSizeMedium: 16
@@ -84,43 +101,54 @@ QtObject {
 
     // Behavior for smooth color transitions
     Behavior on background {
-        ColorAnimation {
-            duration: transitionDuration
-        }
+        ColorAnimation { duration: transitionDuration }
     }
     Behavior on surface {
-        ColorAnimation {
-            duration: transitionDuration
-        }
+        ColorAnimation { duration: transitionDuration }
     }
     Behavior on surfaceAlt {
-        ColorAnimation {
-            duration: transitionDuration
-        }
+        ColorAnimation { duration: transitionDuration }
+    }
+    Behavior on surfaceHover {
+        ColorAnimation { duration: transitionDuration }
     }
     Behavior on text {
-        ColorAnimation {
-            duration: transitionDuration
-        }
+        ColorAnimation { duration: transitionDuration }
     }
     Behavior on textSecondary {
-        ColorAnimation {
-            duration: transitionDuration
-        }
+        ColorAnimation { duration: transitionDuration }
+    }
+    Behavior on textMuted {
+        ColorAnimation { duration: transitionDuration }
     }
     Behavior on border {
-        ColorAnimation {
-            duration: transitionDuration
-        }
+        ColorAnimation { duration: transitionDuration }
+    }
+    Behavior on borderLight {
+        ColorAnimation { duration: transitionDuration }
     }
     Behavior on sidebarBg {
-        ColorAnimation {
-            duration: transitionDuration
-        }
+        ColorAnimation { duration: transitionDuration }
+    }
+    Behavior on sidebarHover {
+        ColorAnimation { duration: transitionDuration }
+    }
+    Behavior on sidebarActive {
+        ColorAnimation { duration: transitionDuration }
     }
     Behavior on primary {
-        ColorAnimation {
-            duration: transitionDuration
-        }
+        ColorAnimation { duration: transitionDuration }
+    }
+    Behavior on primaryHover {
+        ColorAnimation { duration: transitionDuration }
+    }
+    Behavior on primaryText {
+        ColorAnimation { duration: transitionDuration }
+    }
+    Behavior on cardBg {
+        ColorAnimation { duration: transitionDuration }
+    }
+    Behavior on inputBg {
+        ColorAnimation { duration: transitionDuration }
     }
 }

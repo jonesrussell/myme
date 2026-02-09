@@ -153,12 +153,25 @@ Page {
             spacing: Theme.spacingSm
 
             delegate: Rectangle {
+                id: messageDelegate
+                required property int index
                 width: messageList.width
                 height: 80
                 radius: Theme.cardRadius
                 color: Theme.surface
-                border.color: Theme.border
+                border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                 border.width: 1
+
+                opacity: 0
+                Component.onCompleted: msgEntryAnim.start()
+                SequentialAnimation {
+                    id: msgEntryAnim
+                    PauseAnimation { duration: messageDelegate.index * 30 }
+                    ParallelAnimation {
+                        NumberAnimation { target: messageDelegate; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                        NumberAnimation { target: messageDelegate; property: "y"; from: messageDelegate.y + 8; to: messageDelegate.y; duration: 200; easing.type: Easing.OutCubic }
+                    }
+                }
 
                 property var messageData: {
                     try {
@@ -274,7 +287,8 @@ Page {
         height: 50
         radius: Theme.cardRadius
         color: Theme.error + "20"
-        border.color: Theme.error
+        border.color: "transparent"
+        border.width: 0
         visible: gmailModel.error_message !== ""
 
         RowLayout {

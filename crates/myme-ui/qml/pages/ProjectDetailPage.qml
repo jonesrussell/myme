@@ -20,12 +20,12 @@ Page {
 
     // Kanban columns configuration
     readonly property var columns: [
-        { key: "backlog", label: "Backlog", color: "#9e9e9e" },
-        { key: "todo", label: "Todo", color: "#2196f3" },
-        { key: "inprogress", label: "In Progress", color: "#ff9800" },
-        { key: "blocked", label: "Blocked", color: "#f44336" },
-        { key: "review", label: "Review", color: "#9c27b0" },
-        { key: "done", label: "Done", color: "#4caf50" }
+        { key: "backlog", label: "Backlog", color: "#8a8580" },
+        { key: "todo", label: "Todo", color: "#64b5f6" },
+        { key: "inprogress", label: "In Progress", color: "#e5a54b" },
+        { key: "blocked", label: "Blocked", color: "#e57373" },
+        { key: "review", label: "Review", color: "#b39ddb" },
+        { key: "done", label: "Done", color: "#5bb98c" }
     ]
 
     // Track the currently dragged task
@@ -117,6 +117,7 @@ Page {
 
             Label {
                 text: projectName
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeLarge
                 font.bold: true
                 color: Theme.text
@@ -239,6 +240,7 @@ Page {
 
                 Label {
                     text: kanbanModel.error_message
+                    font.family: Theme.fontFamily
                     color: Theme.error
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
@@ -343,6 +345,7 @@ Page {
 
                                 Label {
                                     text: columnContainer.columnLabel
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeMedium
                                     font.bold: true
                                     color: Theme.text
@@ -361,6 +364,7 @@ Page {
                                         id: countLabel
                                         anchors.centerIn: parent
                                         text: kanbanModel.count_by_status(columnContainer.columnKey)
+                                        font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeSmall
                                         font.bold: true
                                         color: columnContainer.columnColor
@@ -494,6 +498,7 @@ Page {
 
                                             Label {
                                                 text: "#" + kanbanModel.get_issue_number(taskCard.taskIndex)
+                                                font.family: Theme.fontFamily
                                                 font.pixelSize: Theme.fontSizeSmall
                                                 font.bold: true
                                                 color: columnContainer.columnColor
@@ -541,6 +546,7 @@ Page {
                                                 } catch (e) { return false; }
                                             }
                                             text: kanbanModel.get_repo_id(taskCard.taskIndex)
+                                            font.family: Theme.fontFamily
                                             font.pixelSize: Theme.fontSizeSmall - 1
                                             color: Theme.textMuted
                                             Layout.fillWidth: true
@@ -550,6 +556,7 @@ Page {
                                         // Task title
                                         Label {
                                             text: kanbanModel.get_title(taskCard.taskIndex)
+                                            font.family: Theme.fontFamily
                                             font.pixelSize: Theme.fontSizeNormal
                                             color: Theme.text
                                             Layout.fillWidth: true
@@ -570,6 +577,7 @@ Page {
                                 Label {
                                     anchors.centerIn: parent
                                     text: "No tasks"
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                     color: Theme.textMuted
                                 }
@@ -616,6 +624,7 @@ Page {
             Label {
                 anchors.centerIn: parent
                 text: "New Task"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeMedium
                 font.bold: true
                 color: Theme.text
@@ -661,6 +670,7 @@ Page {
 
             Label {
                 text: "Title:"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeNormal
                 color: Theme.text
             }
@@ -689,6 +699,7 @@ Page {
 
             Label {
                 text: "Description:"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeNormal
                 color: Theme.text
             }
@@ -722,6 +733,7 @@ Page {
             Label {
                 text: "Repo (if multiple):"
                 visible: newTaskRepoCombo.count > 1
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeNormal
                 color: Theme.text
             }
@@ -788,6 +800,7 @@ Page {
 
             Label {
                 text: "Status:"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeNormal
                 color: Theme.text
             }
@@ -908,6 +921,7 @@ Page {
 
                 Label {
                     text: "Edit Task"
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeMedium
                     font.bold: true
                     color: Theme.text
@@ -968,6 +982,7 @@ Page {
 
             Label {
                 text: "Title:"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeNormal
                 color: Theme.text
             }
@@ -996,6 +1011,7 @@ Page {
 
             Label {
                 text: "Description:"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeNormal
                 color: Theme.text
             }
@@ -1066,6 +1082,7 @@ Page {
             Label {
                 anchors.centerIn: parent
                 text: "Add Repo"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeMedium
                 font.bold: true
                 color: Theme.text
@@ -1089,6 +1106,7 @@ Page {
 
             Label {
                 text: "GitHub repository (owner/repo):"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeNormal
                 color: Theme.text
             }

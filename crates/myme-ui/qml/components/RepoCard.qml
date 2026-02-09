@@ -12,11 +12,23 @@ Rectangle {
     implicitHeight: cardContent.implicitHeight + Theme.spacingMd * 2
     radius: Theme.cardRadius
     color: cardMouseArea.containsMouse ? Theme.surfaceHover : Theme.surface
-    border.color: cardMouseArea.containsMouse ? Theme.primary : Theme.border
+    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
     border.width: 1
 
+    scale: cardMouseArea.containsMouse ? 1.01 : 1.0
+    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
     Behavior on color { ColorAnimation { duration: 100 } }
-    Behavior on border.color { ColorAnimation { duration: 100 } }
+
+    opacity: 0
+    Component.onCompleted: cardEntryAnim.start()
+    SequentialAnimation {
+        id: cardEntryAnim
+        PauseAnimation { duration: card.index * 30 }
+        ParallelAnimation {
+            NumberAnimation { target: card; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+            NumberAnimation { target: card; property: "y"; from: card.y + 8; to: card.y; duration: 200; easing.type: Easing.OutCubic }
+        }
+    }
 
     MouseArea {
         id: cardMouseArea

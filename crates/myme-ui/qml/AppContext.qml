@@ -9,6 +9,9 @@ QtObject {
     property var gmailModel: null
     property var calendarModel: null
 
+    property string currentPage: "WelcomePage"
+    property bool sidebarExpanded: true
+
     function goToTopLevelPage(url) {
         if (pageStack) {
             pageStack.clear()

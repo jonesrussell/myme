@@ -8,6 +8,7 @@
         <file>crates/myme-ui/qml/Icons.qml</file>
         <file>crates/myme-ui/qml/qmldir</file>
         <file>crates/myme-ui/qml/fonts/Phosphor.ttf</file>
+        <file>crates/myme-ui/qml/fonts/Outfit-Regular.ttf</file>
         <file>crates/myme-ui/qml/pages/CalendarPage.qml</file>
         <file>crates/myme-ui/qml/pages/WelcomePage.qml</file>
         <file>crates/myme-ui/qml/pages/DevToolsPage.qml</file>
@@ -20,6 +21,7 @@
         <file>crates/myme-ui/qml/pages/SettingsPage.qml</file>
         <file>crates/myme-ui/qml/pages/WeatherPage.qml</file>
         <file>crates/myme-ui/qml/components/qmldir</file>
+        <file>crates/myme-ui/qml/components/Sidebar.qml</file>
         <file>crates/myme-ui/qml/components/WeatherCompact.qml</file>
         <file>crates/myme-ui/qml/components/WeatherWidget.qml</file>
         <file>crates/myme-ui/qml/components/RepoCard.qml</file>

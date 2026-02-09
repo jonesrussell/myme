@@ -105,8 +105,8 @@ Page {
                 Layout.fillWidth: true
                 Layout.preferredHeight: errorContent.implicitHeight + Theme.spacingMd * 2
                 color: Theme.error + "20"
-                border.color: Theme.error
-                border.width: 1
+                border.color: "transparent"
+                border.width: 0
                 radius: Theme.cardRadius
                 visible: weatherModel.error_message !== ""
 
@@ -138,8 +138,8 @@ Page {
                 Layout.fillWidth: true
                 Layout.preferredHeight: staleContent.implicitHeight + Theme.spacingMd * 2
                 color: Theme.warning + "20"
-                border.color: Theme.warning
-                border.width: 1
+                border.color: "transparent"
+                border.width: 0
                 radius: Theme.cardRadius
                 visible: weatherModel.is_stale && weatherModel.has_data
 
@@ -177,7 +177,7 @@ Page {
                 Layout.fillWidth: true
                 Layout.preferredHeight: currentContent.implicitHeight + Theme.spacingMd * 2
                 color: Theme.surface
-                border.color: Theme.border
+                border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                 border.width: 1
                 radius: Theme.cardRadius
                 visible: weatherModel.has_data
@@ -295,7 +295,7 @@ Page {
                     Rectangle {
                         Layout.fillWidth: true
                         height: 1
-                        color: Theme.border
+                        color: Theme.borderLight
                     }
 
                     // Details grid
@@ -391,7 +391,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 56
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     border.width: 1
                     radius: Theme.cardRadius
 
@@ -498,7 +498,7 @@ Page {
                             height: 90
                             radius: Theme.cardRadius
                             color: Theme.surface
-                            border.color: Theme.border
+                            border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                             border.width: 1
 
                             property int hourIndex: index
@@ -568,7 +568,7 @@ Page {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 200
                 color: Theme.surface
-                border.color: Theme.border
+                border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                 border.width: 1
                 radius: Theme.cardRadius
                 visible: !weatherModel.has_data && !weatherModel.loading

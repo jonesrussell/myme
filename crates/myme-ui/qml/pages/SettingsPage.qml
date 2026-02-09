@@ -47,6 +47,7 @@ Page {
 
             Label {
                 text: "Settings"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeLarge
                 font.bold: true
                 color: Theme.text
@@ -70,7 +71,7 @@ Page {
                 Layout.fillWidth: true
                 Layout.preferredHeight: appearanceContent.implicitHeight + Theme.spacingMd * 2
                 color: Theme.surface
-                border.color: Theme.border
+                border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                 border.width: 1
                 radius: Theme.cardRadius
 
@@ -82,6 +83,7 @@ Page {
 
                     Label {
                         text: "Appearance"
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeMedium
                         font.bold: true
                         color: Theme.text
@@ -89,6 +91,7 @@ Page {
 
                     Label {
                         text: "Choose how MyMe looks to you. Select a single theme, or sync with your system settings."
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeNormal
                         color: Theme.textSecondary
                         wrapMode: Text.WordWrap
@@ -125,8 +128,8 @@ Page {
                                     width: 40
                                     height: 40
                                     radius: 20
-                                    color: "#f8f9fa"
-                                    border.color: "#dee2e6"
+                                    color: "#faf8f5"
+                                    border.color: "#e5e0d8"
                                     border.width: 1
 
                                     Text {
@@ -134,12 +137,13 @@ Page {
                                         text: Icons.sun
                                         font.family: Icons.family
                                         font.pixelSize: 20
-                                        color: "#f59e0b"
+                                        color: "#c08832"
                                     }
                                 }
 
                                 Label {
                                     text: "Light"
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeNormal
                                     font.bold: Theme.mode === "light"
                                     color: Theme.text
@@ -172,8 +176,8 @@ Page {
                                     width: 40
                                     height: 40
                                     radius: 20
-                                    color: "#1a1a2e"
-                                    border.color: "#2d3a5c"
+                                    color: "#141414"
+                                    border.color: "#2a2a2a"
                                     border.width: 1
 
                                     Text {
@@ -181,12 +185,13 @@ Page {
                                         text: Icons.moon
                                         font.family: Icons.family
                                         font.pixelSize: 20
-                                        color: "#a5b4fc"
+                                        color: "#e5a54b"
                                     }
                                 }
 
                                 Label {
                                     text: "Dark"
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeNormal
                                     font.bold: Theme.mode === "dark"
                                     color: Theme.text
@@ -223,14 +228,14 @@ Page {
                                         orientation: Gradient.Horizontal
                                         GradientStop {
                                             position: 0.0
-                                            color: "#f8f9fa"
+                                            color: "#faf8f5"
                                         }
                                         GradientStop {
                                             position: 1.0
-                                            color: "#1a1a2e"
+                                            color: "#141414"
                                         }
                                     }
-                                    border.color: "#888"
+                                    border.color: "#6b6560"
                                     border.width: 1
 
                                     Text {
@@ -238,12 +243,13 @@ Page {
                                         text: Icons.circleHalf
                                         font.family: Icons.family
                                         font.pixelSize: 20
-                                        color: "#888"
+                                        color: "#6b6560"
                                     }
                                 }
 
                                 Label {
                                     text: "Auto"
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeNormal
                                     font.bold: Theme.mode === "auto"
                                     color: Theme.text
@@ -271,6 +277,7 @@ Page {
 
                             Label {
                                 text: Theme.mode === "auto" ? "Currently using " + (Theme.isDark ? "dark" : "light") + " theme (synced with system)" : "Using " + Theme.mode + " theme"
+                                font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.textSecondary
                             }
@@ -284,7 +291,7 @@ Page {
                 Layout.fillWidth: true
                 Layout.preferredHeight: weatherContent.implicitHeight + Theme.spacingMd * 2
                 color: Theme.surface
-                border.color: Theme.border
+                border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                 border.width: 1
                 radius: Theme.cardRadius
 
@@ -298,6 +305,7 @@ Page {
 
                     Label {
                         text: "Weather"
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeMedium
                         font.bold: true
                         color: Theme.text
@@ -305,6 +313,7 @@ Page {
 
                     Label {
                         text: "Configure how weather information is displayed."
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeNormal
                         color: Theme.textSecondary
                         wrapMode: Text.WordWrap
@@ -314,6 +323,7 @@ Page {
                     // Temperature unit label
                     Label {
                         text: "Temperature Unit"
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeNormal
                         color: Theme.text
                         Layout.topMargin: Theme.spacingSm
@@ -353,6 +363,7 @@ Page {
 
                                 Label {
                                     text: "Auto"
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.bold: parent.parent.parent.parent.parent.temperatureUnit === "auto"
                                     color: Theme.text
@@ -382,6 +393,7 @@ Page {
 
                                 Label {
                                     text: "°C"
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: 20
                                     font.bold: true
                                     color: Theme.textSecondary
@@ -390,6 +402,7 @@ Page {
 
                                 Label {
                                     text: "Celsius"
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.bold: parent.parent.parent.parent.parent.temperatureUnit === "celsius"
                                     color: Theme.text
@@ -419,6 +432,7 @@ Page {
 
                                 Label {
                                     text: "°F"
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: 20
                                     font.bold: true
                                     color: Theme.textSecondary
@@ -427,6 +441,7 @@ Page {
 
                                 Label {
                                     text: "Fahrenheit"
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.bold: parent.parent.parent.parent.parent.temperatureUnit === "fahrenheit"
                                     color: Theme.text
@@ -461,6 +476,7 @@ Page {
 
                             Label {
                                 text: "Auto detects your preferred unit from system locale"
+                                font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.textSecondary
                             }
@@ -474,7 +490,7 @@ Page {
                 Layout.fillWidth: true
                 Layout.preferredHeight: accountsContent.implicitHeight + Theme.spacingMd * 2
                 color: Theme.surface
-                border.color: Theme.border
+                border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                 border.width: 1
                 radius: Theme.cardRadius
 
@@ -486,6 +502,7 @@ Page {
 
                     Label {
                         text: "Connected Accounts"
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeMedium
                         font.bold: true
                         color: Theme.text
@@ -493,6 +510,7 @@ Page {
 
                     Label {
                         text: "Connect your accounts to enable additional features like project management and repository access."
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeNormal
                         color: Theme.textSecondary
                         wrapMode: Text.WordWrap
@@ -537,6 +555,7 @@ Page {
 
                                 Label {
                                     text: "GitHub"
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeNormal
                                     font.bold: true
                                     color: Theme.text
@@ -544,6 +563,7 @@ Page {
 
                                 Label {
                                     text: authModel.authenticated ? "Connected" : "Not connected"
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                     color: authModel.authenticated ? Theme.success : Theme.textSecondary
                                 }
@@ -569,6 +589,7 @@ Page {
 
                                 contentItem: Label {
                                     text: parent.text
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.bold: true
                                     color: {
@@ -595,6 +616,7 @@ Page {
                     Label {
                         visible: authModel.error_message !== ""
                         text: authModel.error_message
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.error
                         wrapMode: Text.WordWrap
@@ -641,6 +663,7 @@ Page {
 
                                 Label {
                                     text: "Google"
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeNormal
                                     font.bold: true
                                     color: Theme.text
@@ -648,6 +671,7 @@ Page {
 
                                 Label {
                                     text: googleAuthModel.authenticated ? (googleAuthModel.user_email || "Connected") : "Not connected"
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                     color: googleAuthModel.authenticated ? Theme.success : Theme.textSecondary
                                 }
@@ -673,6 +697,7 @@ Page {
 
                                 contentItem: Label {
                                     text: parent.text
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.bold: true
                                     color: {
@@ -699,6 +724,7 @@ Page {
                     Label {
                         visible: googleAuthModel.error_message !== ""
                         text: googleAuthModel.error_message
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.error
                         wrapMode: Text.WordWrap
@@ -708,6 +734,7 @@ Page {
                     // Google setup helper
                     Label {
                         text: "Add Google Cloud credentials (client_id and client_secret) to config.toml before connecting. Create OAuth 2.0 credentials at console.cloud.google.com."
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.textSecondary
                         wrapMode: Text.WordWrap
@@ -746,6 +773,7 @@ Page {
 
                                 Label {
                                     text: "GitHub enables project tracking and repository management"
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                     color: Theme.textSecondary
                                 }
@@ -755,6 +783,7 @@ Page {
                                 Item { width: Theme.fontSizeNormal + 4 }
                                 Label {
                                     text: "Google enables Gmail and Calendar integration"
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                     color: Theme.textSecondary
                                 }
@@ -769,7 +798,7 @@ Page {
                 Layout.fillWidth: true
                 Layout.preferredHeight: aboutContent.implicitHeight + Theme.spacingMd * 2
                 color: Theme.surface
-                border.color: Theme.border
+                border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                 border.width: 1
                 radius: Theme.cardRadius
 
@@ -781,6 +810,7 @@ Page {
 
                     Label {
                         text: "About"
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeMedium
                         font.bold: true
                         color: Theme.text
@@ -798,6 +828,7 @@ Page {
                             Label {
                                 anchors.centerIn: parent
                                 text: "M"
+                                font.family: Theme.fontFamily
                                 font.pixelSize: 32
                                 font.bold: true
                                 color: Theme.primaryText
@@ -809,6 +840,7 @@ Page {
 
                             Label {
                                 text: "MyMe"
+                                font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeLarge
                                 font.bold: true
                                 color: Theme.text
@@ -816,12 +848,14 @@ Page {
 
                             Label {
                                 text: "Personal Productivity & Dev Hub"
+                                font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeNormal
                                 color: Theme.textSecondary
                             }
 
                             Label {
                                 text: "Version 0.1.0"
+                                font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.textMuted
                             }
@@ -836,6 +870,7 @@ Page {
 
                     Label {
                         text: "Built with Rust, Qt/QML, and cxx-qt"
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.textSecondary
                     }

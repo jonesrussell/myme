@@ -4,15 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MyMe is a modular Rust desktop application using Qt/QML + Kirigami via cxx-qt that serves as a personal productivity and development hub. It integrates with external services (Godo note-taking app, GitHub, Google services) through a plugin-based architecture.
+MyMe is a modular Rust desktop application using Qt/QML via cxx-qt that serves as a personal productivity and development hub. It integrates with external services (Godo note-taking app, GitHub, Google services) through a plugin-based architecture.
 
-**Current Status**: Phase 3 complete (Google Gmail/Calendar Integration). Full Gmail and Calendar integration with offline SQLite caching, OAuth2 authentication via system keyring, and dashboard widgets. Test coverage now at 120+ tests.
+**Current Status**: "Warm Forge" UI redesign complete. Amber/gold theme, Outfit custom font, persistent sidebar navigation, dashboard with live widgets, softer card styling, staggered animations across all pages.
 
 ## Build Commands
 
 ### Prerequisites
 - Rust 2021 edition or later
-- Qt 6.10.1 (or 6.x) with Kirigami
+- Qt 6.10.1 (or 6.x)
 - CMake 3.16+
 - C++ compiler (Visual Studio 2019+ on Windows)
 
@@ -55,7 +55,7 @@ cargo test -p myme-services
 cargo test -p myme-ui
 
 # Test entire workspace (excludes myme-ui which requires Qt)
-cargo test -p myme-core -p myme-services -p myme-auth -p myme-integrations -p myme-gmail -p myme-calendar
+cargo test -p myme-core -p myme-services -p myme-auth -p myme-integrations -p myme-weather -p myme-gmail -p myme-calendar
 ```
 
 **Test Coverage:**
@@ -82,18 +82,19 @@ $env:QT_LOGGING_RULES="*.debug=true"
 
 ### Workspace Structure
 
-This is a Rust workspace with 7 member crates:
+This is a Rust workspace with 8 member crates:
 
 ```
 myme/
 ├── crates/
 │   ├── myme-core/          # Application lifecycle, config, plugin system
-│   ├── myme-ui/            # cxx-qt bridge, QML models (NoteModel, RepoModel, GmailModel, CalendarModel)
+│   ├── myme-ui/            # cxx-qt bridge, 16 QML models (NoteModel, RepoModel, GmailModel, etc.)
 │   ├── myme-services/      # HTTP API clients (Todo/Note API)
-│   ├── myme-auth/          # OAuth2 flows, secure token storage (Phase 2)
-│   ├── myme-integrations/  # GitHub API, Git operations (Phase 2)
-│   ├── myme-gmail/         # Gmail API client, SQLite cache (Phase 3)
-│   └── myme-calendar/      # Google Calendar API client, cache (Phase 3)
+│   ├── myme-auth/          # OAuth2 flows, secure token storage
+│   ├── myme-integrations/  # GitHub API, Git operations
+│   ├── myme-weather/       # Weather API with platform geolocation (WinRT/D-Bus)
+│   ├── myme-gmail/         # Gmail API client, SQLite cache
+│   └── myme-calendar/      # Google Calendar API client, cache
 ├── src/main.rs             # Rust binary entry point
 ├── qt-main/main.cpp        # C++ Qt application entry point
 └── qml.qrc                 # Qt resource file for QML
@@ -102,7 +103,7 @@ myme/
 ### Key Technologies
 
 - **Language**: Rust 2021 edition
-- **UI**: Qt 6.10.1 / QML / Kirigami
+- **UI**: Qt 6.10.1 / QML (QtQuick Controls 2 with custom Theme.qml)
 - **Bridge**: cxx-qt 0.8 (Rust ↔ Qt FFI with automatic codegen)
 - **Build**: CMake + Cargo
 - **Async**: tokio 1.42 with full features
@@ -164,6 +165,8 @@ myme/
 **myme-auth**: OAuth2 flows (`oauth.rs`, `github.rs`), secure token storage using system keyring (`storage.rs`). Dynamic port discovery (8080-8089) for OAuth callback.
 
 **myme-integrations**: GitHub API wrapper (`github/`), local Git operations using git2 (`git/`). Repository discovery and clone/pull with cancellation support.
+
+**myme-weather**: Weather data provider with platform-native geolocation. Uses WinRT Geolocation APIs on Windows (`windows` crate) and D-Bus location services on Linux (`zbus`). Includes weather cache and WeatherModel for QML.
 
 ### Data Flow: QML → Rust → API (Channel Pattern)
 
@@ -261,8 +264,10 @@ Default config is created automatically on first run. Configuration is loaded us
 1. Create `crates/myme-ui/qml/pages/NewPage.qml`
 2. Create corresponding QObject in `crates/myme-ui/src/models/new_model.rs`
 3. Use `#[cxx_qt::bridge]` macro and `#[qinvokable]` for methods
-4. Add navigation action in `Main.qml` drawer
-5. Wire up data model invokable methods in QML
+4. Register the model file in `crates/myme-ui/build.rs` (`.file("src/models/new_model.rs")`)
+5. Add the QML file to `qml.qrc`
+6. Add navigation action in `Main.qml` drawer
+7. Wire up data model invokable methods in QML
 
 ### Adding Authentication
 
@@ -273,16 +278,28 @@ Default config is created automatically on first run. Configuration is loaded us
 
 ## QML UI Patterns
 
-### Theme System
+### Theme System ("Warm Forge")
 - `Theme.qml` singleton in `crates/myme-ui/qml/` provides centralized colors/spacing
 - Pages import theme with `import ".."` to access `Theme.background`, `Theme.text`, etc.
 - Theme supports `light`, `dark`, `auto` modes via `Theme.mode` property
+- **Colors**: Amber/gold primary (`#e5a54b` dark, `#c08832` light), warm neutrals, dark-first
+- **Typography**: Outfit variable font (`fonts/Outfit-Regular.ttf`), loaded via single `FontLoader`; use `font.weight: Font.Bold` etc. for weight variants
+- **Cards**: `cardRadius: 10`, `cardPadding: 20`, `buttonRadius: 8`; near-invisible borders: `border.color: Theme.isDark ? "#ffffff08" : "#00000008"`
+- **Error banners**: Softer styling with `border.color: "transparent"` / `border.width: 0`
 - New QML files must be added to `qml.qrc` for bundling
 
-### Navigation Best Practices
-- Sidebar should be outside StackView (sibling in RowLayout) to prevent reload on page changes
-- Use `stackView.replace()` with `clip: true` and fade transitions to avoid visual glitches
-- Track current page with a property (e.g., `currentPage: "notes"`) for sidebar highlighting
+### Navigation — Persistent Sidebar
+- `Sidebar.qml` component: collapsible (220px expanded / 60px collapsed), 8 nav items
+- Sidebar is sibling of StackView in `RowLayout` (not inside StackView) to prevent reload on page changes
+- StackView uses slide-fade transitions (opacity 0->1 + x offset 20->0, 200ms OutCubic)
+- Track current page via `root.currentPage` and `AppContext.currentPage` for sidebar highlighting
+- Keyboard shortcuts: `Ctrl+1` through `Ctrl+8` for nav, `Ctrl+,` for Settings, `Ctrl+B` to toggle sidebar
+
+### Staggered List Animations
+- List delegates start `opacity: 0` and animate to 1 on `Component.onCompleted`
+- Stagger via `PauseAnimation { duration: index * 30 }` before fade
+- Subtle y shift (8px down -> 0) with `Easing.OutCubic`
+- Applied to: NotePage, GmailPage, CalendarPage, RepoCard, ProjectsPage, WorkflowsPage
 
 ### QML-Only Changes
 - QML changes don't require rebuild - just restart the application
@@ -296,9 +313,10 @@ Default config is created automatically on first run. Configuration is loaded us
 - qmlformat location: `/mnt/c/Qt/6.10.1/msvc2022_64/bin/qmlformat.exe -i <file>`
 
 ### QML Singletons
-- Theme/Icons defined in `crates/myme-ui/qml/Theme.qml` and `Icons.qml`
+- Theme/Icons/AppContext defined in `crates/myme-ui/qml/Theme.qml`, `Icons.qml`, `AppContext.qml`
 - Registered in `crates/myme-ui/qml/qmldir`
-- Phosphor Icons font used for UI icons (`crates/myme-ui/qml/fonts/Phosphor.ttf`)
+- Phosphor Icons font for UI icons (`crates/myme-ui/qml/fonts/Phosphor.ttf`)
+- Outfit variable font for text (`crates/myme-ui/qml/fonts/Outfit-Regular.ttf`)
 
 ### cxx-qt Invokable Naming
 - cxx-qt exposes Rust methods to QML using the **exact snake_case names** from Rust (no camelCase conversion)
@@ -356,6 +374,11 @@ Tools follow a consistent pattern: add entry to `tools` array, create `Component
 - [crates/myme-calendar/src/client.rs](crates/myme-calendar/src/client.rs) - Google Calendar API client
 - [crates/myme-calendar/src/cache.rs](crates/myme-calendar/src/cache.rs) - SQLite offline cache for events
 - [crates/myme-calendar/src/types.rs](crates/myme-calendar/src/types.rs) - Event, Calendar, and API response types
+
+### Weather
+- [crates/myme-weather/src/provider.rs](crates/myme-weather/src/provider.rs) - Weather data provider
+- [crates/myme-weather/src/cache.rs](crates/myme-weather/src/cache.rs) - Weather data cache
+- [crates/myme-weather/src/location.rs](crates/myme-weather/src/location.rs) - Platform geolocation (WinRT/D-Bus)
 
 ### Integration Tests
 - [crates/myme-services/tests/todo_integration.rs](crates/myme-services/tests/todo_integration.rs) - TodoClient mock tests
@@ -424,7 +447,7 @@ client_secret = "YOUR_CLIENT_SECRET"
 3. Use WSL2 for Linux environment
 4. See [WINDOWS_BUILD_FIX.md](WINDOWS_BUILD_FIX.md) for details
 
-**Qt Path**: CMakeLists.txt currently hardcodes Qt path to `C:/Qt/6.10.1/msvc2022_64`. Update this if your Qt installation differs.
+**Qt Path**: CMakeLists.txt auto-detects Qt via `find_package(Qt6)`. Ensure Qt is on your PATH or set `CMAKE_PREFIX_PATH`.
 
 ### Threading Model
 
@@ -476,6 +499,13 @@ $env:RUST_LOG="debug" # Adds detailed operation internals
 - Retryable: Timeouts, 5xx errors, 429 rate limit
 - Not retried: 4xx client errors (bad requests, auth failures)
 
+## CI/CD & Build Scripts
+
+- `.github/workflows/release.yml` - Automated Windows releases on version tags (`v*`)
+- `build.ps1` - Rust-only build with VS Developer environment auto-detection
+- `build-qt.ps1` - Full build (Rust + CMake + windeployqt)
+- `installer/myme.iss` - Inno Setup 6 installer script for Windows
+
 ## Phase Roadmap
 
 **Phase 1** (Complete): Foundation + Godo Integration
@@ -503,6 +533,19 @@ $env:RUST_LOG="debug" # Adds detailed operation internals
 - GmailPage and CalendarPage QML pages
 - Dashboard widgets (EmailWidget, CalendarWidget)
 - Unified Google account management in Settings
+
+**Warm Forge UI Redesign** (Complete): Cohesive visual identity
+- Amber/gold primary color replacing generic purple, warm neutral palette
+- Outfit variable font (Google Fonts, SIL OFL license)
+- Persistent collapsible sidebar replacing mobile hamburger drawer
+- Dashboard WelcomePage with time-based greeting, stat cards, widget grid
+- Softer card borders, refined error banners, staggered list animations
+- Keyboard shortcuts (Ctrl+1-8 nav, Ctrl+B sidebar toggle, Ctrl+, settings)
+- 4 new files + 20 modified QML files, no Rust changes
+
+**In Progress**: GitHub Workflows Integration
+- WorkflowModel and WorkflowsPage for GitHub Actions management
+- AppContext QML singleton for global app state
 
 **Phase 4** (Planned): Project Scaffolding + Plugin System
 - Project templates (Laravel, Drupal, Node.js), scaffold wizard UI

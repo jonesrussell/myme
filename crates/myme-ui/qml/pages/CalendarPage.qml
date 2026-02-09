@@ -164,12 +164,25 @@ Page {
                 model: calendarModel.event_count
 
                 Rectangle {
+                    id: eventDelegate
+                    required property int index
                     Layout.fillWidth: true
                     height: eventContent.implicitHeight + Theme.spacingMd * 2
                     radius: Theme.cardRadius
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     border.width: 1
+
+                    opacity: 0
+                    Component.onCompleted: eventEntryAnim.start()
+                    SequentialAnimation {
+                        id: eventEntryAnim
+                        PauseAnimation { duration: eventDelegate.index * 30 }
+                        ParallelAnimation {
+                            NumberAnimation { target: eventDelegate; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                            NumberAnimation { target: eventDelegate; property: "y"; from: eventDelegate.y + 8; to: eventDelegate.y; duration: 200; easing.type: Easing.OutCubic }
+                        }
+                    }
 
                     property var eventData: {
                         try {
@@ -346,7 +359,8 @@ Page {
         height: 50
         radius: Theme.cardRadius
         color: Theme.error + "20"
-        border.color: Theme.error
+        border.color: "transparent"
+        border.width: 0
         visible: calendarModel.error_message !== ""
 
         RowLayout {

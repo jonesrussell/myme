@@ -76,12 +76,12 @@ Page {
 
     // Status bar colors for task distribution
     readonly property var statusColors: ({
-        backlog: "#9e9e9e",
-        todo: "#2196f3",
-        inprogress: "#ff9800",
-        blocked: "#f44336",
-        review: "#9c27b0",
-        done: "#4caf50"
+        backlog: "#8a8580",
+        todo: "#64b5f6",
+        inprogress: "#e5a54b",
+        blocked: "#e57373",
+        review: "#b39ddb",
+        done: "#5bb98c"
     })
 
     header: ToolBar {
@@ -95,6 +95,7 @@ Page {
 
             Label {
                 text: "Projects"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeLarge
                 font.bold: true
                 color: Theme.text
@@ -216,6 +217,7 @@ Page {
 
                 Label {
                     text: "GitHub Authentication Required"
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeLarge
                     font.bold: true
                     color: Theme.text
@@ -224,6 +226,7 @@ Page {
 
                 Label {
                     text: "Connect your GitHub account to manage project tasks"
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeNormal
                     color: Theme.textSecondary
                     Layout.alignment: Qt.AlignHCenter
@@ -260,6 +263,7 @@ Page {
                         Label {
                             id: authLabel
                             text: authModel.loading ? "Connecting..." : "Connect GitHub"
+                            font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeNormal
                             font.bold: true
                             color: Theme.primaryText
@@ -280,6 +284,7 @@ Page {
                 Label {
                     visible: authModel.error_message !== ""
                     text: authModel.error_message
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeSmall
                     color: Theme.error
                     wrapMode: Text.WordWrap
@@ -313,6 +318,7 @@ Page {
 
                 Label {
                     text: projectModel.error_message
+                    font.family: Theme.fontFamily
                     color: Theme.error
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
@@ -370,15 +376,27 @@ Page {
                         Layout.minimumWidth: 300
                         Layout.maximumWidth: 450
                         color: cardMouseArea.containsMouse ? Theme.surfaceHover : Theme.surface
-                        border.color: cardMouseArea.containsMouse ? Theme.primary : Theme.border
+                        border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                         border.width: 1
                         radius: Theme.cardRadius
+                        scale: cardMouseArea.containsMouse ? 1.01 : 1.0
 
                         Behavior on color {
                             ColorAnimation { duration: 100 }
                         }
-                        Behavior on border.color {
-                            ColorAnimation { duration: 100 }
+                        Behavior on scale {
+                            NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+                        }
+
+                        opacity: 0
+                        Component.onCompleted: projEntryAnim.start()
+                        SequentialAnimation {
+                            id: projEntryAnim
+                            PauseAnimation { duration: projectCard.index * 30 }
+                            ParallelAnimation {
+                                NumberAnimation { target: projectCard; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                                NumberAnimation { target: projectCard; property: "y"; from: projectCard.y + 8; to: projectCard.y; duration: 200; easing.type: Easing.OutCubic }
+                            }
                         }
 
                         MouseArea {
@@ -418,6 +436,7 @@ Page {
 
                                 Label {
                                     text: projectModel.get_project_name(projectCard.index)
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeMedium
                                     font.bold: true
                                     color: Theme.text
@@ -502,6 +521,7 @@ Page {
                                         return (arr || []).join(", ");
                                     } catch (e) { return ""; }
                                 }
+                                font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.textSecondary
                                 Layout.fillWidth: true
@@ -511,6 +531,7 @@ Page {
                             // Description
                             Label {
                                 text: projectModel.get_description(projectCard.index) || "No description"
+                                font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeNormal
                                 color: Theme.textSecondary
                                 Layout.fillWidth: true
@@ -613,6 +634,7 @@ Page {
 
                                 Label {
                                     text: parent.total + " tasks"
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                     color: Theme.textMuted
                                 }
@@ -630,6 +652,7 @@ Page {
                                         id: doneLabel
                                         anchors.centerIn: parent
                                         text: parent.parent.percentDone + "% done"
+                                        font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeSmall
                                         font.bold: true
                                         color: statusColors.done
@@ -661,6 +684,7 @@ Page {
 
                         Label {
                             text: "No projects yet"
+                            font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeLarge
                             font.bold: true
                             color: Theme.text
@@ -669,6 +693,7 @@ Page {
 
                         Label {
                             text: "Click + to create your first project"
+                            font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeNormal
                             color: Theme.textSecondary
                             Layout.alignment: Qt.AlignHCenter
@@ -712,6 +737,7 @@ Page {
             Label {
                 anchors.centerIn: parent
                 text: "Create Project"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeMedium
                 font.bold: true
                 color: Theme.text
@@ -737,6 +763,7 @@ Page {
 
             Label {
                 text: "Project Name:"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeNormal
                 color: Theme.text
             }
@@ -769,6 +796,7 @@ Page {
 
             Label {
                 text: "Description (optional):"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeNormal
                 color: Theme.text
             }
@@ -801,6 +829,7 @@ Page {
 
             Label {
                 text: "Add GitHub repos in the project detail view"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.textMuted
             }
@@ -858,6 +887,7 @@ Page {
 
                 Label {
                     text: "Remove Project"
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeMedium
                     font.bold: true
                     color: Theme.error
@@ -884,6 +914,7 @@ Page {
 
             Label {
                 text: "Are you sure you want to remove this project?"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeNormal
                 color: Theme.text
                 wrapMode: Text.WordWrap
@@ -892,6 +923,7 @@ Page {
 
             Label {
                 text: removeDialog.projectName
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeMedium
                 font.bold: true
                 color: Theme.text
@@ -901,6 +933,7 @@ Page {
 
             Label {
                 text: "This will remove the project and all its tasks from the local database."
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.textMuted
                 wrapMode: Text.WordWrap

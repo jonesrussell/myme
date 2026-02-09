@@ -129,8 +129,8 @@ Page {
             Layout.fillWidth: true
             Layout.preferredHeight: 56
             color: Theme.infoBg
-            border.color: Theme.info
-            border.width: 1
+            border.color: "transparent"
+            border.width: 0
             radius: Theme.cardRadius
 
             RowLayout {
@@ -167,8 +167,8 @@ Page {
             Layout.fillWidth: true
             Layout.preferredHeight: 56
             color: Theme.warningBg
-            border.color: Theme.warning
-            border.width: 1
+            border.color: "transparent"
+            border.width: 0
             radius: Theme.cardRadius
 
             RowLayout {
@@ -191,8 +191,8 @@ Page {
             Layout.fillWidth: true
             Layout.preferredHeight: 56
             color: Theme.errorBg
-            border.color: Theme.error
-            border.width: 1
+            border.color: "transparent"
+            border.width: 0
             radius: Theme.cardRadius
 
             RowLayout {
@@ -258,7 +258,7 @@ Page {
             Layout.fillWidth: true
             Layout.fillHeight: true
             color: Theme.surface
-            border.color: Theme.border
+            border.color: Theme.isDark ? "#ffffff08" : "#00000008"
             border.width: 1
             radius: Theme.cardRadius
 

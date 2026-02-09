@@ -265,7 +265,7 @@ Page {
                             Layout.preferredWidth: 260
                             Layout.preferredHeight: 140
                             color: modelData.comingSoon ? Theme.surfaceAlt : (toolCardMouse.containsMouse ? Theme.surfaceHover : Theme.surface)
-                            border.color: toolCardMouse.containsMouse && !modelData.comingSoon ? Theme.primary : Theme.border
+                            border.color: toolCardMouse.containsMouse && !modelData.comingSoon ? Theme.primary : (Theme.isDark ? "#ffffff08" : "#00000008")
                             border.width: 1
                             radius: Theme.cardRadius
                             opacity: modelData.comingSoon ? 0.7 : 1.0
@@ -431,7 +431,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: jwtContent.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     border.width: 1
                     radius: Theme.cardRadius
 
@@ -447,8 +447,8 @@ Page {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 50
                             color: Theme.errorBg
-                            border.color: Theme.error
-                            border.width: 1
+                            border.color: "transparent"
+                            border.width: 0
                             radius: Theme.cardRadius
 
                             RowLayout {
@@ -785,7 +785,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: encodingTypeRow.implicitHeight + Theme.spacingMd * 2
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     radius: Theme.cardRadius
 
                     RowLayout {
@@ -837,7 +837,8 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 50
                     color: Theme.errorBg
-                    border.color: Theme.error
+                    border.color: "transparent"
+                    border.width: 0
                     radius: Theme.cardRadius
 
                     RowLayout {
@@ -866,7 +867,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 200
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -993,7 +994,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 200
                     color: Theme.surface
-                    border.color: encodingModel.output.length > 0 ? Theme.success : Theme.border
+                    border.color: encodingModel.output.length > 0 ? Theme.success : (Theme.isDark ? "#ffffff08" : "#00000008")
                     border.width: encodingModel.output.length > 0 ? 2 : 1
                     radius: Theme.cardRadius
 
@@ -1080,7 +1081,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: uuidSettingsColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -1303,7 +1304,8 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 50
                     color: Theme.errorBg
-                    border.color: Theme.error
+                    border.color: "transparent"
+                    border.width: 0
                     radius: Theme.cardRadius
 
                     RowLayout {
@@ -1475,7 +1477,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: hashInputColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -1571,7 +1573,8 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 50
                     color: Theme.errorBg
-                    border.color: Theme.error
+                    border.color: "transparent"
+                    border.width: 0
                     radius: Theme.cardRadius
 
                     RowLayout {
@@ -1830,7 +1833,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: hmacColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -1968,7 +1971,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: compareColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -2076,7 +2079,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: currentTimeColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -2152,7 +2155,8 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 50
                     color: Theme.errorBg
-                    border.color: Theme.error
+                    border.color: "transparent"
+                    border.width: 0
                     radius: Theme.cardRadius
 
                     RowLayout {
@@ -2181,7 +2185,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: timestampColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -2242,7 +2246,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: datetimeColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -2413,7 +2417,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: tzColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -2481,7 +2485,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: arithmeticColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -2599,7 +2603,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 250
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -2667,7 +2671,8 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 50
                     color: Theme.errorBg
-                    border.color: Theme.error
+                    border.color: "transparent"
+                    border.width: 0
                     radius: Theme.cardRadius
 
                     RowLayout {
@@ -2696,7 +2701,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: actionButtonsRow.implicitHeight + Theme.spacingMd * 2
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     radius: Theme.cardRadius
 
                     RowLayout {
@@ -2856,7 +2861,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: jsonpathColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -2938,7 +2943,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: convertColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -3029,7 +3034,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: compareColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -3299,7 +3304,7 @@ Page {
                     Layout.fillHeight: true
                     Layout.preferredWidth: parent.width * 0.45
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -3362,7 +3367,7 @@ Page {
                             Layout.fillWidth: true
                             Layout.preferredHeight: prefixColumn.implicitHeight + Theme.spacingSm * 2
                             color: prefixEnabled ? Theme.primary + "10" : Theme.surfaceAlt
-                            border.color: prefixEnabled ? Theme.primary + "40" : Theme.border
+                            border.color: prefixEnabled ? Theme.primary + "40" : (Theme.isDark ? "#ffffff08" : "#00000008")
                             radius: Theme.cardRadius
 
                             Behavior on color { ColorAnimation { duration: 150 } }
@@ -3504,7 +3509,7 @@ Page {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
                     color: Theme.surface
-                    border.color: Theme.border
+                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -3576,7 +3581,7 @@ Page {
                                         Layout.fillWidth: true
                                         Layout.preferredHeight: chunkContent.implicitHeight + Theme.spacingMd * 2
                                         color: copiedChunkIndex === index ? Theme.successBg : Theme.surfaceAlt
-                                        border.color: copiedChunkIndex === index ? Theme.success : Theme.border
+                                        border.color: copiedChunkIndex === index ? Theme.success : (Theme.isDark ? "#ffffff08" : "#00000008")
                                         border.width: copiedChunkIndex === index ? 2 : 1
                                         radius: Theme.cardRadius
 

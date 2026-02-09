@@ -13,6 +13,8 @@ ApplicationWindow {
     title: "MyMe"
     color: Theme.background
 
+    property string currentPage: "WelcomePage"
+
     // Global weather model for dashboard
     WeatherModel {
         id: weatherModel
@@ -65,115 +67,112 @@ ApplicationWindow {
         onTriggered: calendarModel.poll_channel()
     }
 
-    // Navigation drawer (hamburger menu)
-    Drawer {
-        id: navDrawer
-        width: Math.min(280, root.width * 0.8)
-        height: root.height
-        interactive: true
-        edge: Qt.LeftEdge
-        dim: true
-        modal: true
-        background: Rectangle {
-            color: Theme.sidebarBg
-        }
-        contentItem: ListView {
-            clip: true
-            header: Item {
-                width: navDrawer.width - 20
-                height: 56
-                Label {
-                    anchors.centerIn: parent
-                    text: "MyMe"
-                    font.pixelSize: Theme.fontSizeLarge
-                    font.bold: true
-                    color: Theme.text
-                }
-            }
-            model: ListModel {
-                ListElement { title: "Home"; page: "WelcomePage" }
-                ListElement { title: "Notes"; page: "NotePage" }
-                ListElement { title: "Gmail"; page: "GmailPage" }
-                ListElement { title: "Calendar"; page: "CalendarPage" }
-                ListElement { title: "Projects"; page: "ProjectsPage" }
-                ListElement { title: "Repos"; page: "RepoPage" }
-                ListElement { title: "Weather"; page: "WeatherPage" }
-                ListElement { title: "Dev Tools"; page: "DevToolsPage" }
-                ListElement { title: "Settings"; page: "SettingsPage" }
-            }
-            delegate: ItemDelegate {
-                width: navDrawer.width - 20
-                text: model.title
-                font.pixelSize: Theme.fontSizeNormal
-                onClicked: {
-                    AppContext.goToTopLevelPage(AppContext.pageUrl(model.page))
-                    navDrawer.close()
-                }
-            }
-        }
+    // Navigate to a page by name
+    function navigateToPage(pageName) {
+        root.currentPage = pageName;
+        AppContext.currentPage = pageName;
+        AppContext.goToTopLevelPage(AppContext.pageUrl(pageName));
     }
 
-    // Toolbar with hamburger button
-    header: ToolBar {
-        id: toolBar
-        background: Rectangle { color: Theme.surface }
-        RowLayout {
-            anchors.fill: parent
-            spacing: Theme.spacingSm
-            ToolButton {
-                icon.source: ""
-                text: "\u2630"
-                font.pixelSize: 20
-                onClicked: navDrawer.open()
-            }
-            Label {
-                text: root.title
-                font.pixelSize: Theme.fontSizeMedium
-                color: Theme.text
-                Layout.fillWidth: true
-            }
-        }
-    }
-
-    // Page stack (replaces Kirigami pageStack)
-    StackView {
-        id: stackView
+    // Main layout: Sidebar + Content
+    RowLayout {
         anchors.fill: parent
-        clip: true
+        spacing: 0
 
-        pushEnter: Transition {
-            PropertyAnimation {
-                property: "opacity"
-                from: 0
-                to: 1
-                duration: 150
+        // Persistent sidebar
+        Sidebar {
+            id: sidebarComponent
+            Layout.fillHeight: true
+            expanded: AppContext.sidebarExpanded
+            currentPage: root.currentPage
+
+            onExpandedChanged: AppContext.sidebarExpanded = expanded
+
+            onNavigateTo: (pageName) => {
+                root.navigateToPage(pageName);
             }
         }
-        pushExit: Transition {
-            PropertyAnimation {
-                property: "opacity"
-                from: 1
-                to: 0
-                duration: 150
-            }
+
+        // Separator line
+        Rectangle {
+            Layout.fillHeight: true
+            Layout.preferredWidth: 1
+            color: Theme.borderLight
         }
-        popEnter: Transition {
-            PropertyAnimation {
-                property: "opacity"
-                from: 0
-                to: 1
-                duration: 150
+
+        // Page content
+        StackView {
+            id: stackView
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+
+            pushEnter: Transition {
+                ParallelAnimation {
+                    PropertyAnimation {
+                        property: "opacity"
+                        from: 0
+                        to: 1
+                        duration: 200
+                        easing.type: Easing.OutCubic
+                    }
+                    PropertyAnimation {
+                        property: "x"
+                        from: 20
+                        to: 0
+                        duration: 200
+                        easing.type: Easing.OutCubic
+                    }
+                }
             }
-        }
-        popExit: Transition {
-            PropertyAnimation {
-                property: "opacity"
-                from: 1
-                to: 0
-                duration: 150
+            pushExit: Transition {
+                PropertyAnimation {
+                    property: "opacity"
+                    from: 1
+                    to: 0
+                    duration: 150
+                }
+            }
+            popEnter: Transition {
+                ParallelAnimation {
+                    PropertyAnimation {
+                        property: "opacity"
+                        from: 0
+                        to: 1
+                        duration: 200
+                        easing.type: Easing.OutCubic
+                    }
+                    PropertyAnimation {
+                        property: "x"
+                        from: -20
+                        to: 0
+                        duration: 200
+                        easing.type: Easing.OutCubic
+                    }
+                }
+            }
+            popExit: Transition {
+                PropertyAnimation {
+                    property: "opacity"
+                    from: 1
+                    to: 0
+                    duration: 150
+                }
             }
         }
     }
+
+    // Keyboard shortcuts for navigation
+    Shortcut { sequence: "Ctrl+1"; onActivated: root.navigateToPage("WelcomePage") }
+    Shortcut { sequence: "Ctrl+2"; onActivated: root.navigateToPage("NotePage") }
+    Shortcut { sequence: "Ctrl+3"; onActivated: root.navigateToPage("GmailPage") }
+    Shortcut { sequence: "Ctrl+4"; onActivated: root.navigateToPage("CalendarPage") }
+    Shortcut { sequence: "Ctrl+5"; onActivated: root.navigateToPage("ProjectsPage") }
+    Shortcut { sequence: "Ctrl+6"; onActivated: root.navigateToPage("RepoPage") }
+    Shortcut { sequence: "Ctrl+7"; onActivated: root.navigateToPage("WeatherPage") }
+    Shortcut { sequence: "Ctrl+8"; onActivated: root.navigateToPage("DevToolsPage") }
+    Shortcut { sequence: "Ctrl+,"; onActivated: root.navigateToPage("SettingsPage") }
+    Shortcut { sequence: "Ctrl+B"; onActivated: sidebarComponent.expanded = !sidebarComponent.expanded }
 
     Component.onCompleted: {
         AppContext.pageStack = stackView
