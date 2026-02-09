@@ -1,0 +1,3 @@
+module myme_ui
+# Types registered at runtime by cxx-qt (see build.rs)
+# This qmldir allows static analysis tools (qmllint, Qt Creator) to resolve the import
