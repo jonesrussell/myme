@@ -28,3 +28,5 @@ build-qt/
 settings.local.json
 # Git worktrees
 .worktrees/
+
+node_modules/
