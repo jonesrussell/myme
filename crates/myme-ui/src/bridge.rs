@@ -11,6 +11,28 @@ use myme_weather::{WeatherCache, WeatherProvider};
 
 use crate::app_services::{self, AppServices};
 
+/// Generate bridge functions for service channels. List must match app_services.
+macro_rules! service_channel_bridge {
+    ($($svc:ident : $msg:ty),* $(,)?) => {
+        $(
+            paste::paste! {
+                /// Initialize service channel. Call once when model is first created. Returns true if initialized (or already initialized).
+                pub fn [<init_ $svc _service_channel>]() -> bool {
+                    AppServices::init().[<init_ $svc _service_channel>]()
+                }
+                /// Get service sender for request_* calls.
+                pub fn [<get_ $svc _service_tx>]() -> Option<std::sync::mpsc::Sender<$msg>> {
+                    AppServices::init().[<$svc _service_tx>]()
+                }
+                /// Non-blocking recv from service channel. Called by model poll_channel.
+                pub fn [<try_recv_ $svc _message>]() -> Option<$msg> {
+                    AppServices::init().[<try_recv_ $svc _message>]()
+                }
+            }
+        )*
+    };
+}
+
 // =========== C FFI Initialization Functions ===========
 
 /// Initialize note client from configuration (SQLite).
@@ -126,39 +148,18 @@ pub fn get_repos_local_search_path() -> Option<(std::path::PathBuf, bool)> {
     app_services::get_repos_local_search_path()
 }
 
-/// Initialize repo service channel. Call once when RepoModel is first created.
-/// Returns true if initialized (or already initialized).
-pub fn init_repo_service_channel() -> bool {
-    AppServices::init().init_repo_service_channel()
-}
-
-/// Get repo service sender for request_* calls. None if init_repo_service_channel not called yet.
-pub fn get_repo_service_tx(
-) -> Option<std::sync::mpsc::Sender<crate::services::RepoServiceMessage>> {
-    AppServices::init().repo_service_tx()
-}
-
-/// Non-blocking recv from repo service channel. Called by RepoModel::poll_channel.
-pub fn try_recv_repo_message() -> Option<crate::services::RepoServiceMessage> {
-    AppServices::init().try_recv_repo_message()
-}
-
-/// Initialize note service channel. Call once when NoteModel is first created.
-/// Returns true if initialized (or already initialized).
-pub fn init_note_service_channel() -> bool {
-    AppServices::init().init_note_service_channel()
-}
-
-/// Get note service sender for request_* calls. None if init_note_service_channel not called yet.
-pub fn get_note_service_tx(
-) -> Option<std::sync::mpsc::Sender<crate::services::NoteServiceMessage>> {
-    AppServices::init().note_service_tx()
-}
-
-/// Non-blocking recv from note service channel. Called by NoteModel::poll_channel.
-pub fn try_recv_note_message() -> Option<crate::services::NoteServiceMessage> {
-    AppServices::init().try_recv_note_message()
-}
+// Service channel bridge (list must match app_services)
+service_channel_bridge!(
+    repo: crate::services::RepoServiceMessage,
+    note: crate::services::NoteServiceMessage,
+    weather: crate::services::WeatherServiceMessage,
+    auth: crate::services::AuthServiceMessage,
+    project: crate::services::ProjectServiceMessage,
+    workflow: crate::services::WorkflowServiceMessage,
+    kanban: crate::services::KanbanServiceMessage,
+    gmail: crate::services::GmailServiceMessage,
+    calendar: crate::services::CalendarServiceMessage,
+);
 
 /// Reinitialize GitHub client after successful OAuth
 /// Call this after authentication completes to refresh the client with new token
@@ -198,122 +199,6 @@ pub fn shutdown_services() {
 #[no_mangle]
 pub extern "C" fn shutdown_app_services() {
     shutdown_services();
-}
-
-/// Initialize weather service channel. Call once when WeatherModel is first created.
-/// Returns true if initialized (or already initialized).
-pub fn init_weather_service_channel() -> bool {
-    AppServices::init().init_weather_service_channel()
-}
-
-/// Get weather service sender for request_* calls. None if init_weather_service_channel not called yet.
-pub fn get_weather_service_tx(
-) -> Option<std::sync::mpsc::Sender<crate::services::WeatherServiceMessage>> {
-    AppServices::init().weather_service_tx()
-}
-
-/// Non-blocking recv from weather service channel. Called by WeatherModel::poll_channel.
-pub fn try_recv_weather_message() -> Option<crate::services::WeatherServiceMessage> {
-    AppServices::init().try_recv_weather_message()
-}
-
-/// Initialize auth service channel. Call once when AuthModel is first created.
-/// Returns true if initialized (or already initialized).
-pub fn init_auth_service_channel() -> bool {
-    AppServices::init().init_auth_service_channel()
-}
-
-/// Get auth service sender for request_* calls. None if init_auth_service_channel not called yet.
-pub fn get_auth_service_tx(
-) -> Option<std::sync::mpsc::Sender<crate::services::AuthServiceMessage>> {
-    AppServices::init().auth_service_tx()
-}
-
-/// Non-blocking recv from auth service channel. Called by AuthModel::poll_channel.
-pub fn try_recv_auth_message() -> Option<crate::services::AuthServiceMessage> {
-    AppServices::init().try_recv_auth_message()
-}
-
-/// Initialize project service channel. Call once when ProjectModel is first created.
-/// Returns true if initialized (or already initialized).
-pub fn init_project_service_channel() -> bool {
-    AppServices::init().init_project_service_channel()
-}
-
-/// Get project service sender for request_* calls. None if init_project_service_channel not called yet.
-pub fn get_project_service_tx(
-) -> Option<std::sync::mpsc::Sender<crate::services::ProjectServiceMessage>> {
-    AppServices::init().project_service_tx()
-}
-
-/// Non-blocking recv from project service channel. Called by ProjectModel::poll_channel.
-pub fn try_recv_project_message() -> Option<crate::services::ProjectServiceMessage> {
-    AppServices::init().try_recv_project_message()
-}
-
-/// Initialize workflow service channel. Call once when WorkflowModel is first created.
-pub fn init_workflow_service_channel() -> bool {
-    AppServices::init().init_workflow_service_channel()
-}
-
-/// Get workflow service sender for request_fetch_workflows. None if channel not initialized yet.
-pub fn get_workflow_service_tx(
-) -> Option<std::sync::mpsc::Sender<crate::services::WorkflowServiceMessage>> {
-    AppServices::init().workflow_service_tx()
-}
-
-/// Non-blocking recv from workflow service channel. Called by WorkflowModel::poll_channel.
-pub fn try_recv_workflow_message() -> Option<crate::services::WorkflowServiceMessage> {
-    AppServices::init().try_recv_workflow_message()
-}
-
-/// Initialize kanban service channel. Call once when KanbanModel is first created.
-/// Returns true if initialized (or already initialized).
-pub fn init_kanban_service_channel() -> bool {
-    AppServices::init().init_kanban_service_channel()
-}
-
-/// Get kanban service sender for request_* calls. None if init_kanban_service_channel not called yet.
-pub fn get_kanban_service_tx(
-) -> Option<std::sync::mpsc::Sender<crate::services::KanbanServiceMessage>> {
-    AppServices::init().kanban_service_tx()
-}
-
-/// Non-blocking recv from kanban service channel. Called by KanbanModel::poll_channel.
-pub fn try_recv_kanban_message() -> Option<crate::services::KanbanServiceMessage> {
-    AppServices::init().try_recv_kanban_message()
-}
-
-/// Initialize Gmail service channel. Call once when GmailModel is first created.
-pub fn init_gmail_service_channel() -> bool {
-    AppServices::init().init_gmail_service_channel()
-}
-
-/// Get Gmail service sender for request_* calls.
-pub fn get_gmail_service_tx(
-) -> Option<std::sync::mpsc::Sender<crate::services::GmailServiceMessage>> {
-    AppServices::init().gmail_service_tx()
-}
-
-/// Non-blocking recv from Gmail service channel. Called by GmailModel::poll_channel.
-pub fn try_recv_gmail_message() -> Option<crate::services::GmailServiceMessage> {
-    AppServices::init().try_recv_gmail_message()
-}
-
-/// Initialize Calendar service channel. Call once when CalendarModel is first created.
-pub fn init_calendar_service_channel() -> bool {
-    AppServices::init().init_calendar_service_channel()
-}
-
-/// Get Calendar service sender for request_* calls.
-pub fn get_calendar_service_tx(
-) -> Option<std::sync::mpsc::Sender<crate::services::CalendarServiceMessage>> {
-    AppServices::init().calendar_service_tx()
-}
-
-/// Non-blocking recv from Calendar service channel. Called by CalendarModel::poll_channel.
-pub fn try_recv_calendar_message() -> Option<crate::services::CalendarServiceMessage> {
-    AppServices::init().try_recv_calendar_message()
 }
 
 /// Create a new cancellation token for repo operations.

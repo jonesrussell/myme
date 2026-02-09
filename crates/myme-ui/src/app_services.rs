@@ -45,6 +45,52 @@ pub use crate::services::GmailServiceMessage;
 /// Message types for the Calendar service channel
 pub use crate::services::CalendarServiceMessage;
 
+/// Generate shutdown clear lines for service channels. Pass `self` so the macro can refer to the receiver.
+macro_rules! service_channel_shutdown {
+    ($self_expr:expr; $($svc:ident : $msg:ty),* $(,)?) => {
+        $(
+            paste::paste! {
+                *$self_expr.[<$svc _service_tx>].write() = None;
+                *$self_expr.[<$svc _service_rx>].write() = None;
+            }
+        )*
+    };
+}
+
+/// Generate getter, init_channel, and try_recv methods for one service channel.
+macro_rules! service_channel_methods {
+    ($($svc:ident : $msg:ty),* $(,)?) => {
+        $(
+            paste::paste! {
+                /// Get service sender.
+                pub fn [<$svc _service_tx>](&self) -> Option<std::sync::mpsc::Sender<$msg>> {
+                    self.[<$svc _service_tx>].read().clone()
+                }
+
+                /// Initialize service channel.
+                pub fn [<init_ $svc _service_channel>](&self) -> bool {
+                    if self.[<$svc _service_tx>].read().is_some() {
+                        return true;
+                    }
+                    let (tx, rx) = std::sync::mpsc::channel();
+                    *self.[<$svc _service_tx>].write() = Some(tx);
+                    *self.[<$svc _service_rx>].write() = Some(parking_lot::Mutex::new(rx));
+                    tracing::info!("{} service channel initialized", stringify!($svc));
+                    true
+                }
+
+                /// Try to receive a message from the service channel (non-blocking).
+                pub fn [<try_recv_ $svc _message>](&self) -> Option<$msg> {
+                    let guard = self.[<$svc _service_rx>].read();
+                    let rx_mutex = guard.as_ref()?;
+                    let result = { rx_mutex.lock().try_recv().ok() };
+                    result
+                }
+            }
+        )*
+    };
+}
+
 /// Global application services container.
 ///
 /// This is initialized once at application startup and provides mutable
@@ -76,55 +122,38 @@ pub struct AppServices {
 
     /// Repo service channel sender
     repo_service_tx: RwLock<Option<std::sync::mpsc::Sender<RepoServiceMessage>>>,
-
     /// Repo service channel receiver
     repo_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<RepoServiceMessage>>>>,
-
     /// Note service channel sender
     note_service_tx: RwLock<Option<std::sync::mpsc::Sender<NoteServiceMessage>>>,
-
     /// Note service channel receiver
     note_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<NoteServiceMessage>>>>,
-
     /// Weather service channel sender
     weather_service_tx: RwLock<Option<std::sync::mpsc::Sender<WeatherServiceMessage>>>,
-
     /// Weather service channel receiver
     weather_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<WeatherServiceMessage>>>>,
-
     /// Auth service channel sender
     auth_service_tx: RwLock<Option<std::sync::mpsc::Sender<AuthServiceMessage>>>,
-
     /// Auth service channel receiver
     auth_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<AuthServiceMessage>>>>,
-
     /// Project service channel sender
     project_service_tx: RwLock<Option<std::sync::mpsc::Sender<ProjectServiceMessage>>>,
-
     /// Project service channel receiver
     project_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<ProjectServiceMessage>>>>,
-
     /// Workflow service channel sender
     workflow_service_tx: RwLock<Option<std::sync::mpsc::Sender<WorkflowServiceMessage>>>,
-
     /// Workflow service channel receiver
     workflow_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<WorkflowServiceMessage>>>>,
-
     /// Kanban service channel sender
     kanban_service_tx: RwLock<Option<std::sync::mpsc::Sender<KanbanServiceMessage>>>,
-
     /// Kanban service channel receiver
     kanban_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<KanbanServiceMessage>>>>,
-
     /// Gmail service channel sender
     gmail_service_tx: RwLock<Option<std::sync::mpsc::Sender<GmailServiceMessage>>>,
-
     /// Gmail service channel receiver
     gmail_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<GmailServiceMessage>>>>,
-
     /// Calendar service channel sender
     calendar_service_tx: RwLock<Option<std::sync::mpsc::Sender<CalendarServiceMessage>>>,
-
     /// Calendar service channel receiver
     calendar_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<CalendarServiceMessage>>>>,
 
@@ -211,24 +240,18 @@ impl AppServices {
         *self.project_store.write() = None;
         *self.weather_provider.write() = None;
         *self.weather_cache.write() = None;
-        *self.repo_service_tx.write() = None;
-        *self.repo_service_rx.write() = None;
-        *self.note_service_tx.write() = None;
-        *self.note_service_rx.write() = None;
-        *self.weather_service_tx.write() = None;
-        *self.weather_service_rx.write() = None;
-        *self.auth_service_tx.write() = None;
-        *self.auth_service_rx.write() = None;
-        *self.project_service_tx.write() = None;
-        *self.project_service_rx.write() = None;
-        *self.workflow_service_tx.write() = None;
-        *self.workflow_service_rx.write() = None;
-        *self.kanban_service_tx.write() = None;
-        *self.kanban_service_rx.write() = None;
-        *self.gmail_service_tx.write() = None;
-        *self.gmail_service_rx.write() = None;
-        *self.calendar_service_tx.write() = None;
-        *self.calendar_service_rx.write() = None;
+        service_channel_shutdown!(
+            self;
+            repo: RepoServiceMessage,
+            note: NoteServiceMessage,
+            weather: WeatherServiceMessage,
+            auth: AuthServiceMessage,
+            project: ProjectServiceMessage,
+            workflow: WorkflowServiceMessage,
+            kanban: KanbanServiceMessage,
+            gmail: GmailServiceMessage,
+            calendar: CalendarServiceMessage,
+        );
 
         // Cancel any active repo operations
         if let Some(token) = self.repo_cancel_token.write().take() {
@@ -475,257 +498,18 @@ impl AppServices {
         }
     }
 
-    // =========== Repo Service Channel ===========
-
-    /// Get repo service sender.
-    pub fn repo_service_tx(&self) -> Option<std::sync::mpsc::Sender<RepoServiceMessage>> {
-        self.repo_service_tx.read().clone()
-    }
-
-    /// Initialize repo service channel.
-    pub fn init_repo_service_channel(&self) -> bool {
-        if self.repo_service_tx.read().is_some() {
-            return true;
-        }
-
-        let (tx, rx) = std::sync::mpsc::channel();
-        *self.repo_service_tx.write() = Some(tx);
-        *self.repo_service_rx.write() = Some(parking_lot::Mutex::new(rx));
-        tracing::info!("Repo service channel initialized");
-        true
-    }
-
-    /// Try to receive a message from the repo service channel (non-blocking).
-    pub fn try_recv_repo_message(&self) -> Option<RepoServiceMessage> {
-        let guard = self.repo_service_rx.read();
-        let rx_mutex = guard.as_ref()?;
-        let result = rx_mutex.lock().try_recv().ok();
-        result
-    }
-
-    // =========== Note Service Channel ===========
-
-    /// Get note service sender.
-    pub fn note_service_tx(&self) -> Option<std::sync::mpsc::Sender<NoteServiceMessage>> {
-        self.note_service_tx.read().clone()
-    }
-
-    /// Initialize note service channel.
-    pub fn init_note_service_channel(&self) -> bool {
-        if self.note_service_tx.read().is_some() {
-            return true;
-        }
-
-        let (tx, rx) = std::sync::mpsc::channel();
-        *self.note_service_tx.write() = Some(tx);
-        *self.note_service_rx.write() = Some(parking_lot::Mutex::new(rx));
-        tracing::info!("Note service channel initialized");
-        true
-    }
-
-    /// Try to receive a message from the note service channel (non-blocking).
-    pub fn try_recv_note_message(&self) -> Option<NoteServiceMessage> {
-        let guard = self.note_service_rx.read();
-        let rx_mutex = guard.as_ref()?;
-        let result = rx_mutex.lock().try_recv().ok();
-        result
-    }
-
-    // =========== Weather Service Channel ===========
-
-    /// Get weather service sender.
-    pub fn weather_service_tx(&self) -> Option<std::sync::mpsc::Sender<WeatherServiceMessage>> {
-        self.weather_service_tx.read().clone()
-    }
-
-    /// Initialize weather service channel.
-    pub fn init_weather_service_channel(&self) -> bool {
-        if self.weather_service_tx.read().is_some() {
-            return true;
-        }
-
-        let (tx, rx) = std::sync::mpsc::channel();
-        *self.weather_service_tx.write() = Some(tx);
-        *self.weather_service_rx.write() = Some(parking_lot::Mutex::new(rx));
-        tracing::info!("Weather service channel initialized");
-        true
-    }
-
-    /// Try to receive a message from the weather service channel (non-blocking).
-    pub fn try_recv_weather_message(&self) -> Option<WeatherServiceMessage> {
-        let guard = self.weather_service_rx.read();
-        let rx_mutex = guard.as_ref()?;
-        let result = rx_mutex.lock().try_recv().ok();
-        result
-    }
-
-    // =========== Auth Service Channel ===========
-
-    /// Get auth service sender.
-    pub fn auth_service_tx(&self) -> Option<std::sync::mpsc::Sender<AuthServiceMessage>> {
-        self.auth_service_tx.read().clone()
-    }
-
-    /// Initialize auth service channel.
-    pub fn init_auth_service_channel(&self) -> bool {
-        if self.auth_service_tx.read().is_some() {
-            return true;
-        }
-
-        let (tx, rx) = std::sync::mpsc::channel();
-        *self.auth_service_tx.write() = Some(tx);
-        *self.auth_service_rx.write() = Some(parking_lot::Mutex::new(rx));
-        tracing::info!("Auth service channel initialized");
-        true
-    }
-
-    /// Try to receive a message from the auth service channel (non-blocking).
-    pub fn try_recv_auth_message(&self) -> Option<AuthServiceMessage> {
-        let guard = self.auth_service_rx.read();
-        let rx_mutex = guard.as_ref()?;
-        let result = rx_mutex.lock().try_recv().ok();
-        result
-    }
-
-    // =========== Project Service Channel ===========
-
-    /// Get project service sender.
-    pub fn project_service_tx(&self) -> Option<std::sync::mpsc::Sender<ProjectServiceMessage>> {
-        self.project_service_tx.read().clone()
-    }
-
-    /// Initialize project service channel.
-    pub fn init_project_service_channel(&self) -> bool {
-        if self.project_service_tx.read().is_some() {
-            return true;
-        }
-
-        let (tx, rx) = std::sync::mpsc::channel();
-        *self.project_service_tx.write() = Some(tx);
-        *self.project_service_rx.write() = Some(parking_lot::Mutex::new(rx));
-        tracing::info!("Project service channel initialized");
-        true
-    }
-
-    /// Try to receive a message from the project service channel (non-blocking).
-    pub fn try_recv_project_message(&self) -> Option<ProjectServiceMessage> {
-        let guard = self.project_service_rx.read();
-        let rx_mutex = guard.as_ref()?;
-        let result = rx_mutex.lock().try_recv().ok();
-        result
-    }
-
-    // =========== Workflow Service Channel ===========
-
-    /// Get workflow service sender.
-    pub fn workflow_service_tx(&self) -> Option<std::sync::mpsc::Sender<WorkflowServiceMessage>> {
-        self.workflow_service_tx.read().clone()
-    }
-
-    /// Initialize workflow service channel.
-    pub fn init_workflow_service_channel(&self) -> bool {
-        if self.workflow_service_tx.read().is_some() {
-            return true;
-        }
-
-        let (tx, rx) = std::sync::mpsc::channel();
-        *self.workflow_service_tx.write() = Some(tx);
-        *self.workflow_service_rx.write() = Some(parking_lot::Mutex::new(rx));
-        tracing::info!("Workflow service channel initialized");
-        true
-    }
-
-    /// Try to receive a message from the workflow service channel (non-blocking).
-    pub fn try_recv_workflow_message(&self) -> Option<WorkflowServiceMessage> {
-        let guard = self.workflow_service_rx.read();
-        let rx_mutex = guard.as_ref()?;
-        let result = rx_mutex.lock().try_recv().ok();
-        result
-    }
-
-    // =========== Kanban Service Channel ===========
-
-    /// Get kanban service sender.
-    pub fn kanban_service_tx(&self) -> Option<std::sync::mpsc::Sender<KanbanServiceMessage>> {
-        self.kanban_service_tx.read().clone()
-    }
-
-    /// Initialize kanban service channel.
-    pub fn init_kanban_service_channel(&self) -> bool {
-        if self.kanban_service_tx.read().is_some() {
-            return true;
-        }
-
-        let (tx, rx) = std::sync::mpsc::channel();
-        *self.kanban_service_tx.write() = Some(tx);
-        *self.kanban_service_rx.write() = Some(parking_lot::Mutex::new(rx));
-        tracing::info!("Kanban service channel initialized");
-        true
-    }
-
-    /// Try to receive a message from the kanban service channel (non-blocking).
-    pub fn try_recv_kanban_message(&self) -> Option<KanbanServiceMessage> {
-        let guard = self.kanban_service_rx.read();
-        let rx_mutex = guard.as_ref()?;
-        let result = rx_mutex.lock().try_recv().ok();
-        result
-    }
-
-    // =========== Gmail Service Channel ===========
-
-    /// Get Gmail service sender.
-    pub fn gmail_service_tx(&self) -> Option<std::sync::mpsc::Sender<GmailServiceMessage>> {
-        self.gmail_service_tx.read().clone()
-    }
-
-    /// Initialize Gmail service channel.
-    pub fn init_gmail_service_channel(&self) -> bool {
-        if self.gmail_service_tx.read().is_some() {
-            return true;
-        }
-
-        let (tx, rx) = std::sync::mpsc::channel();
-        *self.gmail_service_tx.write() = Some(tx);
-        *self.gmail_service_rx.write() = Some(parking_lot::Mutex::new(rx));
-        tracing::info!("Gmail service channel initialized");
-        true
-    }
-
-    /// Try to receive a message from the Gmail service channel (non-blocking).
-    pub fn try_recv_gmail_message(&self) -> Option<GmailServiceMessage> {
-        let guard = self.gmail_service_rx.read();
-        let rx_mutex = guard.as_ref()?;
-        let result = rx_mutex.lock().try_recv().ok();
-        result
-    }
-
-    // =========== Calendar Service Channel ===========
-
-    /// Get Calendar service sender.
-    pub fn calendar_service_tx(&self) -> Option<std::sync::mpsc::Sender<CalendarServiceMessage>> {
-        self.calendar_service_tx.read().clone()
-    }
-
-    /// Initialize Calendar service channel.
-    pub fn init_calendar_service_channel(&self) -> bool {
-        if self.calendar_service_tx.read().is_some() {
-            return true;
-        }
-
-        let (tx, rx) = std::sync::mpsc::channel();
-        *self.calendar_service_tx.write() = Some(tx);
-        *self.calendar_service_rx.write() = Some(parking_lot::Mutex::new(rx));
-        tracing::info!("Calendar service channel initialized");
-        true
-    }
-
-    /// Try to receive a message from the Calendar service channel (non-blocking).
-    pub fn try_recv_calendar_message(&self) -> Option<CalendarServiceMessage> {
-        let guard = self.calendar_service_rx.read();
-        let rx_mutex = guard.as_ref()?;
-        let result = rx_mutex.lock().try_recv().ok();
-        result
-    }
+    // Service channel methods (repo, note, weather, auth, project, workflow, kanban, gmail, calendar)
+    service_channel_methods!(
+        repo: RepoServiceMessage,
+        note: NoteServiceMessage,
+        weather: WeatherServiceMessage,
+        auth: AuthServiceMessage,
+        project: ProjectServiceMessage,
+        workflow: WorkflowServiceMessage,
+        kanban: KanbanServiceMessage,
+        gmail: GmailServiceMessage,
+        calendar: CalendarServiceMessage,
+    );
 
     // =========== Repo Operation Cancellation ===========
 
