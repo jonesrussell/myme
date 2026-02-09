@@ -15,6 +15,7 @@
 # Qt Creator
 *.user
 *.autosave
+.qmlls.ini
 
 # OS files
 .DS_Store
