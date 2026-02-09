@@ -34,6 +34,10 @@ pub enum AppError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
+    /// Service-level errors (notes, weather, etc.) that can be mapped from UI crates.
+    #[error("Service error: {0}")]
+    Service(String),
+
     #[error("{0}")]
     Other(#[from] anyhow::Error),
 }
@@ -51,6 +55,7 @@ impl AppError {
             AppError::GitHub(e) => e.user_message(),
             AppError::Weather(e) => e.user_message(),
             AppError::Io(_) => "A file operation failed. Please try again.",
+            AppError::Service(_) => "Something went wrong. Please try again.",
             AppError::Other(_) => "An unexpected error occurred. Please try again.",
         }
     }

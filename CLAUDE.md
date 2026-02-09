@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MyMe is a modular Rust desktop application using Qt/QML via cxx-qt that serves as a personal productivity and development hub. It integrates with external services (Godo note-taking app, GitHub, Google services) through a plugin-based architecture.
+MyMe is a modular Rust desktop application using Qt/QML via cxx-qt that serves as a personal productivity and development hub. It integrates with external services (GitHub, Google services) and uses local SQLite for notes and projects.
 
 **Current Status**: "Warm Forge" UI redesign complete. Amber/gold theme, Outfit custom font, persistent sidebar navigation, dashboard with live widgets, softer card styling, staggered animations across all pages.
 
@@ -60,7 +60,7 @@ cargo test -p myme-core -p myme-services -p myme-auth -p myme-integrations -p my
 
 **Test Coverage:**
 - `myme-core`: 16 tests (config validation, error handling, state machine)
-- `myme-services`: 18 unit + 20 integration tests (TodoClient, GitHubClient, retry logic)
+- `myme-services`: unit + integration tests (GitHubClient, NoteClient/SQLite, retry logic)
 - `myme-auth`: 10 tests (OAuth for GitHub and Google, token storage)
 - `myme-integrations`: 17 tests (git operations, repo discovery)
 - `myme-gmail`: 35 tests (client, cache, sync queue)
@@ -130,8 +130,8 @@ myme/
    - Channel senders/receivers stored here for model communication
 
 5. **Service Client Pattern**: Each external service has its own async client:
-   - `TodoClient` for Godo API with retry logic
    - `GitHubClient` for GitHub API with retry logic
+   - `NoteClient` for local SQLite notes (no HTTP backend)
    - Retry with exponential backoff (100ms, 200ms, 400ms...)
    - Retries: timeouts, 5xx errors, 429 rate limits
    - No retry: 4xx client errors (auth failures, not found)
@@ -158,7 +158,7 @@ myme/
 
 **myme-core**: Core application lifecycle (`App` struct), configuration management (TOML-based, cross-platform paths), plugin system traits (`PluginProvider`, `PluginContext`).
 
-**myme-services**: HTTP clients for external APIs. Currently includes `TodoClient` with full CRUD operations. Each client is async and uses structured logging.
+**myme-services**: HTTP clients for external APIs (e.g. GitHub) and local stores (NoteClient/SQLite, ProjectStore). Each async client uses structured logging and retry where applicable.
 
 **myme-ui**: cxx-qt bridge layer. Contains QObject models (e.g., `NoteModel`, `RepoModel`) that expose Rust functionality to QML. The `build.rs` configures cxx-qt code generation. QML files are in `qml/` subdirectory.
 
@@ -179,7 +179,7 @@ NoteModel sends FetchNotes request via channel
   ↓
 Background tokio task receives request
   ↓
-TodoClient::list_todos() [HTTP GET with retry logic]
+NoteClient (SQLite) or GitHubClient [HTTP with retry logic]
   ↓
 Task sends result back via channel
   ↓
@@ -348,7 +348,8 @@ Tools follow a consistent pattern: add entry to `tools` array, create `Component
 - [crates/myme-core/src/plugin.rs](crates/myme-core/src/plugin.rs) - Plugin system traits (deferred)
 
 ### Service Layer
-- [crates/myme-services/src/todo.rs](crates/myme-services/src/todo.rs) - Godo API client with retry logic
+- [crates/myme-services/src/todo.rs](crates/myme-services/src/todo.rs) - Todo/Note data types (Todo, TodoCreateRequest, TodoUpdateRequest)
+- [crates/myme-services/src/note_client.rs](crates/myme-services/src/note_client.rs) - SQLite-backed NoteClient
 - [crates/myme-services/src/github.rs](crates/myme-services/src/github.rs) - GitHub API client with retry logic
 - [crates/myme-services/src/retry.rs](crates/myme-services/src/retry.rs) - Exponential backoff retry utility
 
@@ -381,31 +382,11 @@ Tools follow a consistent pattern: add entry to `tools` array, create `Component
 - [crates/myme-weather/src/location.rs](crates/myme-weather/src/location.rs) - Platform geolocation (WinRT/D-Bus)
 
 ### Integration Tests
-- [crates/myme-services/tests/todo_integration.rs](crates/myme-services/tests/todo_integration.rs) - TodoClient mock tests
 - [crates/myme-services/tests/github_integration.rs](crates/myme-services/tests/github_integration.rs) - GitHubClient tests
 
-## Integration with Godo
+## Notes (SQLite)
 
-MyMe integrates with the Godo note-taking application (separate Golang project):
-
-- **API Endpoints**: `/api/v1/notes` for CRUD operations
-- **Authentication**: JWT Bearer tokens (optional)
-- **Default Port**: 8008 (configurable in `config.toml`)
-- **Client**: `TodoClient` in `myme-services/src/todo.rs`
-
-To test with Godo:
-```bash
-# Terminal 1: Start Godo
-cd ../godo
-./godo-windows-amd64.exe
-
-# Terminal 2: Verify Godo is running
-curl http://localhost:8008/api/v1/health
-
-# Terminal 3: Start MyMe
-cd ../myme
-.\build\Release\myme-qt.exe
-```
+Notes are stored locally in SQLite. Configuration is in `[notes]` in `config.toml` (e.g. `sqlite_path`). The `NoteClient` in `myme-services` wraps the SQLite store; there is no HTTP/API backend for notes.
 
 ## Integration with Google Services
 
@@ -478,7 +459,6 @@ $env:RUST_LOG="debug" # Adds detailed operation internals
 ```
 
 **Instrumented Operations:**
-- `TodoClient`: `list_todos`, `get_todo`, `create_todo`, `update_todo`, `delete_todo`
 - `GitHubClient`: `list_repos`, `get_repo`, `create_repo`, `list_issues`, `create_issue`, `update_issue`
 - `GitOperations`: `discover_repositories`, `clone_repository`, `fetch`, `pull`, `push`
 - `OAuth2Provider`: `authenticate`, `exchange_code`
@@ -486,7 +466,6 @@ $env:RUST_LOG="debug" # Adds detailed operation internals
 **Expected Performance Baselines:**
 | Operation | Typical Duration | Notes |
 |-----------|------------------|-------|
-| `list_todos` | 50-200ms | Depends on Godo server |
 | `list_repos` | 100-500ms | GitHub API, includes 100 repos |
 | `list_issues` | 100-300ms | Per repository |
 | `discover_repositories` | 50-500ms | Depends on disk speed and repo count |
@@ -508,8 +487,8 @@ $env:RUST_LOG="debug" # Adds detailed operation internals
 
 ## Phase Roadmap
 
-**Phase 1** (Complete): Foundation + Godo Integration
-- Workspace structure, core application, Todo API client, cxx-qt bridge, QML UI
+**Phase 1** (Complete): Foundation
+- Workspace structure, core application, SQLite notes, cxx-qt bridge, QML UI
 
 **Phase 2** (Complete): GitHub + Local Git Management
 - OAuth2 authentication, git2 integration, repository management UI

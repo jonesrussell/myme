@@ -136,7 +136,7 @@ pub struct ProjectModelRust {
     projects: Vec<Project>,
     task_counts: HashMap<String, TaskCounts>,
     github_client: Option<Arc<GitHubClient>>,
-    project_store: Option<Arc<std::sync::Mutex<ProjectStore>>>,
+    project_store: Option<Arc<parking_lot::Mutex<ProjectStore>>>,
     op_state: OpState,
 }
 
@@ -179,13 +179,7 @@ impl ProjectModelRust {
             None => return,
         };
 
-        let store_guard = match store.lock() {
-            Ok(g) => g,
-            Err(e) => {
-                tracing::error!("Failed to lock project store: {}", e);
-                return;
-            }
-        };
+        let store_guard = store.lock();
 
         self.task_counts.clear();
         for project in &self.projects {
@@ -229,16 +223,7 @@ impl qobject::ProjectModel {
         self.as_mut().rust_mut().clear_error();
 
         // Load projects from store (this is synchronous/local, so OK to do inline)
-        let store_guard = match store.lock() {
-            Ok(g) => g,
-            Err(e) => {
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(&format!("Failed to access store: {}", e));
-                self.as_mut().set_loading(false);
-                return;
-            }
-        };
+        let store_guard = store.lock();
 
         match store_guard.list_projects() {
             Ok(projects) => {
@@ -291,10 +276,7 @@ impl qobject::ProjectModel {
             Some(s) => s,
             None => return QString::from("[]"),
         };
-        let store_guard = match store.lock() {
-            Ok(g) => g,
-            Err(_) => return QString::from("[]"),
-        };
+        let store_guard = store.lock();
         match store_guard.list_repos_for_project(&project_id) {
             Ok(repos) => {
                 let json = serde_json::to_string(&repos).unwrap_or_else(|_| "[]".to_string());
@@ -356,15 +338,7 @@ impl qobject::ProjectModel {
             created_at: chrono::Utc::now().to_rfc3339(),
         };
 
-        let store_guard = match store.lock() {
-            Ok(g) => g,
-            Err(e) => {
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(&format!("Failed to access store: {}", e));
-                return;
-            }
-        };
+        let store_guard = store.lock();
 
         match store_guard.upsert_project(&project) {
             Ok(_) => {
@@ -519,15 +493,7 @@ impl qobject::ProjectModel {
             None => return,
         };
 
-        let store_guard = match store.lock() {
-            Ok(g) => g,
-            Err(e) => {
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(&format!("Failed to access store: {}", e));
-                return;
-            }
-        };
+        let store_guard = store.lock();
 
         match store_guard.remove_repo_from_project(&project_id, &repo_id_str) {
             Ok(_) => {
@@ -557,15 +523,7 @@ impl qobject::ProjectModel {
             None => return,
         };
 
-        let store_guard = match store.lock() {
-            Ok(g) => g,
-            Err(e) => {
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(&format!("Failed to access store: {}", e));
-                return;
-            }
-        };
+        let store_guard = store.lock();
 
         match store_guard.delete_project(&project_id) {
             Ok(_) => {
@@ -641,16 +599,7 @@ impl qobject::ProjectModel {
             }
         };
 
-        let store_guard = match store.lock() {
-            Ok(g) => g,
-            Err(e) => {
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(&format!("Failed to access store: {}", e));
-                self.as_mut().set_loading(false);
-                return;
-            }
-        };
+        let store_guard = store.lock();
 
         match store_guard.add_repo_to_project(&project_id, &repo_id) {
             Ok(_) => {

@@ -6,7 +6,7 @@ const STALE_THRESHOLD_MINUTES: i64 = 15;
 const EXPIRED_THRESHOLD_HOURS: i64 = 2;
 
 /// Persistent weather cache
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WeatherCache {
     cache_path: PathBuf,
     data: Option<WeatherData>,

@@ -66,7 +66,7 @@ pub struct KanbanModelRust {
     error_message: QString,
     project_id: QString,
     tasks: Vec<Task>,
-    store: Option<Arc<std::sync::Mutex<ProjectStore>>>,
+    store: Option<Arc<parking_lot::Mutex<ProjectStore>>>,
 }
 
 impl KanbanModelRust {
@@ -140,16 +140,7 @@ impl qobject::KanbanModel {
 
         let project_id_str = project_id.to_string();
 
-        let store_guard = match store.lock() {
-            Ok(g) => g,
-            Err(e) => {
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(&format!("Failed to access store: {}", e));
-                self.as_mut().set_loading(false);
-                return;
-            }
-        };
+        let store_guard = store.lock();
 
         match store_guard.get_project(&project_id_str) {
             Ok(Some(_)) => {}
@@ -261,13 +252,12 @@ impl qobject::KanbanModel {
             None => return,
         };
 
-        if let Ok(store_guard) = store.lock() {
-            if let Err(e) = store_guard.upsert_task(&task) {
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(&format!("Failed to save: {}", e));
-                return;
-            }
+        let store_guard = store.lock();
+        if let Err(e) = store_guard.upsert_task(&task) {
+            self.as_mut()
+                .rust_mut()
+                .set_error(&format!("Failed to save: {}", e));
+            return;
         }
 
         if let Some(t) = self.as_mut().rust_mut().tasks.get_mut(index as usize) {
@@ -322,13 +312,12 @@ impl qobject::KanbanModel {
             }
         };
 
-        if let Ok(store_guard) = store.lock() {
-            if let Err(e) = store_guard.upsert_task(&task) {
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(&format!("Failed to create task: {}", e));
-                return;
-            }
+        let store_guard = store.lock();
+        if let Err(e) = store_guard.upsert_task(&task) {
+            self.as_mut()
+                .rust_mut()
+                .set_error(&format!("Failed to create task: {}", e));
+            return;
         }
 
         self.as_mut().rust_mut().tasks.push(task);
@@ -367,13 +356,12 @@ impl qobject::KanbanModel {
             None => return,
         };
 
-        if let Ok(store_guard) = store.lock() {
-            if let Err(e) = store_guard.upsert_task(&task) {
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(&format!("Failed to save: {}", e));
-                return;
-            }
+        let store_guard = store.lock();
+        if let Err(e) = store_guard.upsert_task(&task) {
+            self.as_mut()
+                .rust_mut()
+                .set_error(&format!("Failed to save: {}", e));
+            return;
         }
 
         if let Some(t) = self.as_mut().rust_mut().tasks.get_mut(index as usize) {

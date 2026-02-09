@@ -5,7 +5,7 @@ pub mod plugin;
 pub mod repo_op_state;
 
 pub use app::App;
-pub use config::{Config, GitHubConfig, NotesBackend, NotesConfig, TemperatureUnit, WeatherConfig};
+pub use config::{Config, GitHubConfig, NotesConfig, TemperatureUnit, WeatherConfig};
 pub use error::{
     AppError, AuthError, ConfigError, DatabaseError, GitHubError, NetworkError, WeatherError,
 };

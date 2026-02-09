@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use cxx_qt::CxxQtType;
 use cxx_qt_lib::QString;
-use myme_services::{Todo as Note, TodoClient as NoteClient};
+use myme_services::{NoteClient, Todo as Note};
 
 use crate::bridge;
 use crate::services::{
@@ -97,7 +97,7 @@ impl NoteModelRust {
             return;
         }
 
-        match crate::bridge::get_todo_client_and_runtime() {
+        match crate::bridge::get_note_client_and_runtime() {
             Some((client, _runtime)) => {
                 self.initialize(client);
                 tracing::info!("NoteModel auto-initialized from global services");
@@ -305,7 +305,8 @@ impl qobject::NoteModel {
                     }
                     Err(e) => {
                         tracing::error!("Failed to fetch notes: {}", e);
-                        self.as_mut().rust_mut().set_error(&format!("Failed to fetch notes: {}", e));
+                        let msg = myme_core::AppError::Service(e.to_string()).user_message();
+                        self.as_mut().rust_mut().set_error(msg);
                         self.as_mut().set_connected(false);
                         self.as_mut().error_occurred();
                     }
@@ -323,7 +324,8 @@ impl qobject::NoteModel {
                     }
                     Err(e) => {
                         tracing::error!("Failed to create note: {}", e);
-                        self.as_mut().rust_mut().set_error(&format!("Failed to create note: {}", e));
+                        let msg = myme_core::AppError::Service(e.to_string()).user_message();
+                        self.as_mut().rust_mut().set_error(msg);
                         self.as_mut().error_occurred();
                     }
                 }
@@ -341,7 +343,8 @@ impl qobject::NoteModel {
                     }
                     Err(e) => {
                         tracing::error!("Failed to update note: {}", e);
-                        self.as_mut().rust_mut().set_error(&format!("Failed to toggle note: {}", e));
+                        let msg = myme_core::AppError::Service(e.to_string()).user_message();
+                        self.as_mut().rust_mut().set_error(msg);
                         self.as_mut().error_occurred();
                     }
                 }
@@ -359,7 +362,8 @@ impl qobject::NoteModel {
                     }
                     Err(e) => {
                         tracing::error!("Failed to delete note: {}", e);
-                        self.as_mut().rust_mut().set_error(&format!("Failed to delete note: {}", e));
+                        let msg = myme_core::AppError::Service(e.to_string()).user_message();
+                        self.as_mut().rust_mut().set_error(msg);
                         self.as_mut().error_occurred();
                     }
                 }

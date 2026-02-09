@@ -70,7 +70,7 @@ pub struct WorkflowModelRust {
     authenticated: bool,
     error_message: QString,
     repo_workflows: Vec<RepoWorkflows>,
-    project_store: Option<Arc<std::sync::Mutex<ProjectStore>>>,
+    project_store: Option<Arc<parking_lot::Mutex<ProjectStore>>>,
 }
 
 impl WorkflowModelRust {
@@ -122,20 +122,12 @@ impl qobject::WorkflowModel {
             }
         };
 
-        let repo_ids = match store.lock() {
-            Ok(guard) => match guard.list_all_linked_repo_ids() {
-                Ok(ids) => ids,
-                Err(e) => {
-                    self.as_mut()
-                        .rust_mut()
-                        .set_error(&format!("Failed to list linked repos: {}", e));
-                    return;
-                }
-            },
+        let repo_ids = match store.lock().list_all_linked_repo_ids() {
+            Ok(ids) => ids,
             Err(e) => {
                 self.as_mut()
                     .rust_mut()
-                    .set_error(&format!("Failed to access store: {}", e));
+                    .set_error(&format!("Failed to list linked repos: {}", e));
                 return;
             }
         };

@@ -8,7 +8,7 @@
 extern "C" bool cxx_qt_init_crate_myme_ui();
 
 // Rust initialization functions
-extern "C" bool initialize_note_model(const char* base_url);
+extern "C" bool initialize_note_client();
 extern "C" bool initialize_weather_services();
 extern "C" bool initialize_github_auth();
 extern "C" bool initialize_github_client();
@@ -37,8 +37,8 @@ int main(int argc, char *argv[])
     // Initialize cxx-qt types (this also registers QML types)
     cxx_qt_init_crate_myme_ui();
 
-    // Initialize global services (TodoClient, etc.)
-    initialize_note_model("http://localhost:8008");
+    // Initialize note client (SQLite)
+    initialize_note_client();
 
     // Initialize weather services (WeatherProvider, cache)
     initialize_weather_services();

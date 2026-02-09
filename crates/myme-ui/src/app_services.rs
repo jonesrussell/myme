@@ -15,7 +15,7 @@ use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
 use myme_auth::GitHubAuth;
-use myme_services::{GitHubClient, NoteClient, ProjectStore, SqliteNoteStore, TodoClient};
+use myme_services::{GitHubClient, NoteClient, ProjectStore, SqliteNoteStore};
 use myme_weather::{WeatherCache, WeatherProvider};
 
 /// Message types for the repo service channel
@@ -39,6 +39,12 @@ pub use crate::services::WorkflowServiceMessage;
 /// Message types for the kanban service channel
 pub use crate::services::KanbanServiceMessage;
 
+/// Message types for the Gmail service channel
+pub use crate::services::GmailServiceMessage;
+
+/// Message types for the Calendar service channel
+pub use crate::services::CalendarServiceMessage;
+
 /// Global application services container.
 ///
 /// This is initialized once at application startup and provides mutable
@@ -50,11 +56,7 @@ pub struct AppServices {
     /// Shutdown signal broadcaster
     shutdown_tx: broadcast::Sender<()>,
 
-    /// Todo/Notes API client (for Godo integration) - LEGACY
-    /// Use `note_client` instead for new code.
-    todo_client: RwLock<Option<Arc<TodoClient>>>,
-
-    /// Unified note client (SQLite or HTTP backend)
+    /// Note client (SQLite backend)
     note_client: RwLock<Option<Arc<NoteClient>>>,
 
     /// GitHub API client (requires authentication)
@@ -114,6 +116,18 @@ pub struct AppServices {
     /// Kanban service channel receiver
     kanban_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<KanbanServiceMessage>>>>,
 
+    /// Gmail service channel sender
+    gmail_service_tx: RwLock<Option<std::sync::mpsc::Sender<GmailServiceMessage>>>,
+
+    /// Gmail service channel receiver
+    gmail_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<GmailServiceMessage>>>>,
+
+    /// Calendar service channel sender
+    calendar_service_tx: RwLock<Option<std::sync::mpsc::Sender<CalendarServiceMessage>>>,
+
+    /// Calendar service channel receiver
+    calendar_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<CalendarServiceMessage>>>>,
+
     /// Cancellation token for repo operations (clone, pull)
     repo_cancel_token: RwLock<Option<Arc<CancellationToken>>>,
 }
@@ -140,7 +154,6 @@ impl AppServices {
                 Arc::new(Self {
                     runtime,
                     shutdown_tx,
-                    todo_client: RwLock::new(None),
                     note_client: RwLock::new(None),
                     github_client: RwLock::new(None),
                     github_auth: RwLock::new(None),
@@ -161,6 +174,10 @@ impl AppServices {
                     workflow_service_rx: RwLock::new(None),
                     kanban_service_tx: RwLock::new(None),
                     kanban_service_rx: RwLock::new(None),
+                    gmail_service_tx: RwLock::new(None),
+                    gmail_service_rx: RwLock::new(None),
+                    calendar_service_tx: RwLock::new(None),
+                    calendar_service_rx: RwLock::new(None),
                     repo_cancel_token: RwLock::new(None),
                 })
             })
@@ -188,7 +205,6 @@ impl AppServices {
         let _ = self.shutdown_tx.send(());
 
         // Clear all mutable state
-        *self.todo_client.write() = None;
         *self.note_client.write() = None;
         *self.github_client.write() = None;
         *self.github_auth.write() = None;
@@ -209,6 +225,10 @@ impl AppServices {
         *self.workflow_service_rx.write() = None;
         *self.kanban_service_tx.write() = None;
         *self.kanban_service_rx.write() = None;
+        *self.gmail_service_tx.write() = None;
+        *self.gmail_service_rx.write() = None;
+        *self.calendar_service_tx.write() = None;
+        *self.calendar_service_rx.write() = None;
 
         // Cancel any active repo operations
         if let Some(token) = self.repo_cancel_token.write().take() {
@@ -218,47 +238,7 @@ impl AppServices {
         tracing::info!("AppServices shutdown complete");
     }
 
-    // =========== Todo Client ===========
-
-    /// Get the Todo client if initialized.
-    pub fn todo_client(&self) -> Option<Arc<TodoClient>> {
-        self.todo_client.read().clone()
-    }
-
-    /// Set or update the Todo client.
-    pub fn set_todo_client(&self, client: Option<Arc<TodoClient>>) {
-        *self.todo_client.write() = client;
-    }
-
-    /// Initialize Todo client from configuration.
-    ///
-    /// The `allow_invalid_certs` parameter only takes effect in debug builds.
-    pub fn init_todo_client(
-        &self,
-        base_url: &str,
-        jwt_token: Option<String>,
-        allow_invalid_certs: bool,
-    ) -> bool {
-        let config = myme_services::TodoClientConfig {
-            base_url: base_url.to_string(),
-            jwt_token,
-            allow_invalid_certs,
-        };
-
-        match TodoClient::new_with_config(config) {
-            Ok(client) => {
-                self.set_todo_client(Some(Arc::new(client)));
-                tracing::info!("Todo client initialized with base_url: {}", base_url);
-                true
-            }
-            Err(e) => {
-                tracing::error!("Failed to create Todo client: {}", e);
-                false
-            }
-        }
-    }
-
-    // =========== Note Client (unified) ===========
+    // =========== Note Client ===========
 
     /// Get the unified note client if initialized.
     pub fn note_client(&self) -> Option<Arc<NoteClient>> {
@@ -270,112 +250,36 @@ impl AppServices {
         *self.note_client.write() = client;
     }
 
-    /// Initialize unified note client from configuration.
+    /// Initialize note client from configuration (SQLite only).
     ///
-    /// Reads the notes config and creates either a SQLite or HTTP backend.
-    /// Also runs migration from Godo if configured.
+    /// Returns `true` if the client was initialized or was already initialized.
+    /// Returns `false` only on creation failure.
     pub fn init_note_client(&self) -> bool {
-        // Return true if already initialized
         if self.note_client.read().is_some() {
             return true;
         }
 
-        let config = match myme_core::Config::load() {
-            Ok(c) => c,
-            Err(e) => {
-                tracing::warn!("Failed to load config for notes: {}. Using defaults.", e);
-                myme_core::Config::default()
-            }
-        };
-
-        let client = match config.notes.backend {
-            myme_core::NotesBackend::Sqlite => {
-                self.init_sqlite_note_client(&config)
-            }
-            myme_core::NotesBackend::Api => {
-                self.init_api_note_client(&config)
-            }
-        };
-
-        match client {
-            Some(c) => {
-                self.set_note_client(Some(Arc::new(c)));
-                tracing::info!("Note client initialized ({:?} backend)", config.notes.backend);
-                true
-            }
-            None => {
-                tracing::error!("Failed to initialize note client");
-                false
-            }
-        }
-    }
-
-    /// Initialize SQLite-backed note client.
-    fn init_sqlite_note_client(&self, config: &myme_core::Config) -> Option<NoteClient> {
+        let config = myme_core::Config::load_cached();
         let db_path = config.notes.sqlite_path();
 
-        // Ensure directory exists
         if let Some(parent) = db_path.parent() {
             if let Err(e) = std::fs::create_dir_all(parent) {
                 tracing::error!("Failed to create notes database directory: {}", e);
-                return None;
+                return false;
             }
         }
 
-        // Create store
         let store = match SqliteNoteStore::new(&db_path) {
             Ok(s) => s,
             Err(e) => {
                 tracing::error!("Failed to create SQLite note store at {:?}: {}", db_path, e);
-                return None;
+                return false;
             }
         };
 
         tracing::info!("SQLite note store opened at {:?}", db_path);
-
-        // Run migration from Godo if configured
-        if config.notes.migrate_from_godo {
-            let godo_path = config.notes.godo_path();
-            if godo_path.exists() {
-                tracing::info!("Running migration from Godo database: {:?}", godo_path);
-                match myme_services::migrate_from_godo(&godo_path, &store) {
-                    Ok(result) => {
-                        tracing::info!("{}", result);
-                    }
-                    Err(e) => {
-                        tracing::warn!("Migration from Godo failed: {}", e);
-                        // Continue anyway - store is still usable
-                    }
-                }
-            } else {
-                tracing::debug!("Godo database not found at {:?}, skipping migration", godo_path);
-            }
-        }
-
-        Some(NoteClient::sqlite(store))
-    }
-
-    /// Initialize HTTP API-backed note client (legacy Godo).
-    fn init_api_note_client(&self, config: &myme_core::Config) -> Option<NoteClient> {
-        let todo_config = myme_services::TodoClientConfig {
-            base_url: config.services.todo_api_url.clone(),
-            jwt_token: config.services.jwt_token.clone(),
-            allow_invalid_certs: config.services.allow_invalid_certs,
-        };
-
-        match TodoClient::new_with_config(todo_config) {
-            Ok(client) => {
-                tracing::info!(
-                    "HTTP note client initialized with base_url: {}",
-                    config.services.todo_api_url
-                );
-                Some(NoteClient::http(client))
-            }
-            Err(e) => {
-                tracing::error!("Failed to create HTTP note client: {}", e);
-                None
-            }
-        }
+        self.set_note_client(Some(Arc::new(NoteClient::sqlite(store))));
+        true
     }
 
     // =========== GitHub Client ===========
@@ -452,13 +356,7 @@ impl AppServices {
 
     /// Initialize GitHub auth provider from configuration.
     pub fn init_github_auth(&self) -> bool {
-        let config = match myme_core::Config::load() {
-            Ok(c) => c,
-            Err(e) => {
-                tracing::warn!("Failed to load config for GitHub auth: {}", e);
-                return false;
-            }
-        };
+        let config = myme_core::Config::load_cached();
 
         if !config.github.is_configured() {
             tracing::info!("GitHub OAuth not configured");
@@ -494,9 +392,7 @@ impl AppServices {
             return true;
         }
 
-        let config_dir = dirs::config_dir()
-            .unwrap_or_else(|| std::path::PathBuf::from("."))
-            .join("myme");
+        let config_dir = myme_core::Config::load_cached().config_dir.clone();
 
         let db_path = config_dir.join("projects.db");
 
@@ -531,31 +427,26 @@ impl AppServices {
         *self.weather_provider.write() = provider;
     }
 
-    /// Get weather cache, cloning the current state.
+    /// Get weather cache (from stored instance, or create and store on first use).
     pub fn weather_cache(&self) -> Option<WeatherCache> {
-        let config_dir = myme_core::Config::load()
-            .map(|c| c.config_dir)
-            .unwrap_or_else(|_| {
-                dirs::config_dir()
-                    .unwrap_or_else(|| std::path::PathBuf::from("."))
-                    .join("myme")
-            });
-
+        {
+            let guard = self.weather_cache.read();
+            if let Some(mutex) = guard.as_ref() {
+                return Some(mutex.lock().clone());
+            }
+        }
+        // Lazy init: create, load, store, then return clone
+        let config_dir = myme_core::Config::load_cached().config_dir.clone();
         let mut cache = WeatherCache::new(&config_dir);
         let _ = cache.load();
+        *self.weather_cache.write() = Some(parking_lot::Mutex::new(cache.clone()));
         Some(cache)
     }
 
     /// Initialize weather services.
     pub fn init_weather_services(&self) -> bool {
-        // Load config for temperature unit preference
-        let temp_unit = match myme_core::Config::load() {
-            Ok(config) => config.weather.temperature_unit,
-            Err(e) => {
-                tracing::warn!("Failed to load config for weather: {}. Using auto.", e);
-                myme_core::TemperatureUnit::Auto
-            }
-        };
+        let config = myme_core::Config::load_cached();
+        let temp_unit = config.weather.temperature_unit;
 
         // Convert to myme_weather::TemperatureUnit
         let weather_unit = match temp_unit {
@@ -563,6 +454,12 @@ impl AppServices {
             myme_core::TemperatureUnit::Fahrenheit => myme_weather::TemperatureUnit::Fahrenheit,
             myme_core::TemperatureUnit::Auto => myme_weather::TemperatureUnit::Auto,
         };
+
+        // Create and store weather cache
+        let config_dir = config.config_dir.clone();
+        let mut cache = WeatherCache::new(&config_dir);
+        let _ = cache.load();
+        *self.weather_cache.write() = Some(parking_lot::Mutex::new(cache));
 
         // Create weather provider
         match WeatherProvider::new(weather_unit) {
@@ -774,6 +671,62 @@ impl AppServices {
         result
     }
 
+    // =========== Gmail Service Channel ===========
+
+    /// Get Gmail service sender.
+    pub fn gmail_service_tx(&self) -> Option<std::sync::mpsc::Sender<GmailServiceMessage>> {
+        self.gmail_service_tx.read().clone()
+    }
+
+    /// Initialize Gmail service channel.
+    pub fn init_gmail_service_channel(&self) -> bool {
+        if self.gmail_service_tx.read().is_some() {
+            return true;
+        }
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        *self.gmail_service_tx.write() = Some(tx);
+        *self.gmail_service_rx.write() = Some(parking_lot::Mutex::new(rx));
+        tracing::info!("Gmail service channel initialized");
+        true
+    }
+
+    /// Try to receive a message from the Gmail service channel (non-blocking).
+    pub fn try_recv_gmail_message(&self) -> Option<GmailServiceMessage> {
+        let guard = self.gmail_service_rx.read();
+        let rx_mutex = guard.as_ref()?;
+        let result = rx_mutex.lock().try_recv().ok();
+        result
+    }
+
+    // =========== Calendar Service Channel ===========
+
+    /// Get Calendar service sender.
+    pub fn calendar_service_tx(&self) -> Option<std::sync::mpsc::Sender<CalendarServiceMessage>> {
+        self.calendar_service_tx.read().clone()
+    }
+
+    /// Initialize Calendar service channel.
+    pub fn init_calendar_service_channel(&self) -> bool {
+        if self.calendar_service_tx.read().is_some() {
+            return true;
+        }
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        *self.calendar_service_tx.write() = Some(tx);
+        *self.calendar_service_rx.write() = Some(parking_lot::Mutex::new(rx));
+        tracing::info!("Calendar service channel initialized");
+        true
+    }
+
+    /// Try to receive a message from the Calendar service channel (non-blocking).
+    pub fn try_recv_calendar_message(&self) -> Option<CalendarServiceMessage> {
+        let guard = self.calendar_service_rx.read();
+        let rx_mutex = guard.as_ref()?;
+        let result = rx_mutex.lock().try_recv().ok();
+        result
+    }
+
     // =========== Repo Operation Cancellation ===========
 
     /// Create a new cancellation token for a repo operation.
@@ -817,14 +770,7 @@ pub fn runtime() -> tokio::runtime::Handle {
     services().runtime()
 }
 
-/// Get Todo client and runtime handle (legacy).
-/// Prefer using `note_client_and_runtime()` for new code.
-pub fn todo_client_and_runtime() -> Option<(Arc<TodoClient>, tokio::runtime::Handle)> {
-    let svc = services();
-    Some((svc.todo_client()?, svc.runtime()))
-}
-
-/// Get unified note client and runtime handle.
+/// Get note client and runtime handle.
 pub fn note_client_and_runtime() -> Option<(Arc<NoteClient>, tokio::runtime::Handle)> {
     let svc = services();
     Some((svc.note_client()?, svc.runtime()))
@@ -874,7 +820,7 @@ pub fn is_github_authenticated() -> bool {
 
 /// Get repos local search path from config.
 pub fn get_repos_local_search_path() -> Option<(std::path::PathBuf, bool)> {
-    let config = myme_core::Config::load().ok()?;
+    let config = myme_core::Config::load_cached();
     Some(config.repos.effective_local_search_path())
 }
 

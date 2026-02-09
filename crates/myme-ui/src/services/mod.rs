@@ -1,4 +1,7 @@
 pub mod auth_service;
+pub mod calendar_service;
+pub mod google_common;
+pub mod gmail_service;
 pub mod kanban_service;
 pub mod note_service;
 pub mod project_service;
@@ -29,4 +32,14 @@ pub use workflow_service::{
 };
 pub use weather_service::{
     request_fetch as request_weather_fetch, WeatherError, WeatherServiceMessage,
+};
+pub use gmail_service::{
+    request_archive as request_gmail_archive, request_fetch as request_gmail_fetch,
+    request_mark_as_read as request_gmail_mark_as_read, request_trash as request_gmail_trash,
+    GmailServiceMessage,
+};
+pub use calendar_service::{
+    request_fetch_events as request_calendar_fetch_events,
+    request_fetch_today_events as request_calendar_fetch_today_events,
+    CalendarServiceMessage,
 };

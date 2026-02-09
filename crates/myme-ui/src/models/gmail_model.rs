@@ -1,14 +1,21 @@
 //! Gmail model for QML.
 //!
 //! Provides email listing, reading, and actions.
+//! Uses the shared AppServices runtime and channel pattern (no block_on).
 
 use core::pin::Pin;
-use std::sync::mpsc;
 
 use cxx_qt::CxxQtType;
 use cxx_qt_lib::QString;
-use myme_auth::{SecureStorage, GoogleOAuth2Provider};
-use myme_gmail::{GmailClient, GmailCache, Message};
+use myme_auth::SecureStorage;
+use myme_gmail::{GmailCache, Message};
+
+use crate::bridge;
+use crate::services::google_common::{get_google_access_token, get_google_cache_path};
+use crate::services::{
+    request_gmail_archive, request_gmail_fetch, request_gmail_mark_as_read, request_gmail_trash,
+    GmailServiceMessage,
+};
 
 #[cxx_qt::bridge]
 pub mod qobject {
@@ -57,12 +64,6 @@ pub mod qobject {
     }
 }
 
-/// Messages for async operations
-enum GmailMessage {
-    FetchDone(Result<Vec<Message>, String>),
-    ActionDone(Result<String, String>), // message_id or error
-}
-
 #[derive(Default)]
 pub struct GmailModelRust {
     loading: bool,
@@ -71,7 +72,6 @@ pub struct GmailModelRust {
     unread_count: i32,
     message_count: i32,
     messages: Vec<Message>,
-    rx: Option<mpsc::Receiver<GmailMessage>>,
 }
 
 impl GmailModelRust {
@@ -84,50 +84,11 @@ impl GmailModelRust {
     }
 
     fn get_access_token() -> Option<String> {
-        let token_set = SecureStorage::retrieve_token("google").ok()?;
-
-        if token_set.is_expired() {
-            // Try to refresh
-            if let Some(refresh_token) = &token_set.refresh_token {
-                if let Some((client_id, client_secret)) = get_google_config() {
-                    let rt = tokio::runtime::Runtime::new().ok()?;
-                    let provider = GoogleOAuth2Provider::new(client_id, client_secret);
-
-                    if let Ok(new_tokens) = rt.block_on(provider.refresh_token(refresh_token)) {
-                        let expires_at = chrono::Utc::now().timestamp() + new_tokens.expires_in as i64;
-                        let new_token_set = myme_auth::TokenSet {
-                            access_token: new_tokens.access_token.clone(),
-                            refresh_token: new_tokens.refresh_token.or(token_set.refresh_token.clone()),
-                            expires_at,
-                            scopes: new_tokens.scope.split(' ').map(|s| s.to_string()).collect(),
-                        };
-                        let _ = SecureStorage::store_token("google", &new_token_set);
-                        return Some(new_tokens.access_token);
-                    }
-                }
-            }
-            return None;
-        }
-
-        Some(token_set.access_token)
+        get_google_access_token()
     }
 
     fn get_cache_path() -> std::path::PathBuf {
-        dirs::config_dir()
-            .unwrap_or_else(|| std::path::PathBuf::from("."))
-            .join("myme")
-            .join("gmail_cache.db")
-    }
-}
-
-fn get_google_config() -> Option<(String, String)> {
-    match myme_core::Config::load() {
-        Ok(config) => {
-            let client_id = config.google.as_ref()?.client_id.clone()?;
-            let client_secret = config.google.as_ref()?.client_secret.clone()?;
-            Some((client_id, client_secret))
-        }
-        Err(_) => None,
+        get_google_cache_path("gmail_cache.db")
     }
 }
 
@@ -138,7 +99,6 @@ impl qobject::GmailModel {
         self.as_mut().set_authenticated(is_authenticated);
 
         if is_authenticated {
-            // Load cached message count
             if let Ok(cache) = GmailCache::new(GmailModelRust::get_cache_path()) {
                 if let Ok(count) = cache.unread_count() {
                     self.as_mut().set_unread_count(count as i32);
@@ -147,7 +107,7 @@ impl qobject::GmailModel {
         }
     }
 
-    /// Fetch messages from Gmail (non-blocking)
+    /// Fetch messages from Gmail (non-blocking, uses shared runtime)
     pub fn fetch_messages(mut self: Pin<&mut Self>) {
         let access_token = match GmailModelRust::get_access_token() {
             Some(t) => t,
@@ -158,44 +118,20 @@ impl qobject::GmailModel {
             }
         };
 
-        let (tx, rx) = mpsc::channel();
-        self.as_mut().rust_mut().rx = Some(rx);
+        bridge::init_gmail_service_channel();
+        let tx = match bridge::get_gmail_service_tx() {
+            Some(t) => t,
+            None => {
+                self.as_mut().set_error_message(QString::from("Service channel not ready"));
+                return;
+            }
+        };
 
         self.as_mut().set_loading(true);
         self.as_mut().rust_mut().clear_error();
 
         let cache_path = GmailModelRust::get_cache_path();
-
-        std::thread::spawn(move || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let result = rt.block_on(async {
-                let client = GmailClient::new(&access_token);
-
-                // Fetch message list
-                let list_response = client.list_message_ids(Some("in:inbox"), None).await
-                    .map_err(|e| e.to_string())?;
-
-                // Fetch full details for each message (limited to first 20)
-                let mut messages = Vec::new();
-                for msg_ref in list_response.messages.into_iter().take(20) {
-                    match client.get_message(&msg_ref.id).await {
-                        Ok(msg) => messages.push(msg),
-                        Err(e) => tracing::warn!("Failed to fetch message {}: {}", msg_ref.id, e),
-                    }
-                }
-
-                // Cache messages
-                if let Ok(cache) = GmailCache::new(&cache_path) {
-                    for msg in &messages {
-                        let _ = cache.store_message(msg);
-                    }
-                }
-
-                Ok(messages)
-            });
-
-            let _ = tx.send(GmailMessage::FetchDone(result));
-        });
+        request_gmail_fetch(&tx, access_token, cache_path);
     }
 
     /// Get message at index as JSON
@@ -226,21 +162,14 @@ impl qobject::GmailModel {
             None => return,
         };
 
+        bridge::init_gmail_service_channel();
+        let tx = match bridge::get_gmail_service_tx() {
+            Some(t) => t,
+            None => return,
+        };
+
         let msg_id = message_id.to_string();
-        let (tx, rx) = mpsc::channel();
-        self.as_mut().rust_mut().rx = Some(rx);
-
-        std::thread::spawn(move || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let result = rt.block_on(async {
-                let client = GmailClient::new(&access_token);
-                client.mark_as_read(&msg_id).await
-                    .map(|_| msg_id.clone())
-                    .map_err(|e| e.to_string())
-            });
-
-            let _ = tx.send(GmailMessage::ActionDone(result));
-        });
+        request_gmail_mark_as_read(&tx, access_token, msg_id);
     }
 
     /// Archive message
@@ -250,21 +179,14 @@ impl qobject::GmailModel {
             None => return,
         };
 
+        bridge::init_gmail_service_channel();
+        let tx = match bridge::get_gmail_service_tx() {
+            Some(t) => t,
+            None => return,
+        };
+
         let msg_id = message_id.to_string();
-        let (tx, rx) = mpsc::channel();
-        self.as_mut().rust_mut().rx = Some(rx);
-
-        std::thread::spawn(move || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let result = rt.block_on(async {
-                let client = GmailClient::new(&access_token);
-                client.archive_message(&msg_id).await
-                    .map(|_| msg_id.clone())
-                    .map_err(|e| e.to_string())
-            });
-
-            let _ = tx.send(GmailMessage::ActionDone(result));
-        });
+        request_gmail_archive(&tx, access_token, msg_id);
     }
 
     /// Move message to trash
@@ -274,32 +196,25 @@ impl qobject::GmailModel {
             None => return,
         };
 
+        bridge::init_gmail_service_channel();
+        let tx = match bridge::get_gmail_service_tx() {
+            Some(t) => t,
+            None => return,
+        };
+
         let msg_id = message_id.to_string();
-        let (tx, rx) = mpsc::channel();
-        self.as_mut().rust_mut().rx = Some(rx);
-
-        std::thread::spawn(move || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let result = rt.block_on(async {
-                let client = GmailClient::new(&access_token);
-                client.trash_message(&msg_id).await
-                    .map(|_| msg_id.clone())
-                    .map_err(|e| e.to_string())
-            });
-
-            let _ = tx.send(GmailMessage::ActionDone(result));
-        });
+        request_gmail_trash(&tx, access_token, msg_id);
     }
 
     /// Poll for async operation results
     pub fn poll_channel(mut self: Pin<&mut Self>) {
-        let msg = match self.as_ref().rust().rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
+        let msg = match bridge::try_recv_gmail_message() {
             Some(m) => m,
             None => return,
         };
 
         match msg {
-            GmailMessage::FetchDone(result) => {
+            GmailServiceMessage::FetchDone(result) => {
                 self.as_mut().set_loading(false);
 
                 match result {
@@ -316,11 +231,10 @@ impl qobject::GmailModel {
                     }
                 }
             }
-            GmailMessage::ActionDone(result) => {
+            GmailServiceMessage::ActionDone(result) => {
                 match result {
                     Ok(msg_id) => {
                         self.as_mut().message_updated(QString::from(&msg_id));
-                        // Refresh messages after action
                         self.fetch_messages();
                     }
                     Err(e) => {

@@ -3,95 +3,17 @@
 //! This module provides the C-callable functions that Qt/QML uses to initialize
 //! the Rust services. Internally, it delegates to `AppServices` for state management.
 
-use std::ffi::CStr;
-use std::os::raw::c_char;
 use std::sync::Arc;
 
 use myme_auth::GitHubAuth;
-use myme_services::{GitHubClient, NoteClient, ProjectStore, TodoClient};
+use myme_services::{GitHubClient, NoteClient, ProjectStore};
 use myme_weather::{WeatherCache, WeatherProvider};
 
 use crate::app_services::{self, AppServices};
 
 // =========== C FFI Initialization Functions ===========
 
-/// Initialize the NoteModel with a TodoClient
-/// Must be called before QML tries to access it
-#[no_mangle]
-pub extern "C" fn initialize_note_model(base_url: *const c_char) -> bool {
-    // Initialize tracing if not already done
-    let _ = tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
-        )
-        .try_init();
-
-    // Convert C string to Rust string
-    let base_url_str = unsafe {
-        if base_url.is_null() {
-            "http://localhost:8080"
-        } else {
-            match CStr::from_ptr(base_url).to_str() {
-                Ok(s) => s,
-                Err(_) => {
-                    tracing::error!("Invalid UTF-8 in base_url");
-                    return false;
-                }
-            }
-        }
-    };
-
-    tracing::info!("Initializing NoteModel with base_url: {}", base_url_str);
-
-    // Get JWT token and cert config from config file or environment variable
-    let (jwt_token, allow_invalid_certs) = match myme_core::Config::load() {
-        Ok(config) => {
-            let token = if let Some(token) = config.services.jwt_token {
-                tracing::info!("Using JWT token from config file");
-                Some(token)
-            } else if let Ok(token) = std::env::var("GODO_JWT_TOKEN") {
-                tracing::info!("Using JWT token from GODO_JWT_TOKEN environment variable");
-                Some(token)
-            } else {
-                tracing::warn!(
-                    "No JWT token configured - API calls may fail if authentication is required"
-                );
-                None
-            };
-            (token, config.services.allow_invalid_certs)
-        }
-        Err(e) => {
-            tracing::warn!(
-                "Failed to load config: {}. Checking environment variable.",
-                e
-            );
-            (std::env::var("GODO_JWT_TOKEN").ok(), false)
-        }
-    };
-
-    // Initialize via AppServices
-    let services = AppServices::init();
-    let success = services.init_todo_client(base_url_str, jwt_token, allow_invalid_certs);
-
-    if success {
-        tracing::info!("NoteModel services initialized successfully");
-    }
-
-    success
-}
-
-/// Get the initialized TodoClient and runtime for use by NoteModels (legacy).
-/// Prefer using `get_note_client_and_runtime()` for new code.
-pub fn get_todo_client_and_runtime() -> Option<(Arc<TodoClient>, tokio::runtime::Handle)> {
-    app_services::todo_client_and_runtime()
-}
-
-/// Initialize unified note client from configuration.
-///
-/// This is the preferred initialization method. It reads the config to determine
-/// whether to use SQLite (default) or HTTP (legacy Godo) backend.
-///
+/// Initialize note client from configuration (SQLite).
 /// Must be called before QML tries to access NoteModel.
 #[no_mangle]
 pub extern "C" fn initialize_note_client() -> bool {
@@ -165,46 +87,8 @@ pub fn get_github_client_and_runtime() -> Option<(Arc<GitHubClient>, tokio::runt
     app_services::github_client_and_runtime()
 }
 
-/// Get project store (legacy API with std::sync::Mutex)
-///
-/// This wraps the parking_lot::Mutex store for backward compatibility.
-/// New code should use `app_services::project_store()` directly.
-pub fn get_project_store() -> Option<Arc<std::sync::Mutex<ProjectStore>>> {
-    // For backward compatibility, we keep a separate std::sync::Mutex store
-    // This will be removed when all models are updated to use parking_lot
-    static LEGACY_STORE: std::sync::OnceLock<Arc<std::sync::Mutex<ProjectStore>>> =
-        std::sync::OnceLock::new();
-
-    // If we already have a legacy store, return it
-    if let Some(store) = LEGACY_STORE.get() {
-        return Some(store.clone());
-    }
-
-    // Otherwise, create one from the same database
-    let config_dir = dirs::config_dir()
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("myme");
-    let db_path = config_dir.join("projects.db");
-
-    // Ensure directory exists
-    std::fs::create_dir_all(&config_dir).ok()?;
-
-    match ProjectStore::open(&db_path) {
-        Ok(store) => {
-            let arc = Arc::new(std::sync::Mutex::new(store));
-            let _ = LEGACY_STORE.set(arc.clone());
-            tracing::info!("Legacy project store initialized (std::sync::Mutex)");
-            Some(arc)
-        }
-        Err(e) => {
-            tracing::error!("Failed to open legacy project store: {}", e);
-            None
-        }
-    }
-}
-
-/// Get project store (new API using parking_lot)
-pub fn get_project_store_parking_lot() -> Option<Arc<parking_lot::Mutex<ProjectStore>>> {
+/// Get project store if initialized.
+pub fn get_project_store() -> Option<Arc<parking_lot::Mutex<ProjectStore>>> {
     app_services::project_store()
 }
 
@@ -218,19 +102,8 @@ pub fn get_runtime() -> Option<tokio::runtime::Handle> {
     Some(app_services::runtime())
 }
 
-/// Get project store, initializing if needed (legacy API with std::sync::Mutex)
-///
-/// This wraps the parking_lot::Mutex store for backward compatibility.
-/// New code should use `app_services::project_store_or_init()` directly.
-pub fn get_project_store_or_init() -> Option<Arc<std::sync::Mutex<ProjectStore>>> {
-    // Also ensure the parking_lot version is initialized
-    let _ = app_services::project_store_or_init();
-    // Return the legacy std::sync::Mutex version
-    get_project_store()
-}
-
-/// Get project store, initializing if needed (new API using parking_lot)
-pub fn get_project_store_or_init_parking_lot() -> Option<Arc<parking_lot::Mutex<ProjectStore>>> {
+/// Get project store, initializing if needed.
+pub fn get_project_store_or_init() -> Option<Arc<parking_lot::Mutex<ProjectStore>>> {
     app_services::project_store_or_init()
 }
 
@@ -409,6 +282,38 @@ pub fn get_kanban_service_tx(
 /// Non-blocking recv from kanban service channel. Called by KanbanModel::poll_channel.
 pub fn try_recv_kanban_message() -> Option<crate::services::KanbanServiceMessage> {
     AppServices::init().try_recv_kanban_message()
+}
+
+/// Initialize Gmail service channel. Call once when GmailModel is first created.
+pub fn init_gmail_service_channel() -> bool {
+    AppServices::init().init_gmail_service_channel()
+}
+
+/// Get Gmail service sender for request_* calls.
+pub fn get_gmail_service_tx(
+) -> Option<std::sync::mpsc::Sender<crate::services::GmailServiceMessage>> {
+    AppServices::init().gmail_service_tx()
+}
+
+/// Non-blocking recv from Gmail service channel. Called by GmailModel::poll_channel.
+pub fn try_recv_gmail_message() -> Option<crate::services::GmailServiceMessage> {
+    AppServices::init().try_recv_gmail_message()
+}
+
+/// Initialize Calendar service channel. Call once when CalendarModel is first created.
+pub fn init_calendar_service_channel() -> bool {
+    AppServices::init().init_calendar_service_channel()
+}
+
+/// Get Calendar service sender for request_* calls.
+pub fn get_calendar_service_tx(
+) -> Option<std::sync::mpsc::Sender<crate::services::CalendarServiceMessage>> {
+    AppServices::init().calendar_service_tx()
+}
+
+/// Non-blocking recv from Calendar service channel. Called by CalendarModel::poll_channel.
+pub fn try_recv_calendar_message() -> Option<crate::services::CalendarServiceMessage> {
+    AppServices::init().try_recv_calendar_message()
 }
 
 /// Create a new cancellation token for repo operations.

@@ -1,7 +1,6 @@
-//! Unified note client supporting multiple backends.
+//! Unified note client (SQLite backend only).
 //!
-//! This module provides `NoteClient`, an enum that wraps both SQLite and HTTP
-//! backends with a consistent async interface.
+//! Provides async methods for note operations against local SQLite storage.
 
 use std::sync::Arc;
 
@@ -10,140 +9,77 @@ use parking_lot::Mutex;
 
 use crate::note_backend::NoteBackend;
 use crate::note_store::SqliteNoteStore;
-use crate::todo::{Todo, TodoClient, TodoCreateRequest, TodoUpdateRequest};
+use crate::todo::{Todo, TodoCreateRequest, TodoUpdateRequest};
 
-/// Unified note client supporting multiple storage backends.
-///
-/// Provides async methods for note operations regardless of the underlying
-/// storage mechanism (SQLite or HTTP API).
+/// Note client wrapping SQLite storage.
 #[derive(Clone)]
-pub enum NoteClient {
-    /// Local SQLite storage (default).
-    Sqlite(Arc<Mutex<SqliteNoteStore>>),
-
-    /// Remote HTTP API (Godo compatibility).
-    Http(Arc<TodoClient>),
-}
+pub struct NoteClient(Arc<Mutex<SqliteNoteStore>>);
 
 impl NoteClient {
     /// Create a new SQLite-backed note client.
     pub fn sqlite(store: SqliteNoteStore) -> Self {
-        Self::Sqlite(Arc::new(Mutex::new(store)))
+        Self(Arc::new(Mutex::new(store)))
     }
 
-    /// Create a new HTTP-backed note client (Godo API).
-    pub fn http(client: TodoClient) -> Self {
-        Self::Http(Arc::new(client))
-    }
-
-    /// Check if this client uses SQLite storage.
-    pub fn is_sqlite(&self) -> bool {
-        matches!(self, Self::Sqlite(_))
-    }
-
-    /// Check if this client uses HTTP API.
-    pub fn is_http(&self) -> bool {
-        matches!(self, Self::Http(_))
-    }
-
-    /// List all notes.
-    ///
-    /// Returns notes ordered by creation time (newest first).
+    /// List all notes (newest first).
     pub async fn list_todos(&self) -> Result<Vec<Todo>> {
-        match self {
-            Self::Sqlite(store) => {
-                let store = store.clone();
-                tokio::task::spawn_blocking(move || {
-                    store.lock().list().map_err(|e| anyhow::anyhow!("{}", e))
-                })
-                .await?
-            }
-            Self::Http(client) => client.list_todos().await,
-        }
+        let store = self.0.clone();
+        tokio::task::spawn_blocking(move || {
+            store.lock().list().map_err(|e| anyhow::anyhow!("{}", e))
+        })
+        .await?
     }
 
     /// Get a note by ID.
-    ///
-    /// Returns an error if the note doesn't exist (for API compatibility).
     pub async fn get_todo(&self, id: &str) -> Result<Todo> {
-        match self {
-            Self::Sqlite(store) => {
-                let store = store.clone();
-                let id = id.to_string();
-                tokio::task::spawn_blocking(move || {
-                    store
-                        .lock()
-                        .get(&id)
-                        .map_err(|e| anyhow::anyhow!("{}", e))?
-                        .ok_or_else(|| anyhow::anyhow!("Note not found: {}", id))
-                })
-                .await?
-            }
-            Self::Http(client) => client.get_todo(id).await,
-        }
+        let store = self.0.clone();
+        let id = id.to_string();
+        tokio::task::spawn_blocking(move || {
+            store
+                .lock()
+                .get(&id)
+                .map_err(|e| anyhow::anyhow!("{}", e))?
+                .ok_or_else(|| anyhow::anyhow!("Note not found: {}", id))
+        })
+        .await?
     }
 
     /// Create a new note.
-    ///
-    /// # Arguments
-    /// * `request` - The create request containing note content.
     pub async fn create_todo(&self, request: TodoCreateRequest) -> Result<Todo> {
-        match self {
-            Self::Sqlite(store) => {
-                let store = store.clone();
-                tokio::task::spawn_blocking(move || {
-                    store
-                        .lock()
-                        .create(&request.content)
-                        .map_err(|e| anyhow::anyhow!("{}", e))
-                })
-                .await?
-            }
-            Self::Http(client) => client.create_todo(request).await,
-        }
+        let store = self.0.clone();
+        tokio::task::spawn_blocking(move || {
+            store
+                .lock()
+                .create(&request.content)
+                .map_err(|e| anyhow::anyhow!("{}", e))
+        })
+        .await?
     }
 
     /// Update an existing note.
-    ///
-    /// # Arguments
-    /// * `id` - The note ID.
-    /// * `request` - The update request with optional content and done fields.
     pub async fn update_todo(&self, id: &str, request: TodoUpdateRequest) -> Result<Todo> {
-        match self {
-            Self::Sqlite(store) => {
-                let store = store.clone();
-                let id = id.to_string();
-                tokio::task::spawn_blocking(move || {
-                    store
-                        .lock()
-                        .update(&id, request.content, request.done)
-                        .map_err(|e| anyhow::anyhow!("{}", e))
-                })
-                .await?
-            }
-            Self::Http(client) => client.update_todo(id, request).await,
-        }
+        let store = self.0.clone();
+        let id = id.to_string();
+        tokio::task::spawn_blocking(move || {
+            store
+                .lock()
+                .update(&id, request.content, request.done)
+                .map_err(|e| anyhow::anyhow!("{}", e))
+        })
+        .await?
     }
 
     /// Delete a note.
-    ///
-    /// # Arguments
-    /// * `id` - The note ID.
     pub async fn delete_todo(&self, id: &str) -> Result<()> {
-        match self {
-            Self::Sqlite(store) => {
-                let store = store.clone();
-                let id = id.to_string();
-                tokio::task::spawn_blocking(move || {
-                    store
-                        .lock()
-                        .delete(&id)
-                        .map_err(|e| anyhow::anyhow!("{}", e))
-                })
-                .await?
-            }
-            Self::Http(client) => client.delete_todo(id).await,
-        }
+        let store = self.0.clone();
+        let id = id.to_string();
+        tokio::task::spawn_blocking(move || {
+            store
+                .lock()
+                .delete(&id)
+                .map_err(|e| anyhow::anyhow!("{}", e))
+        })
+        .await?
     }
 
     /// Mark a note as done.
@@ -172,59 +108,31 @@ impl NoteClient {
 
     /// Toggle the done status of a note.
     pub async fn toggle_done(&self, id: &str) -> Result<Todo> {
-        match self {
-            Self::Sqlite(store) => {
-                let store = store.clone();
-                let id = id.to_string();
-                tokio::task::spawn_blocking(move || {
-                    store
-                        .lock()
-                        .toggle_done(&id)
-                        .map_err(|e| anyhow::anyhow!("{}", e))
-                })
-                .await?
-            }
-            Self::Http(client) => client.toggle_done(id).await,
-        }
+        let store = self.0.clone();
+        let id = id.to_string();
+        tokio::task::spawn_blocking(move || {
+            store
+                .lock()
+                .toggle_done(&id)
+                .map_err(|e| anyhow::anyhow!("{}", e))
+        })
+        .await?
     }
 
-    /// Check API health (HTTP backend only).
-    ///
-    /// For SQLite backend, always returns true.
+    /// Health check (always true for local store).
     pub async fn health_check(&self) -> Result<bool> {
-        match self {
-            Self::Sqlite(_) => Ok(true),
-            Self::Http(client) => client.health_check().await,
-        }
+        Ok(true)
     }
 
-    /// Get the underlying SQLite store (if using SQLite backend).
-    ///
-    /// Returns `None` if using HTTP backend.
-    pub fn sqlite_store(&self) -> Option<Arc<Mutex<SqliteNoteStore>>> {
-        match self {
-            Self::Sqlite(store) => Some(store.clone()),
-            Self::Http(_) => None,
-        }
-    }
-
-    /// Get the underlying HTTP client (if using HTTP backend).
-    ///
-    /// Returns `None` if using SQLite backend.
-    pub fn http_client(&self) -> Option<Arc<TodoClient>> {
-        match self {
-            Self::Sqlite(_) => None,
-            Self::Http(client) => Some(client.clone()),
-        }
+    /// Get the underlying SQLite store.
+    pub fn sqlite_store(&self) -> Arc<Mutex<SqliteNoteStore>> {
+        self.0.clone()
     }
 }
 
 impl std::fmt::Debug for NoteClient {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Sqlite(_) => f.debug_tuple("NoteClient::Sqlite").finish(),
-            Self::Http(_) => f.debug_tuple("NoteClient::Http").finish(),
-        }
+        f.debug_tuple("NoteClient").finish()
     }
 }
 
@@ -232,16 +140,15 @@ impl std::fmt::Debug for NoteClient {
 mod tests {
     use super::*;
 
-    fn create_sqlite_client() -> NoteClient {
-        let store = SqliteNoteStore::in_memory().expect("Failed to create in-memory store");
+    fn create_client() -> NoteClient {
+        let store = SqliteNoteStore::in_memory().expect("in-memory store");
         NoteClient::sqlite(store)
     }
 
     #[tokio::test]
-    async fn test_sqlite_client_create_and_list() {
-        let client = create_sqlite_client();
+    async fn test_create_and_list() {
+        let client = create_client();
 
-        // Create a note
         let note = client
             .create_todo(TodoCreateRequest {
                 content: "Test note".to_string(),
@@ -252,15 +159,14 @@ mod tests {
         assert_eq!(note.content, "Test note");
         assert!(!note.done);
 
-        // List notes
         let notes = client.list_todos().await.unwrap();
         assert_eq!(notes.len(), 1);
         assert_eq!(notes[0].id, note.id);
     }
 
     #[tokio::test]
-    async fn test_sqlite_client_update() {
-        let client = create_sqlite_client();
+    async fn test_update() {
+        let client = create_client();
 
         let note = client
             .create_todo(TodoCreateRequest {
@@ -285,8 +191,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_sqlite_client_delete() {
-        let client = create_sqlite_client();
+    async fn test_delete() {
+        let client = create_client();
 
         let note = client
             .create_todo(TodoCreateRequest {
@@ -302,8 +208,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_sqlite_client_toggle_done() {
-        let client = create_sqlite_client();
+    async fn test_toggle_done() {
+        let client = create_client();
 
         let note = client
             .create_todo(TodoCreateRequest {
@@ -322,17 +228,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_sqlite_client_health_check() {
-        let client = create_sqlite_client();
+    async fn test_health_check() {
+        let client = create_client();
         assert!(client.health_check().await.unwrap());
-    }
-
-    #[test]
-    fn test_client_type_detection() {
-        let sqlite_client = create_sqlite_client();
-        assert!(sqlite_client.is_sqlite());
-        assert!(!sqlite_client.is_http());
-        assert!(sqlite_client.sqlite_store().is_some());
-        assert!(sqlite_client.http_client().is_none());
     }
 }

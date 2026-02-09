@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use myme_services::{Todo as Note, TodoClient as NoteClient, TodoCreateRequest, TodoUpdateRequest};
+use myme_services::{NoteClient, Todo as Note, TodoCreateRequest, TodoUpdateRequest};
 
 use crate::bridge;
 
