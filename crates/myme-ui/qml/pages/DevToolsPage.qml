@@ -174,6 +174,8 @@ Page {
         // Index view with searchable cards
         ScrollView {
             id: devToolsScroll
+            Layout.fillWidth: true
+            Layout.fillHeight: true
             clip: true
             contentWidth: devToolsScroll.viewport.width
 
@@ -401,6 +403,8 @@ Page {
         // Tool detail view
         Loader {
             id: toolLoader
+            Layout.fillWidth: true
+            Layout.fillHeight: true
             active: currentTool !== "index"
             sourceComponent: {
                 if (currentTool === "jwt") return jwtToolComponent;
