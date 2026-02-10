@@ -73,6 +73,12 @@ pub mod qobject {
         fn get_forecast_precip(self: &WeatherModel, index: i32) -> i32;
 
         #[qinvokable]
+        fn get_forecast_sunrise(self: &WeatherModel, index: i32) -> QString;
+
+        #[qinvokable]
+        fn get_forecast_sunset(self: &WeatherModel, index: i32) -> QString;
+
+        #[qinvokable]
         fn hourly_count(self: &WeatherModel, day_index: i32) -> i32;
 
         #[qinvokable]
@@ -404,6 +410,24 @@ impl qobject::WeatherModel {
             .and_then(|d| d.forecast.get(index as usize))
             .map(|f| f.precipitation_chance as i32)
             .unwrap_or(0)
+    }
+
+    pub fn get_forecast_sunrise(&self, index: i32) -> QString {
+        self.rust()
+            .weather_data
+            .as_ref()
+            .and_then(|d| d.forecast.get(index as usize))
+            .map(|f| QString::from(f.sunrise.format("%H:%M").to_string()))
+            .unwrap_or_default()
+    }
+
+    pub fn get_forecast_sunset(&self, index: i32) -> QString {
+        self.rust()
+            .weather_data
+            .as_ref()
+            .and_then(|d| d.forecast.get(index as usize))
+            .map(|f| QString::from(f.sunset.format("%H:%M").to_string()))
+            .unwrap_or_default()
     }
 
     pub fn hourly_count(&self, day_index: i32) -> i32 {

@@ -387,85 +387,151 @@ Page {
 
             // Forecast cards
             Repeater {
-                model: weatherModel.forecast_count()
+                model: weatherModel.has_data ? weatherModel.forecast_count() : 0
 
                 delegate: Rectangle {
+                    id: forecastCard
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 56
+                    Layout.preferredHeight: 80
                     color: Theme.surface
                     border.color: Theme.isDark ? "#ffffff08" : "#00000008"
                     border.width: 1
                     radius: Theme.cardRadius
+                    opacity: 0
 
                     property int dayIndex: index
                     property bool isToday: index === 0
 
-                    RowLayout {
+                    Component.onCompleted: forecastEntryAnim.start()
+
+                    SequentialAnimation {
+                        id: forecastEntryAnim
+                        PauseAnimation { duration: index * 30 }
+                        NumberAnimation {
+                            target: forecastCard
+                            property: "opacity"
+                            from: 0
+                            to: 1
+                            duration: 200
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+
+                    ColumnLayout {
+                        id: forecastRow
                         anchors.fill: parent
                         anchors.margins: Theme.spacingMd
-                        spacing: Theme.spacingMd
+                        spacing: Theme.spacingXs
 
-                        // Day name
-                        Label {
-                            text: isToday ? "Today" : weatherModel.get_forecast_day(dayIndex)
-                            font.weight: isToday ? Font.Bold : Font.Normal
-                            font.pixelSize: Theme.fontSizeNormal
-                            color: Theme.text
-                            Layout.preferredWidth: 60
-                        }
-
-                        // Weather icon
-                        Text {
-                            font.family: Icons.family
-                            font.pixelSize: Theme.fontSizeLarge
-                            text: getWeatherIcon(weatherModel.get_forecast_icon(dayIndex))
-                            color: Theme.primary
-                        }
-
-                        // Condition
-                        Label {
-                            text: weatherModel.get_forecast_condition(dayIndex)
-                            font.pixelSize: Theme.fontSizeNormal
-                            color: Theme.textSecondary
-                            Layout.fillWidth: true
-                            elide: Text.ElideRight
-                        }
-
-                        // Precipitation chance
                         RowLayout {
-                            spacing: 4
-                            visible: weatherModel.get_forecast_precip(dayIndex) > 0
+                            Layout.fillWidth: true
+                            spacing: Theme.spacingMd
 
+                            // Day name
+                            Label {
+                                text: isToday ? "Today" : weatherModel.get_forecast_day(dayIndex)
+                                font.weight: isToday ? Font.Bold : Font.Normal
+                                font.pixelSize: Theme.fontSizeNormal
+                                color: Theme.text
+                                Layout.preferredWidth: 60
+                            }
+
+                            // Weather icon
                             Text {
                                 font.family: Icons.family
-                                font.pixelSize: Theme.fontSizeSmall
-                                text: Icons.drop
+                                font.pixelSize: Theme.fontSizeLarge
+                                text: getWeatherIcon(weatherModel.get_forecast_icon(dayIndex))
                                 color: Theme.primary
                             }
+
+                            // Condition
                             Label {
-                                text: `${weatherModel.get_forecast_precip(dayIndex)}%`
-                                font.pixelSize: Theme.fontSizeSmall
+                                text: weatherModel.get_forecast_condition(dayIndex)
+                                font.pixelSize: Theme.fontSizeNormal
                                 color: Theme.textSecondary
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+                            }
+
+                            // Precipitation chance
+                            RowLayout {
+                                spacing: 4
+                                visible: weatherModel.get_forecast_precip(dayIndex) > 0
+
+                                Text {
+                                    font.family: Icons.family
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    text: Icons.drop
+                                    color: Theme.primary
+                                }
+                                Label {
+                                    text: `${weatherModel.get_forecast_precip(dayIndex)}%`
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Theme.textSecondary
+                                }
+                            }
+
+                            // High temp
+                            Label {
+                                text: `${Math.round(weatherModel.get_forecast_high(dayIndex))}°`
+                                font.weight: Font.Bold
+                                font.pixelSize: Theme.fontSizeNormal
+                                color: Theme.text
+                                horizontalAlignment: Text.AlignRight
+                                Layout.preferredWidth: 40
+                            }
+
+                            // Low temp
+                            Label {
+                                text: `${Math.round(weatherModel.get_forecast_low(dayIndex))}°`
+                                font.pixelSize: Theme.fontSizeNormal
+                                color: Theme.textMuted
+                                horizontalAlignment: Text.AlignRight
+                                Layout.preferredWidth: 40
                             }
                         }
 
-                        // High temp
-                        Label {
-                            text: `${Math.round(weatherModel.get_forecast_high(dayIndex))}°`
-                            font.weight: Font.Bold
-                            font.pixelSize: Theme.fontSizeNormal
-                            color: Theme.text
-                            horizontalAlignment: Text.AlignRight
-                            Layout.preferredWidth: 40
-                        }
+                        // Sunrise / Sunset
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.spacingMd
 
-                        // Low temp
-                        Label {
-                            text: `${Math.round(weatherModel.get_forecast_low(dayIndex))}°`
-                            font.pixelSize: Theme.fontSizeNormal
-                            color: Theme.textMuted
-                            horizontalAlignment: Text.AlignRight
-                            Layout.preferredWidth: 40
+                            Item { width: 60 }
+                            Item { width: Theme.fontSizeLarge }
+
+                            RowLayout {
+                                spacing: Theme.spacingSm
+
+                                Text {
+                                    font.family: Icons.family
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    text: Icons.sun
+                                    color: Theme.warning
+                                }
+                                Label {
+                                    text: weatherModel.get_forecast_sunrise(dayIndex)
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Theme.textMuted
+                                }
+                            }
+
+                            RowLayout {
+                                spacing: Theme.spacingSm
+
+                                Text {
+                                    font.family: Icons.family
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    text: Icons.moon
+                                    color: Theme.textMuted
+                                }
+                                Label {
+                                    text: weatherModel.get_forecast_sunset(dayIndex)
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Theme.textMuted
+                                }
+                            }
+
+                            Item { Layout.fillWidth: true }
                         }
                     }
                 }
