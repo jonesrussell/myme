@@ -96,10 +96,10 @@ Page {
         anchors.fill: parent
         anchors.margins: Theme.spacingLg
         clip: true
-        contentWidth: weatherScroll.viewport.width
+        contentWidth: weatherScroll.viewport ? weatherScroll.viewport.width : weatherScroll.width
 
         ColumnLayout {
-            width: weatherScroll.viewport.width
+            width: weatherScroll.viewport ? weatherScroll.viewport.width : weatherScroll.width
             spacing: Theme.spacingLg
 
             // Error message
