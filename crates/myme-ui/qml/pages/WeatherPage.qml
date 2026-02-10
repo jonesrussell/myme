@@ -375,6 +375,100 @@ Page {
                 }
             }
 
+            // Hourly forecast heading
+            Label {
+                text: "Today's Hourly Forecast"
+                font.pixelSize: Theme.fontSizeMedium
+                font.bold: true
+                color: Theme.text
+                visible: weatherModel.has_data && weatherModel.hourly_count(0) > 0
+                Layout.topMargin: Theme.spacingSm
+            }
+
+            // Horizontal scrollable hourly forecast
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 100
+                visible: weatherModel.has_data && weatherModel.hourly_count(0) > 0
+                ScrollBar.horizontal.policy: ScrollBar.AsNeeded
+                ScrollBar.vertical.policy: ScrollBar.AlwaysOff
+
+                RowLayout {
+                    spacing: Theme.spacingSm
+
+                    Repeater {
+                        model: weatherModel.has_data ? weatherModel.hourly_count(0) : 0
+
+                        delegate: Rectangle {
+                            width: 60
+                            height: 90
+                            radius: Theme.cardRadius
+                            color: Theme.surface
+                            border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                            border.width: 1
+
+                            property int hourIndex: index
+
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                spacing: 4
+
+                                // Time
+                                Label {
+                                    text: weatherModel.get_hourly_time(0, hourIndex)
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Theme.textSecondary
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+
+                                // Icon
+                                Text {
+                                    font.family: Icons.family
+                                    font.pixelSize: Theme.fontSizeMedium
+                                    text: getWeatherIcon(weatherModel.get_hourly_icon(0, hourIndex))
+                                    color: Theme.primary
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+
+                                // Temperature
+                                Label {
+                                    text: `${Math.round(weatherModel.get_hourly_temp(0, hourIndex))}°`
+                                    font.weight: Font.Medium
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    color: Theme.text
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+
+                                // Precipitation
+                                RowLayout {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    spacing: 2
+                                    visible: weatherModel.get_hourly_precip(0, hourIndex) > 0
+
+                                    Text {
+                                        font.family: Icons.family
+                                        font.pixelSize: 10
+                                        text: Icons.drop
+                                        color: Theme.primary
+                                    }
+                                    Label {
+                                        text: `${weatherModel.get_hourly_precip(0, hourIndex)}%`
+                                        font.pixelSize: 10
+                                        color: Theme.textMuted
+                                    }
+                                }
+
+                                // Spacer if no precip
+                                Item {
+                                    height: 14
+                                    visible: weatherModel.get_hourly_precip(0, hourIndex) === 0
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // 7-Day Forecast heading
             Label {
                 text: "7-Day Forecast"
@@ -382,7 +476,7 @@ Page {
                 font.bold: true
                 color: Theme.text
                 visible: weatherModel.has_data
-                Layout.topMargin: Theme.spacingSm
+                Layout.topMargin: Theme.spacingMd
             }
 
             // Forecast cards
@@ -532,100 +626,6 @@ Page {
                             }
 
                             Item { Layout.fillWidth: true }
-                        }
-                    }
-                }
-            }
-
-            // Hourly forecast heading
-            Label {
-                text: "Today's Hourly Forecast"
-                font.pixelSize: Theme.fontSizeMedium
-                font.bold: true
-                color: Theme.text
-                visible: weatherModel.has_data && weatherModel.hourly_count(0) > 0
-                Layout.topMargin: Theme.spacingMd
-            }
-
-            // Horizontal scrollable hourly forecast
-            ScrollView {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 100
-                visible: weatherModel.has_data && weatherModel.hourly_count(0) > 0
-                ScrollBar.horizontal.policy: ScrollBar.AsNeeded
-                ScrollBar.vertical.policy: ScrollBar.AlwaysOff
-
-                RowLayout {
-                    spacing: Theme.spacingSm
-
-                    Repeater {
-                        model: weatherModel.hourly_count(0)
-
-                        delegate: Rectangle {
-                            width: 60
-                            height: 90
-                            radius: Theme.cardRadius
-                            color: Theme.surface
-                            border.color: Theme.isDark ? "#ffffff08" : "#00000008"
-                            border.width: 1
-
-                            property int hourIndex: index
-
-                            ColumnLayout {
-                                anchors.centerIn: parent
-                                spacing: 4
-
-                                // Time
-                                Label {
-                                    text: weatherModel.get_hourly_time(0, hourIndex)
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    color: Theme.textSecondary
-                                    Layout.alignment: Qt.AlignHCenter
-                                }
-
-                                // Icon
-                                Text {
-                                    font.family: Icons.family
-                                    font.pixelSize: Theme.fontSizeMedium
-                                    text: getWeatherIcon(weatherModel.get_hourly_icon(0, hourIndex))
-                                    color: Theme.primary
-                                    Layout.alignment: Qt.AlignHCenter
-                                }
-
-                                // Temperature
-                                Label {
-                                    text: `${Math.round(weatherModel.get_hourly_temp(0, hourIndex))}°`
-                                    font.weight: Font.Medium
-                                    font.pixelSize: Theme.fontSizeNormal
-                                    color: Theme.text
-                                    Layout.alignment: Qt.AlignHCenter
-                                }
-
-                                // Precipitation
-                                RowLayout {
-                                    Layout.alignment: Qt.AlignHCenter
-                                    spacing: 2
-                                    visible: weatherModel.get_hourly_precip(0, hourIndex) > 0
-
-                                    Text {
-                                        font.family: Icons.family
-                                        font.pixelSize: 10
-                                        text: Icons.drop
-                                        color: Theme.primary
-                                    }
-                                    Label {
-                                        text: `${weatherModel.get_hourly_precip(0, hourIndex)}%`
-                                        font.pixelSize: 10
-                                        color: Theme.textMuted
-                                    }
-                                }
-
-                                // Spacer if no precip
-                                Item {
-                                    height: 14
-                                    visible: weatherModel.get_hourly_precip(0, hourIndex) === 0
-                                }
-                            }
                         }
                     }
                 }
