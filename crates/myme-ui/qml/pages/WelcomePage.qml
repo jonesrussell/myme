@@ -30,10 +30,10 @@ Page {
         id: scroll
         anchors.fill: parent
         clip: true
-        contentWidth: scroll.viewport.width
+        contentWidth: scroll.viewport ? scroll.viewport.width : scroll.width
 
         ColumnLayout {
-            width: scroll.viewport.width
+            width: scroll.viewport ? scroll.viewport.width : scroll.width
             spacing: Theme.spacingLg
 
             // Greeting header
@@ -65,7 +65,7 @@ Page {
                 Layout.fillWidth: true
                 Layout.leftMargin: Theme.spacingXl
                 Layout.rightMargin: Theme.spacingXl
-                columns: Responsive.columnsFor(scroll.viewport.width - Theme.spacingXl * 2, 200, 3)
+                columns: Responsive.columnsFor((scroll.viewport ? scroll.viewport.width : scroll.width) - Theme.spacingXl * 2, 200, 3)
                 rowSpacing: Theme.spacingMd
                 columnSpacing: Theme.spacingMd
 
@@ -246,7 +246,7 @@ Page {
                 Layout.fillWidth: true
                 Layout.leftMargin: Theme.spacingXl
                 Layout.rightMargin: Theme.spacingXl
-                columns: Responsive.columnsFor(scroll.viewport.width - Theme.spacingXl * 2, 300, 3)
+                columns: Responsive.columnsFor((scroll.viewport ? scroll.viewport.width : scroll.width) - Theme.spacingXl * 2, 300, 3)
                 rowSpacing: Theme.spacingMd
                 columnSpacing: Theme.spacingMd
 

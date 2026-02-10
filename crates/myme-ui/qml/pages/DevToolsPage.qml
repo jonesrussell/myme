@@ -177,10 +177,10 @@ Page {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            contentWidth: devToolsScroll.viewport.width
+            contentWidth: devToolsScroll.viewport ? devToolsScroll.viewport.width : devToolsScroll.width
 
             ColumnLayout {
-                width: devToolsScroll.viewport.width
+                width: devToolsScroll.viewport ? devToolsScroll.viewport.width : devToolsScroll.width
                 spacing: Theme.spacingLg
 
                 // Search bar
