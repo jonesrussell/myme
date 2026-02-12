@@ -20,10 +20,14 @@ pub mod qobject {
         #[qproperty(bool, loading)]
         #[qproperty(QString, error_message)]
         #[qproperty(QString, project_id)]
+        #[qproperty(QString, repo_ids)]
         type KanbanModel = super::KanbanModelRust;
 
         #[qinvokable]
         fn load_project(self: Pin<&mut KanbanModel>, project_id: QString);
+
+        #[qinvokable]
+        fn get_repo_id(self: &KanbanModel, task_index: i32) -> QString;
 
         #[qinvokable]
         fn row_count(self: &KanbanModel) -> i32;
@@ -65,6 +69,7 @@ pub struct KanbanModelRust {
     loading: bool,
     error_message: QString,
     project_id: QString,
+    repo_ids: QString,
     tasks: Vec<Task>,
     store: Option<Arc<parking_lot::Mutex<ProjectStore>>>,
 }
@@ -137,6 +142,7 @@ impl qobject::KanbanModel {
         self.as_mut().set_loading(true);
         self.as_mut().rust_mut().clear_error();
         self.as_mut().set_project_id(project_id.clone());
+        self.as_mut().set_repo_ids(QString::from("[]"));
 
         let project_id_str = project_id.to_string();
 
@@ -159,6 +165,13 @@ impl qobject::KanbanModel {
             }
         }
 
+        let repo_ids = store_guard
+            .list_repos_for_project(&project_id_str)
+            .unwrap_or_default();
+        let repo_ids_json =
+            serde_json::to_string(&repo_ids).unwrap_or_else(|_| "[]".to_string());
+        self.as_mut().set_repo_ids(QString::from(&repo_ids_json));
+
         match store_guard.list_tasks_for_project(&project_id_str) {
             Ok(tasks) => {
                 tracing::info!("Loaded {} tasks for project {}", tasks.len(), project_id_str);
@@ -176,6 +189,10 @@ impl qobject::KanbanModel {
                 self.as_mut().set_loading(false);
             }
         }
+    }
+
+    pub fn get_repo_id(&self, _task_index: i32) -> QString {
+        QString::from("")
     }
 
     pub fn row_count(&self) -> i32 {

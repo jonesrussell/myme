@@ -152,14 +152,14 @@ Page {
                 }
             }
 
-            // Sync button
+            // Sync button (disabled when no repos)
             ToolButton {
                 text: Icons.arrowsClockwise
                 font.family: Icons.family
                 font.pixelSize: 18
-                enabled: !kanbanModel.loading
+                enabled: projectDetailPage.hasRepos && !kanbanModel.loading
                 onClicked: kanbanModel.sync_tasks()
-                ToolTip.text: "Sync with GitHub"
+                ToolTip.text: projectDetailPage.hasRepos ? "Sync with GitHub" : "Add a repo to sync tasks with GitHub"
                 ToolTip.visible: hovered
 
                 background: Rectangle {
@@ -179,14 +179,14 @@ Page {
                 }
             }
 
-            // New task button (disabled when no repos - add repo first)
+            // New Task button
             ToolButton {
                 text: Icons.plus
                 font.family: Icons.family
                 font.pixelSize: 18
-                enabled: projectDetailPage.hasRepos && !kanbanModel.loading
+                enabled: !kanbanModel.loading
                 onClicked: newTaskDialog.open()
-                ToolTip.text: projectDetailPage.hasRepos ? "New Task" : "Add a repo first to create tasks"
+                ToolTip.text: "New Task"
                 ToolTip.visible: hovered
 
                 background: Rectangle {
@@ -390,18 +390,15 @@ Page {
                                         id: addMouseArea
                                         anchors.fill: parent
                                         hoverEnabled: true
-                                        enabled: projectDetailPage.hasRepos
-                                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                        cursorShape: Qt.PointingHandCursor
                                         onClicked: {
-                                            if (projectDetailPage.hasRepos) {
-                                                newTaskDialog.preselectedStatus = columnContainer.columnKey;
-                                                newTaskDialog.open();
-                                            }
+                                            newTaskDialog.preselectedStatus = columnContainer.columnKey;
+                                            newTaskDialog.open();
                                         }
                                     }
 
                                     ToolTip.visible: addMouseArea.containsMouse
-                                    ToolTip.text: projectDetailPage.hasRepos ? ("Add task to " + columnContainer.columnLabel) : "Add a repo first"
+                                    ToolTip.text: "Add task to " + columnContainer.columnLabel
                                     ToolTip.delay: 500
                                 }
                             }
@@ -634,14 +631,10 @@ Page {
         onAccepted: {
             if (newTaskTitleField.text.trim().length > 0) {
                 const statusKey = projectDetailPage.columns[newTaskStatusCombo.currentIndex].key;
-                const repoId = newTaskRepoCombo.currentIndex >= 0 && newTaskRepoCombo.count > 0
-                    ? newTaskRepoCombo.currentText
-                    : "";
                 kanbanModel.create_task(
                     newTaskTitleField.text.trim(),
                     newTaskDescField.text.trim(),
-                    statusKey,
-                    repoId
+                    statusKey
                 );
                 newTaskTitleField.text = "";
                 newTaskDescField.text = "";

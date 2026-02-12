@@ -225,7 +225,7 @@ Page {
                 }
 
                 Label {
-                    text: "Connect your GitHub account to manage project tasks"
+                    text: "Create projects and add tasks. Connect GitHub to link repos and sync issues."
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeNormal
                     color: Theme.textSecondary
