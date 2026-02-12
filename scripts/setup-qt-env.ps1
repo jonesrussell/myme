@@ -1,4 +1,5 @@
 # Qt Environment Setup for MyMe
+# Run from repo root: . .\scripts\setup-qt-env.ps1
 param(
     [string]$QtPath = "C:\Qt"
 )
@@ -19,7 +20,7 @@ if (-not (Test-Path $QtPath)) {
     Write-Host "3. Run this script again" -ForegroundColor White
     Write-Host ""
     Write-Host "Or specify custom path:" -ForegroundColor Yellow
-    Write-Host "  .\setup-qt-env.ps1 -QtPath 'C:\path\to\qt'" -ForegroundColor White
+    Write-Host "  . .\scripts\setup-qt-env.ps1 -QtPath 'C:\path\to\qt'" -ForegroundColor White
     exit 1
 }
 
@@ -126,7 +127,7 @@ Write-Host ""
 Write-Host "Or use Windows System Properties -> Environment Variables" -ForegroundColor White
 Write-Host ""
 Write-Host "You can now build MyMe:" -ForegroundColor Green
-Write-Host "  .\build.ps1" -ForegroundColor White
+Write-Host "  .\scripts\build.ps1   (full Qt app) or .\scripts\build-rust.ps1 (Rust only)" -ForegroundColor White
 Write-Host "  # or" -ForegroundColor Gray
 Write-Host "  cargo build --release" -ForegroundColor White
 Write-Host ""

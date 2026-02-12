@@ -21,7 +21,7 @@ MyMe is a modular Rust desktop application using Qt/QML via cxx-qt that serves a
 **Windows (Recommended):**
 ```powershell
 # All-in-one build script (builds Rust + Qt)
-.\build-qt.ps1
+.\scripts\build.ps1
 ```
 
 **Manual Build:**
@@ -481,8 +481,8 @@ $env:RUST_LOG="debug" # Adds detailed operation internals
 ## CI/CD & Build Scripts
 
 - `.github/workflows/release.yml` - Automated Windows releases on version tags (`v*`)
-- `build.ps1` - Rust-only build with VS Developer environment auto-detection
-- `build-qt.ps1` - Full build (Rust + CMake + windeployqt)
+- `scripts\build.ps1` - Full build (Rust + CMake + windeployqt) → myme-qt.exe
+- `scripts\build-rust.ps1` - Rust-only build with VS Developer environment auto-detection → myme.exe
 - `installer/myme.iss` - Inno Setup 6 installer script for Windows
 
 ## Phase Roadmap

@@ -1,5 +1,8 @@
 # Automated Visual Studio Linker Configuration for Rust
 # This script detects Visual Studio installation and configures Cargo to use the correct linker
+# Run from repo root: .\scripts\fix-linker.ps1
+
+$projectRoot = Split-Path $PSScriptRoot -Parent
 
 Write-Host "MyMe - Windows Linker Fix Script" -ForegroundColor Cyan
 Write-Host "=================================" -ForegroundColor Cyan
@@ -115,8 +118,8 @@ if (-not (Test-Path $linkerPath)) {
 
 Write-Host "Step 4: Creating Cargo configuration..." -ForegroundColor Yellow
 
-# Create .cargo directory if it doesn't exist
-$cargoDir = Join-Path $PSScriptRoot ".cargo"
+# Create .cargo directory at project root if it doesn't exist
+$cargoDir = Join-Path $projectRoot ".cargo"
 if (-not (Test-Path $cargoDir)) {
     New-Item -ItemType Directory -Path $cargoDir | Out-Null
 }
@@ -158,7 +161,7 @@ Write-Host "SUCCESS! Linker configured." -ForegroundColor Green
 Write-Host "=================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "You can now run:" -ForegroundColor Yellow
-Write-Host "  cargo build --release" -ForegroundColor White
+Write-Host "  .\scripts\build-rust.ps1   or   .\scripts\build.ps1" -ForegroundColor White
 Write-Host ""
 Write-Host "If you still encounter issues, try:" -ForegroundColor Yellow
 Write-Host "  1. Close and reopen your terminal" -ForegroundColor White

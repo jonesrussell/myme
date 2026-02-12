@@ -88,7 +88,7 @@ async function main() {
   server.registerTool(
     "build_qt",
     {
-      description: "Run build-qt.ps1 for full Qt app build (Windows only).",
+      description: "Run scripts/build.ps1 for full Qt app build (Windows only).",
       inputSchema: z.object({}),
     },
     async () => {

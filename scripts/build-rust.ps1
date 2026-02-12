@@ -1,5 +1,8 @@
-# MyMe Build Script - Uses Visual Studio Developer Environment
-# This script launches a Developer Command Prompt and runs the build
+# MyMe Rust Build Script - Uses Visual Studio Developer Environment
+# Builds the Rust library (cargo). For the full Qt app, run scripts\build.ps1 instead.
+# Run from repo root: .\scripts\build-rust.ps1
+
+$projectRoot = Split-Path $PSScriptRoot -Parent
 
 Write-Host "MyMe - Visual Studio Build Script" -ForegroundColor Cyan
 Write-Host "==================================" -ForegroundColor Cyan
@@ -57,10 +60,10 @@ $qtPath = if ($env:QT_PATH) {
 Write-Host "Using Qt: $qtPath" -ForegroundColor Green
 $qtCmakePath = "$qtPath\lib\cmake\Qt6"
 
-# Run cargo build in VS Developer environment with Qt variables
+# Run cargo build in VS Developer environment with Qt variables (from project root)
 $buildCommand = "`"$vsDevCmd`" && set CMAKE_PREFIX_PATH=$qtPath && set Qt6_DIR=$qtCmakePath && set QMAKE=$qtPath\bin\qmake.exe && cargo build --release"
 
-$process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $buildCommand -WorkingDirectory $PSScriptRoot -NoNewWindow -Wait -PassThru
+$process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $buildCommand -WorkingDirectory $projectRoot -NoNewWindow -Wait -PassThru
 
 if ($process.ExitCode -eq 0) {
     Write-Host ""

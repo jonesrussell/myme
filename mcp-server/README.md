@@ -38,7 +38,7 @@ If the server is started with its working directory inside `mcp-server/`, it wil
 | `list_crates` | List workspace crate names from `Cargo.toml`. |
 | `cargo_build` | Run `cargo build --release`. Optional `package` to build one crate. |
 | `cargo_test` | Run `cargo test` for all workspace crates except `myme-ui`. Optional `package` to test one crate. |
-| `build_qt` | Run `build-qt.ps1` (Windows only). |
+| `build_qt` | Run `scripts/build.ps1` (Windows only). |
 | `run_app` | Run the MyMe Qt app. Optional `mode` (debug/release), `env` overrides, `args`. |
 | `qml_format` | Format QML files. Pass `paths` (relative to workspace root). |
 

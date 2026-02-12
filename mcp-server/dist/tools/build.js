@@ -5,7 +5,7 @@ import path from "path";
 const isWindows = process.platform === "win32";
 export async function buildQt() {
     const { workspaceRoot } = getConfig();
-    const scriptPath = path.join(workspaceRoot, "build-qt.ps1");
+    const scriptPath = path.join(workspaceRoot, "scripts", "build.ps1");
     if (isWindows) {
         const r = await runCommand("powershell", ["-ExecutionPolicy", "Bypass", "-File", scriptPath], { cwd: workspaceRoot });
         return r;
@@ -14,7 +14,7 @@ export async function buildQt() {
         success: false,
         exitCode: 1,
         stdout: "",
-        stderr: "build_qt is only supported on Windows (build-qt.ps1). On other platforms run cargo build and CMake manually.",
+        stderr: "build_qt is only supported on Windows (scripts/build.ps1). On other platforms run cargo build and CMake manually.",
         message: "Unsupported platform",
     };
 }

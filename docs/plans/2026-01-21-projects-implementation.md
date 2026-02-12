@@ -2986,7 +2986,7 @@ Kirigami.Action {
 
 **Step 2: Verify the app builds and runs**
 
-Run: `.\build-qt.ps1`
+Run: `.\scripts\build.ps1`
 Expected: Builds without errors
 
 **Step 3: Commit**
@@ -3020,7 +3020,7 @@ extern "C" bool initialize_github_client();
 
 **Step 2: Verify it compiles**
 
-Run: `.\build-qt.ps1`
+Run: `.\scripts\build.ps1`
 Expected: Builds and links without errors
 
 **Step 3: Commit**
@@ -3130,7 +3130,7 @@ git commit -m "feat(projects): add note promotion to project"
 
 **Step 1: Build the complete application**
 
-Run: `.\build-qt.ps1`
+Run: `.\scripts\build.ps1`
 Expected: Builds without errors
 
 **Step 2: Test GitHub OAuth**

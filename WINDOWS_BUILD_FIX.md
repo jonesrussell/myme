@@ -13,13 +13,16 @@ The build is failing with `LINK : fatal error LNK1181: cannot open input file 'k
 We've provided an automated build script that uses the Visual Studio Developer environment:
 
 ```powershell
-.\build.ps1
+.\scripts\build.ps1
 ```
+(Or Rust only: `.\scripts\build-rust.ps1`)
 
-This script automatically:
+The script automatically:
 - Detects your Visual Studio installation
 - Initializes the Developer environment
 - Runs `cargo build --release` with correct linker paths
+
+If you see "cannot find link.exe" errors, run `.\scripts\fix-linker.ps1` to configure Cargo to use the MSVC linker.
 
 ## Manual Solutions
 

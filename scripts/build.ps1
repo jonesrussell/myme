@@ -1,11 +1,14 @@
-# Build Qt application for MyMe
+# Build Qt application for MyMe (full build: Rust + CMake + windeployqt)
+# Run from repo root: .\scripts\build.ps1
+
+$projectRoot = Split-Path $PSScriptRoot -Parent
 
 Write-Host "MyMe - Qt Application Build Script" -ForegroundColor Cyan
-Write-Host "===================================`n"
+Write-Host "===================================`n" -ForegroundColor Cyan
 
 # First, build Rust library
 Write-Host "Step 1: Building Rust library..." -ForegroundColor Yellow
-& powershell -ExecutionPolicy Bypass -File "$PSScriptRoot\build.ps1"
+& powershell -ExecutionPolicy Bypass -File "$PSScriptRoot\build-rust.ps1"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "`nRust build failed!" -ForegroundColor Red
@@ -58,13 +61,13 @@ Write-Host "Using Qt: $qtPath" -ForegroundColor Green
 $env:CMAKE_PREFIX_PATH = $qtPath
 $env:Qt6_DIR = Join-Path $qtPath "lib\cmake\Qt6"
 
-# Create build directory
-$buildDir = "$PSScriptRoot\build-qt"
+# Create build directory at project root
+$buildDir = "$projectRoot\build-qt"
 if (-not (Test-Path $buildDir)) {
     New-Item -ItemType Directory -Path $buildDir | Out-Null
 }
 
-# Configure CMake
+# Configure CMake (.. is project root)
 Push-Location $buildDir
 & $cmake -G "Visual Studio 17 2022" -A x64 `
     -DCMAKE_BUILD_TYPE=Release `
@@ -96,7 +99,7 @@ Write-Host "`nStep 5: Deploying Qt dependencies..." -ForegroundColor Yellow
 # Deploy Qt DLLs and plugins
 $windeployqt = "$qtPath\bin\windeployqt.exe"
 $exePath = "$buildDir\Release\myme-qt.exe"
-$qmlDir = "$PSScriptRoot\crates\myme-ui\qml"
+$qmlDir = "$projectRoot\crates\myme-ui\qml"
 
 if (-not (Test-Path $windeployqt)) {
     Write-Host "WARNING: windeployqt not found at $windeployqt" -ForegroundColor Yellow
