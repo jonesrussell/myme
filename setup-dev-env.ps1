@@ -1,4 +1,4 @@
-# MyMe Development Environment Setup Script
+﻿# MyMe Development Environment Setup Script
 # Run this in PowerShell to set up your development environment
 
 Write-Host "MyMe Development Environment Setup" -ForegroundColor Cyan
