@@ -38,17 +38,12 @@ impl EventTime {
 }
 
 /// Event status.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub enum EventStatus {
+    #[default]
     Confirmed,
     Tentative,
     Cancelled,
-}
-
-impl Default for EventStatus {
-    fn default() -> Self {
-        Self::Confirmed
-    }
 }
 
 /// Event attendee.
@@ -61,18 +56,13 @@ pub struct Attendee {
 }
 
 /// Attendee response status.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub enum ResponseStatus {
+    #[default]
     NeedsAction,
     Declined,
     Tentative,
     Accepted,
-}
-
-impl Default for ResponseStatus {
-    fn default() -> Self {
-        Self::NeedsAction
-    }
 }
 
 /// Calendar metadata.
@@ -89,18 +79,13 @@ pub struct Calendar {
 }
 
 /// Calendar access role.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub enum AccessRole {
     Owner,
     Writer,
+    #[default]
     Reader,
     FreeBusyReader,
-}
-
-impl Default for AccessRole {
-    fn default() -> Self {
-        Self::Reader
-    }
 }
 
 // API Response Types

@@ -114,7 +114,7 @@ mod tests {
     fn github(full_name: &str, clone_url: Option<&str>) -> GitHubRepo {
         GitHubRepo {
             id: 1,
-            name: full_name.split('/').last().unwrap_or("").to_string(),
+            name: full_name.split('/').next_back().unwrap_or("").to_string(),
             full_name: full_name.to_string(),
             description: None,
             html_url: format!("https://github.com/{}", full_name),

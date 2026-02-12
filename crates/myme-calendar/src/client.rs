@@ -151,6 +151,7 @@ impl CalendarClient {
     }
 
     /// Update an existing event.
+    #[allow(clippy::too_many_arguments)]
     #[instrument(skip(self), level = "info")]
     pub async fn update_event(
         &self,

@@ -215,6 +215,6 @@ mod tests {
         cache.update(data);
 
         let age = cache.age_minutes().unwrap();
-        assert!(age >= 10 && age <= 11);
+        assert!((10..=11).contains(&age));
     }
 }
