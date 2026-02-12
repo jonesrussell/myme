@@ -80,6 +80,7 @@ foreach ($path in $qtPaths) {
             $qtCompiler = Get-ChildItem $path -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "msvc" } | Select-Object -First 1
             if ($qtCompiler) {
                 $qtFullPath = Join-Path $path $qtCompiler.Name
+                Write-Host "  Qt kit: $qtFullPath" -ForegroundColor Gray
                 Write-Host "`nTo use this Qt installation, run: .\setup-qt-env.ps1 -QtPath '$(Split-Path $path -Parent)'" -ForegroundColor Cyan
             }
         }
