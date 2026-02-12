@@ -51,40 +51,7 @@ if (Test-Path $vsWhere) {
 
         if ($linkExe) {
             Write-Host "✓ MSVC linker found at: $($linkExe.DirectoryName)" -ForegroundColor Green
-
-            # Offer to update .cargo/config.toml
-            Write-Host "`nWould you like to configure Cargo to use this linker? (Y/N)" -ForegroundColor Yellow
-            $response = Read-Host
-
-            if ($response -eq "Y" -or $response -eq "y") {
-                $configPath = ".cargo\config.toml"
-                $linkerPath = $linkExe.FullName -replace '\\', '\\'
-
-                $config = @"
-# Cargo configuration for MyMe project
-
-# Windows-specific linker configuration
-[target.x86_64-pc-windows-msvc]
-linker = "$linkerPath"
-
-# Optimization settings for development
-[profile.dev]
-opt-level = 1
-
-[profile.dev.package."*"]
-opt-level = 2
-
-# Release optimizations
-[profile.release]
-opt-level = 3
-lto = "thin"
-codegen-units = 1
-strip = true
-"@
-
-                $config | Out-File -FilePath $configPath -Encoding UTF8
-                Write-Host "✓ Updated .cargo\config.toml with linker path" -ForegroundColor Green
-            }
+            Write-Host "  If you see 'cannot find link.exe' errors, run: .\fix-linker.ps1" -ForegroundColor Gray
         }
     }
 } else {
@@ -94,9 +61,9 @@ strip = true
 # Check Qt
 Write-Host "`nChecking Qt installation..." -ForegroundColor Yellow
 $qtPaths = @(
+    "C:\Qt\6.10.1\msvc2022_64",
     "C:\Qt\6.7",
     "C:\Qt\6.6",
-    "C:\Qt\6.5",
     "$env:USERPROFILE\Qt\6.7",
     "$env:USERPROFILE\Qt\6.6"
 )
@@ -106,15 +73,15 @@ foreach ($path in $qtPaths) {
     if (Test-Path $path) {
         Write-Host "✓ Qt found at: $path" -ForegroundColor Green
         $qtFound = $true
-
-        # Suggest setting CMAKE_PREFIX_PATH
-        $qtVersion = Split-Path -Leaf $path
-        $qtCompiler = Get-ChildItem $path -Directory | Where-Object { $_.Name -match "msvc" } | Select-Object -First 1
-
-        if ($qtCompiler) {
-            $qtFullPath = Join-Path $path $qtCompiler.Name
-            Write-Host "`nTo use this Qt installation, run:" -ForegroundColor Cyan
-            Write-Host "`$env:CMAKE_PREFIX_PATH='$qtFullPath'" -ForegroundColor White
+        # If path already has msvc kit, use it; else suggest first msvc subdir
+        if ($path -match "msvc") {
+            Write-Host "`nTo use this Qt installation, run: .\setup-qt-env.ps1" -ForegroundColor Cyan
+        } else {
+            $qtCompiler = Get-ChildItem $path -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "msvc" } | Select-Object -First 1
+            if ($qtCompiler) {
+                $qtFullPath = Join-Path $path $qtCompiler.Name
+                Write-Host "`nTo use this Qt installation, run: .\setup-qt-env.ps1 -QtPath '$(Split-Path $path -Parent)'" -ForegroundColor Cyan
+            }
         }
         break
     }
@@ -122,40 +89,22 @@ foreach ($path in $qtPaths) {
 
 if (-not $qtFound) {
     Write-Host "✗ Qt not found. Please install Qt 6.x from https://www.qt.io/download" -ForegroundColor Red
-    Write-Host "  Install to one of these locations: $($qtPaths -join ', ')" -ForegroundColor Yellow
+    Write-Host "  Install to C:\Qt\6.10.1\msvc2022_64 or run .\setup-qt-env.ps1 -QtPath 'C:\Qt'" -ForegroundColor Yellow
 }
 
-# Create build directory
-Write-Host "`nCreating build directory..." -ForegroundColor Yellow
-if (-not (Test-Path "build")) {
-    New-Item -ItemType Directory -Path "build" | Out-Null
-    Write-Host "✓ Created build directory" -ForegroundColor Green
-} else {
-    Write-Host "✓ Build directory already exists" -ForegroundColor Green
-}
-
-# Check for Golang todo API (optional)
-Write-Host "`nChecking for Golang todo API (optional)..." -ForegroundColor Yellow
-try {
-    $response = Invoke-WebRequest -Uri "http://localhost:8080/api/todos" -TimeoutSec 2 -ErrorAction Stop
-    Write-Host "✓ Todo API is running on http://localhost:8080" -ForegroundColor Green
-} catch {
-    Write-Host "○ Todo API not running (optional for testing)" -ForegroundColor Gray
-    Write-Host "  You can test the architecture without it" -ForegroundColor Gray
-}
+# build-qt.ps1 creates build-qt when run; no need to pre-create
+Write-Host "`nBuild: .\build-qt.ps1 creates the build-qt directory and outputs myme-qt.exe" -ForegroundColor Gray
 
 # Summary
 Write-Host "`n====================================`n" -ForegroundColor Cyan
 Write-Host "Setup Summary" -ForegroundColor Cyan
 Write-Host "`nNext steps:" -ForegroundColor Yellow
-Write-Host "1. Open 'Developer Command Prompt for VS' from Start Menu" -ForegroundColor White
-Write-Host "2. Navigate to this directory: cd $PWD" -ForegroundColor White
-Write-Host "3. Run: cargo build" -ForegroundColor White
-Write-Host "4. Run: cd build && cmake .. && cmake --build . --config Release" -ForegroundColor White
-Write-Host "5. Run: .\build\Release\myme-qt.exe" -ForegroundColor White
+Write-Host "1. (Optional) Dot-source Qt env: . .\setup-qt-env.ps1" -ForegroundColor White
+Write-Host "2. Full build (Rust + Qt): .\build-qt.ps1" -ForegroundColor White
+Write-Host "3. Run: .\build-qt\Release\myme-qt.exe" -ForegroundColor White
 Write-Host "`nFor more help, see:" -ForegroundColor Yellow
-Write-Host "- QUICKSTART.md - Quick start guide" -ForegroundColor White
-Write-Host "- BUILD.md - Detailed build instructions" -ForegroundColor White
-Write-Host "- WINDOWS_BUILD_FIX.md - Windows-specific troubleshooting" -ForegroundColor White
+Write-Host "- README.md - Project overview" -ForegroundColor White
+Write-Host "- CLAUDE.md - Build commands and architecture" -ForegroundColor White
+Write-Host "- WINDOWS_BUILD_FIX.md - Linker and Windows troubleshooting" -ForegroundColor White
 
-Write-Host "`nSetup complete! 🚀" -ForegroundColor Green
+Write-Host "`nSetup complete!" -ForegroundColor Green
