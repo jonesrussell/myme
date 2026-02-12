@@ -130,17 +130,17 @@ impl GitHubClient {
     ///
     /// # Arguments
     /// * `access_token` - GitHub OAuth access token
-    pub fn new(access_token: String) -> Self {
+    pub fn new(access_token: String) -> anyhow::Result<Self> {
         let client = reqwest::Client::builder()
             .user_agent("MyMe/0.1.0")
             .build()
-            .expect("Failed to create HTTP client");
+            .context("Failed to create HTTP client")?;
 
-        Self {
+        Ok(Self {
             client,
             access_token,
             base_url: "https://api.github.com".to_string(),
-        }
+        })
     }
 
     /// List repositories for the authenticated user
@@ -313,7 +313,7 @@ mod tests {
 
     #[test]
     fn test_github_client_creation() {
-        let client = GitHubClient::new("test_token".to_string());
+        let client = GitHubClient::new("test_token".to_string()).unwrap();
         assert_eq!(client.access_token, "test_token");
         assert_eq!(client.base_url, "https://api.github.com");
     }

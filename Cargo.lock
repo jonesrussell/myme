@@ -2093,18 +2093,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "myme"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "myme-core",
- "myme-ui",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "myme-auth"
 version = "0.1.0"
 dependencies = [

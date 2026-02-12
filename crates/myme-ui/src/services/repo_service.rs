@@ -32,6 +32,8 @@ impl std::fmt::Display for RepoError {
     }
 }
 
+impl std::error::Error for RepoError {}
+
 #[derive(Debug)]
 pub enum RepoServiceMessage {
     RefreshDone(Result<Vec<RepoEntry>, RepoError>),
