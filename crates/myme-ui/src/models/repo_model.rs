@@ -307,7 +307,7 @@ impl qobject::RepoModel {
                     Err(e) => {
                         self.as_mut()
                             .rust_mut()
-                            .set_error(e.to_string());
+                            .set_error(myme_core::AppError::from(e).user_message().to_string());
                         self.as_mut().error_occurred();
                     }
                 }
@@ -336,7 +336,9 @@ impl qobject::RepoModel {
                         tracing::info!("Clone operation was cancelled");
                     }
                     Err(e) => {
-                        self.as_mut().rust_mut().set_error(e.to_string());
+                        self.as_mut()
+                            .rust_mut()
+                            .set_error(myme_core::AppError::from(e.clone()).user_message().to_string());
                         self.as_mut().error_occurred();
                     }
                 }
@@ -365,7 +367,9 @@ impl qobject::RepoModel {
                         tracing::info!("Pull operation was cancelled");
                     }
                     Err(e) => {
-                        self.as_mut().rust_mut().set_error(e.to_string());
+                        self.as_mut()
+                            .rust_mut()
+                            .set_error(myme_core::AppError::from(e.clone()).user_message().to_string());
                         self.as_mut().error_occurred();
                     }
                 }

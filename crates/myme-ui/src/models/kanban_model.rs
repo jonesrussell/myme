@@ -153,7 +153,7 @@ impl qobject::KanbanModel {
             Err(e) => {
                 self.as_mut()
                     .rust_mut()
-                    .set_error(&format!("Failed to load project: {}", e));
+                    .set_error(myme_core::AppError::from(e).user_message());
                 self.as_mut().set_loading(false);
                 return;
             }
@@ -172,7 +172,7 @@ impl qobject::KanbanModel {
                 drop(store_guard);
                 self.as_mut()
                     .rust_mut()
-                    .set_error(&format!("Failed to load tasks: {}", e));
+                    .set_error(myme_core::AppError::from(e).user_message());
                 self.as_mut().set_loading(false);
             }
         }
@@ -256,7 +256,7 @@ impl qobject::KanbanModel {
         if let Err(e) = store_guard.upsert_task(&task) {
             self.as_mut()
                 .rust_mut()
-                .set_error(&format!("Failed to save: {}", e));
+                .set_error(myme_core::AppError::from(e).user_message());
             return;
         }
 
@@ -316,7 +316,7 @@ impl qobject::KanbanModel {
         if let Err(e) = store_guard.upsert_task(&task) {
             self.as_mut()
                 .rust_mut()
-                .set_error(&format!("Failed to create task: {}", e));
+                .set_error(myme_core::AppError::from(e).user_message());
             return;
         }
 
@@ -360,7 +360,7 @@ impl qobject::KanbanModel {
         if let Err(e) = store_guard.upsert_task(&task) {
             self.as_mut()
                 .rust_mut()
-                .set_error(&format!("Failed to save: {}", e));
+                .set_error(myme_core::AppError::from(e).user_message());
             return;
         }
 

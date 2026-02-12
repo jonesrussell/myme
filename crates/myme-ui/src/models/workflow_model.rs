@@ -177,7 +177,7 @@ impl qobject::WorkflowModel {
                     Err(e) => {
                         self.as_mut()
                             .rust_mut()
-                            .set_error(&format!("{}", e));
+                            .set_error(myme_core::AppError::from(e).user_message());
                     }
                 }
             }

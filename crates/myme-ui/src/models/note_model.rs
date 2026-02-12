@@ -305,7 +305,7 @@ impl qobject::NoteModel {
                     }
                     Err(e) => {
                         tracing::error!("Failed to fetch notes: {}", e);
-                        let msg = myme_core::AppError::Service(e.to_string()).user_message();
+                        let msg = myme_core::AppError::from(e).user_message();
                         self.as_mut().rust_mut().set_error(msg);
                         self.as_mut().set_connected(false);
                         self.as_mut().error_occurred();
@@ -324,7 +324,7 @@ impl qobject::NoteModel {
                     }
                     Err(e) => {
                         tracing::error!("Failed to create note: {}", e);
-                        let msg = myme_core::AppError::Service(e.to_string()).user_message();
+                        let msg = myme_core::AppError::from(e).user_message();
                         self.as_mut().rust_mut().set_error(msg);
                         self.as_mut().error_occurred();
                     }
@@ -343,7 +343,7 @@ impl qobject::NoteModel {
                     }
                     Err(e) => {
                         tracing::error!("Failed to update note: {}", e);
-                        let msg = myme_core::AppError::Service(e.to_string()).user_message();
+                        let msg = myme_core::AppError::from(e).user_message();
                         self.as_mut().rust_mut().set_error(msg);
                         self.as_mut().error_occurred();
                     }
@@ -362,7 +362,7 @@ impl qobject::NoteModel {
                     }
                     Err(e) => {
                         tracing::error!("Failed to delete note: {}", e);
-                        let msg = myme_core::AppError::Service(e.to_string()).user_message();
+                        let msg = myme_core::AppError::from(e).user_message();
                         self.as_mut().rust_mut().set_error(msg);
                         self.as_mut().error_occurred();
                     }

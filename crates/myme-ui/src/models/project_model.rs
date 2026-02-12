@@ -239,7 +239,7 @@ impl qobject::ProjectModel {
                 drop(store_guard);
                 self.as_mut()
                     .rust_mut()
-                    .set_error(&format!("Failed to load projects: {}", e));
+                    .set_error(myme_core::AppError::from(e).user_message());
                 self.as_mut().set_loading(false);
             }
         }
@@ -355,7 +355,7 @@ impl qobject::ProjectModel {
                 drop(store_guard);
                 self.as_mut()
                     .rust_mut()
-                    .set_error(&format!("Failed to create project: {}", e));
+                    .set_error(myme_core::AppError::from(e).user_message());
             }
         }
     }
@@ -506,7 +506,7 @@ impl qobject::ProjectModel {
                 drop(store_guard);
                 self.as_mut()
                     .rust_mut()
-                    .set_error(&format!("Failed to remove repo: {}", e));
+                    .set_error(myme_core::AppError::from(e).user_message());
             }
         }
     }
@@ -538,7 +538,7 @@ impl qobject::ProjectModel {
                 drop(store_guard);
                 self.as_mut()
                     .rust_mut()
-                    .set_error(&format!("Failed to delete project: {}", e));
+                    .set_error(myme_core::AppError::from(e).user_message());
             }
         }
     }
@@ -578,7 +578,7 @@ impl qobject::ProjectModel {
                         tracing::error!("Failed to fetch repo from GitHub: {}", e);
                         self.as_mut()
                             .rust_mut()
-                            .set_error(&format!("Failed to fetch repo: {}", e));
+                            .set_error(myme_core::AppError::from(e).user_message());
                         self.as_mut().set_loading(false);
                     }
                 }
@@ -613,7 +613,7 @@ impl qobject::ProjectModel {
                 drop(store_guard);
                 self.as_mut()
                     .rust_mut()
-                    .set_error(&format!("Failed to add repo: {}", e));
+                    .set_error(myme_core::AppError::from(e).user_message());
                 self.as_mut().set_loading(false);
             }
         }

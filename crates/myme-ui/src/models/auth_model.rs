@@ -161,7 +161,7 @@ impl qobject::AuthModel {
                         tracing::error!("GitHub authentication failed: {}", e);
                         self.as_mut()
                             .rust_mut()
-                            .set_error(&format!("Authentication failed: {}", e));
+                            .set_error(myme_core::AppError::from(e).user_message());
                         self.as_mut().set_authenticated(false);
                     }
                 }
@@ -207,7 +207,7 @@ impl qobject::AuthModel {
                 tracing::error!("Sign out failed: {}", e);
                 self.as_mut()
                     .rust_mut()
-                    .set_error(&format!("Sign out failed: {}", e));
+                    .set_error(myme_core::AppError::from(e).user_message());
             }
         }
     }

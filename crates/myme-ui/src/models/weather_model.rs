@@ -308,7 +308,7 @@ impl qobject::WeatherModel {
                         tracing::error!("Failed to fetch weather: {}", e);
                         self.as_mut()
                             .rust_mut()
-                            .set_error(&format!("Weather error: {}", e));
+                            .set_error(myme_core::AppError::from(e).user_message());
                         self.as_mut().error_occurred();
 
                         // If we have cached data, mark as stale but keep showing it
