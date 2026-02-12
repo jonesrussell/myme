@@ -2,12 +2,12 @@
 #![allow(async_fn_in_trait)]
 
 use anyhow::{Context, Result};
+use oauth2::basic::BasicClient;
+use oauth2::reqwest::async_http_client;
 use oauth2::{
     AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge,
     PkceCodeVerifier, RedirectUrl, Scope, TokenResponse, TokenUrl,
 };
-use oauth2::basic::BasicClient;
-use oauth2::reqwest::async_http_client;
 use std::net::TcpListener;
 use std::sync::Arc;
 use tokio::sync::oneshot;
@@ -77,31 +77,25 @@ pub trait OAuth2Provider: Send + Sync {
         let client = BasicClient::new(
             ClientId::new(config.client_id.clone()),
             Some(ClientSecret::new(config.client_secret.clone())),
-            AuthUrl::new(config.auth_url.clone())
-                .context("Invalid auth URL")?,
-            Some(TokenUrl::new(config.token_url.clone())
-                .context("Invalid token URL")?),
+            AuthUrl::new(config.auth_url.clone()).context("Invalid auth URL")?,
+            Some(TokenUrl::new(config.token_url.clone()).context("Invalid token URL")?),
         )
         .set_redirect_uri(
-            RedirectUrl::new(config.redirect_uri.clone())
-                .context("Invalid redirect URI")?,
+            RedirectUrl::new(config.redirect_uri.clone()).context("Invalid redirect URI")?,
         );
 
         // Generate PKCE challenge for additional security
         let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
         // Generate authorization URL
-        let mut auth_request = client
-            .authorize_url(CsrfToken::new_random);
+        let mut auth_request = client.authorize_url(CsrfToken::new_random);
 
         // Add scopes
         for scope in &config.scopes {
             auth_request = auth_request.add_scope(Scope::new(scope.clone()));
         }
 
-        let (auth_url, csrf_token) = auth_request
-            .set_pkce_challenge(pkce_challenge)
-            .url();
+        let (auth_url, csrf_token) = auth_request.set_pkce_challenge(pkce_challenge).url();
 
         Ok((auth_url.to_string(), csrf_token, pkce_verifier))
     }
@@ -112,7 +106,11 @@ pub trait OAuth2Provider: Send + Sync {
     /// * `code` - Authorization code from callback
     /// * `pkce_verifier` - PKCE verifier from authorization step
     #[tracing::instrument(skip(self, code, pkce_verifier), level = "info")]
-    async fn exchange_code(&self, code: String, pkce_verifier: PkceCodeVerifier) -> Result<TokenSet> {
+    async fn exchange_code(
+        &self,
+        code: String,
+        pkce_verifier: PkceCodeVerifier,
+    ) -> Result<TokenSet> {
         let config = self.config();
 
         let client = BasicClient::new(
@@ -133,20 +131,21 @@ pub trait OAuth2Provider: Send + Sync {
 
         // Calculate expiration
         // GitHub OAuth tokens don't expire, so default to 1 year if no expiration provided
-        let expires_in = token_result.expires_in()
+        let expires_in = token_result
+            .expires_in()
             .map(|d| d.as_secs() as i64)
             .unwrap_or(365 * 24 * 3600); // Default 1 year for non-expiring tokens
         let expires_at = chrono::Utc::now().timestamp() + expires_in;
 
         // Extract scopes
-        let scopes = token_result.scopes()
+        let scopes = token_result
+            .scopes()
             .map(|s| s.iter().map(|scope| scope.to_string()).collect())
             .unwrap_or_else(Vec::new);
 
         let token_set = TokenSet {
             access_token: token_result.access_token().secret().clone(),
-            refresh_token: token_result.refresh_token()
-                .map(|t| t.secret().clone()),
+            refresh_token: token_result.refresh_token().map(|t| t.secret().clone()),
             expires_at,
             scopes,
         };
@@ -172,8 +171,7 @@ pub trait OAuth2Provider: Send + Sync {
     #[tracing::instrument(skip(self), level = "info")]
     async fn authenticate(&self) -> Result<TokenSet> {
         // Find an available port for the callback server
-        let port = find_available_port()
-            .context("No available port for OAuth callback server")?;
+        let port = find_available_port().context("No available port for OAuth callback server")?;
 
         // Build redirect URI with the discovered port
         let redirect_uri = format!("http://127.0.0.1:{}/callback", port);
@@ -193,10 +191,8 @@ pub trait OAuth2Provider: Send + Sync {
         let client = BasicClient::new(
             ClientId::new(dynamic_config.client_id.clone()),
             Some(ClientSecret::new(dynamic_config.client_secret.clone())),
-            AuthUrl::new(dynamic_config.auth_url.clone())
-                .context("Invalid auth URL")?,
-            Some(TokenUrl::new(dynamic_config.token_url.clone())
-                .context("Invalid token URL")?),
+            AuthUrl::new(dynamic_config.auth_url.clone()).context("Invalid auth URL")?,
+            Some(TokenUrl::new(dynamic_config.token_url.clone()).context("Invalid token URL")?),
         )
         .set_redirect_uri(
             RedirectUrl::new(dynamic_config.redirect_uri.clone())
@@ -214,9 +210,7 @@ pub trait OAuth2Provider: Send + Sync {
             auth_request = auth_request.add_scope(Scope::new(scope.clone()));
         }
 
-        let (auth_url, csrf_token) = auth_request
-            .set_pkce_challenge(pkce_challenge)
-            .url();
+        let (auth_url, csrf_token) = auth_request.set_pkce_challenge(pkce_challenge).url();
 
         tracing::info!("Opening browser for OAuth2 authorization...");
         tracing::info!("Callback server on port {}", port);
@@ -333,8 +327,7 @@ pub trait OAuth2Provider: Send + Sync {
         }
 
         // Wait for callback
-        let (code, state) = rx.await
-            .context("Failed to receive OAuth callback")?;
+        let (code, state) = rx.await.context("Failed to receive OAuth callback")?;
 
         // Validate CSRF token
         if state != *csrf_token.secret() {
@@ -361,20 +354,21 @@ pub trait OAuth2Provider: Send + Sync {
             .context("Failed to exchange authorization code")?;
 
         // Calculate expiration
-        let expires_in = token_result.expires_in()
+        let expires_in = token_result
+            .expires_in()
             .map(|d| d.as_secs() as i64)
             .unwrap_or(365 * 24 * 3600); // Default 1 year for non-expiring tokens
         let expires_at = chrono::Utc::now().timestamp() + expires_in;
 
         // Extract scopes
-        let scopes = token_result.scopes()
+        let scopes = token_result
+            .scopes()
             .map(|s| s.iter().map(|scope| scope.to_string()).collect())
             .unwrap_or_else(Vec::new);
 
         let token_set = TokenSet {
             access_token: token_result.access_token().secret().clone(),
-            refresh_token: token_result.refresh_token()
-                .map(|t| t.secret().clone()),
+            refresh_token: token_result.refresh_token().map(|t| t.secret().clone()),
             expires_at,
             scopes,
         };

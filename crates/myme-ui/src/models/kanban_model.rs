@@ -168,13 +168,16 @@ impl qobject::KanbanModel {
         let repo_ids = store_guard
             .list_repos_for_project(&project_id_str)
             .unwrap_or_default();
-        let repo_ids_json =
-            serde_json::to_string(&repo_ids).unwrap_or_else(|_| "[]".to_string());
+        let repo_ids_json = serde_json::to_string(&repo_ids).unwrap_or_else(|_| "[]".to_string());
         self.as_mut().set_repo_ids(QString::from(&repo_ids_json));
 
         match store_guard.list_tasks_for_project(&project_id_str) {
             Ok(tasks) => {
-                tracing::info!("Loaded {} tasks for project {}", tasks.len(), project_id_str);
+                tracing::info!(
+                    "Loaded {} tasks for project {}",
+                    tasks.len(),
+                    project_id_str
+                );
                 drop(store_guard);
                 self.as_mut().rust_mut().tasks = tasks;
                 self.as_mut().set_loading(false);
@@ -284,12 +287,7 @@ impl qobject::KanbanModel {
         self.as_mut().tasks_changed();
     }
 
-    pub fn create_task(
-        mut self: Pin<&mut Self>,
-        title: QString,
-        body: QString,
-        status: QString,
-    ) {
+    pub fn create_task(mut self: Pin<&mut Self>, title: QString, body: QString, status: QString) {
         self.as_mut().rust_mut().ensure_initialized();
 
         let title_str = title.to_string().trim().to_string();

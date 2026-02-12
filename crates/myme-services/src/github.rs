@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use url::Url;
 
-use crate::retry::{with_retry, RetryConfig, RetryDecision, is_retryable_status};
+use crate::retry::{is_retryable_status, with_retry, RetryConfig, RetryDecision};
 
 const GITHUB_API_URL: &str = "https://api.github.com";
 
@@ -170,7 +170,9 @@ impl GitHubClient {
     {
         let response = with_retry(self.retry_config.clone(), || async {
             build_request().send().await
-        }).await.context("Failed to send request after retries")?;
+        })
+        .await
+        .context("Failed to send request after retries")?;
 
         let status = response.status();
 
@@ -189,13 +191,15 @@ impl GitHubClient {
         tracing::debug!("Fetching user repositories");
 
         let url = self.base_url.join("user/repos")?;
-        let response = self.send_with_retry(|| {
-            self.build_request(
-                self.client
-                    .get(url.clone())
-                    .query(&[("sort", "updated"), ("per_page", "100")]),
-            )
-        }).await?;
+        let response = self
+            .send_with_retry(|| {
+                self.build_request(
+                    self.client
+                        .get(url.clone())
+                        .query(&[("sort", "updated"), ("per_page", "100")]),
+                )
+            })
+            .await?;
 
         let repos: Vec<GitHubRepo> = response.json().await?;
 
@@ -209,9 +213,9 @@ impl GitHubClient {
         tracing::debug!("Fetching repository {}/{}", owner, repo);
 
         let url = self.base_url.join(&format!("repos/{}/{}", owner, repo))?;
-        let response = self.send_with_retry(|| {
-            self.build_request(self.client.get(url.clone()))
-        }).await?;
+        let response = self
+            .send_with_retry(|| self.build_request(self.client.get(url.clone())))
+            .await?;
 
         let repo: GitHubRepo = response.json().await?;
         Ok(repo)
@@ -223,12 +227,13 @@ impl GitHubClient {
         tracing::debug!("Creating repository: {}", req.name);
 
         let url = self.base_url.join("user/repos")?;
-        let request_json = serde_json::to_value(&req)
-            .context("Failed to serialize request")?;
+        let request_json = serde_json::to_value(&req).context("Failed to serialize request")?;
 
-        let response = self.send_with_retry(|| {
-            self.build_request(self.client.post(url.clone()).json(&request_json))
-        }).await?;
+        let response = self
+            .send_with_retry(|| {
+                self.build_request(self.client.post(url.clone()).json(&request_json))
+            })
+            .await?;
 
         let repo: GitHubRepo = response.json().await?;
 
@@ -241,14 +246,18 @@ impl GitHubClient {
     pub async fn list_issues(&self, owner: &str, repo: &str) -> Result<Vec<GitHubIssue>> {
         tracing::debug!("Fetching issues for {}/{}", owner, repo);
 
-        let url = self.base_url.join(&format!("repos/{}/{}/issues", owner, repo))?;
-        let response = self.send_with_retry(|| {
-            self.build_request(
-                self.client
-                    .get(url.clone())
-                    .query(&[("state", "all"), ("per_page", "100")])
-            )
-        }).await?;
+        let url = self
+            .base_url
+            .join(&format!("repos/{}/{}/issues", owner, repo))?;
+        let response = self
+            .send_with_retry(|| {
+                self.build_request(
+                    self.client
+                        .get(url.clone())
+                        .query(&[("state", "all"), ("per_page", "100")]),
+                )
+            })
+            .await?;
 
         let issues: Vec<GitHubIssue> = response.json().await?;
 
@@ -265,15 +274,19 @@ impl GitHubClient {
     ) -> Result<Vec<GitHubIssue>> {
         tracing::debug!("Fetching issues for {}/{} since {}", owner, repo, since);
 
-        let url = self.base_url.join(&format!("repos/{}/{}/issues", owner, repo))?;
+        let url = self
+            .base_url
+            .join(&format!("repos/{}/{}/issues", owner, repo))?;
         let since_owned = since.to_string();
-        let response = self.send_with_retry(|| {
-            self.build_request(
-                self.client
-                    .get(url.clone())
-                    .query(&[("state", "all"), ("since", since_owned.as_str()), ("per_page", "100")])
-            )
-        }).await?;
+        let response = self
+            .send_with_retry(|| {
+                self.build_request(self.client.get(url.clone()).query(&[
+                    ("state", "all"),
+                    ("since", since_owned.as_str()),
+                    ("per_page", "100"),
+                ]))
+            })
+            .await?;
 
         let issues: Vec<GitHubIssue> = response.json().await?;
 
@@ -290,13 +303,16 @@ impl GitHubClient {
     ) -> Result<GitHubIssue> {
         tracing::debug!("Creating issue in {}/{}: {}", owner, repo, req.title);
 
-        let url = self.base_url.join(&format!("repos/{}/{}/issues", owner, repo))?;
-        let request_json = serde_json::to_value(&req)
-            .context("Failed to serialize request")?;
+        let url = self
+            .base_url
+            .join(&format!("repos/{}/{}/issues", owner, repo))?;
+        let request_json = serde_json::to_value(&req).context("Failed to serialize request")?;
 
-        let response = self.send_with_retry(|| {
-            self.build_request(self.client.post(url.clone()).json(&request_json))
-        }).await?;
+        let response = self
+            .send_with_retry(|| {
+                self.build_request(self.client.post(url.clone()).json(&request_json))
+            })
+            .await?;
 
         let issue: GitHubIssue = response.json().await?;
 
@@ -315,16 +331,16 @@ impl GitHubClient {
     ) -> Result<GitHubIssue> {
         tracing::debug!("Updating issue #{} in {}/{}", issue_number, owner, repo);
 
-        let url = self.base_url.join(&format!(
-            "repos/{}/{}/issues/{}",
-            owner, repo, issue_number
-        ))?;
-        let request_json = serde_json::to_value(&req)
-            .context("Failed to serialize request")?;
+        let url = self
+            .base_url
+            .join(&format!("repos/{}/{}/issues/{}", owner, repo, issue_number))?;
+        let request_json = serde_json::to_value(&req).context("Failed to serialize request")?;
 
-        let response = self.send_with_retry(|| {
-            self.build_request(self.client.patch(url.clone()).json(&request_json))
-        }).await?;
+        let response = self
+            .send_with_retry(|| {
+                self.build_request(self.client.patch(url.clone()).json(&request_json))
+            })
+            .await?;
 
         let issue: GitHubIssue = response.json().await?;
 
@@ -332,33 +348,57 @@ impl GitHubClient {
     }
 
     /// Close an issue
-    pub async fn close_issue(&self, owner: &str, repo: &str, issue_number: i32) -> Result<GitHubIssue> {
-        self.update_issue(owner, repo, issue_number, UpdateIssueRequest {
-            title: None,
-            body: None,
-            state: Some("closed".to_string()),
-            labels: None,
-        }).await
+    pub async fn close_issue(
+        &self,
+        owner: &str,
+        repo: &str,
+        issue_number: i32,
+    ) -> Result<GitHubIssue> {
+        self.update_issue(
+            owner,
+            repo,
+            issue_number,
+            UpdateIssueRequest {
+                title: None,
+                body: None,
+                state: Some("closed".to_string()),
+                labels: None,
+            },
+        )
+        .await
     }
 
     /// Reopen an issue
-    pub async fn reopen_issue(&self, owner: &str, repo: &str, issue_number: i32) -> Result<GitHubIssue> {
-        self.update_issue(owner, repo, issue_number, UpdateIssueRequest {
-            title: None,
-            body: None,
-            state: Some("open".to_string()),
-            labels: None,
-        }).await
+    pub async fn reopen_issue(
+        &self,
+        owner: &str,
+        repo: &str,
+        issue_number: i32,
+    ) -> Result<GitHubIssue> {
+        self.update_issue(
+            owner,
+            repo,
+            issue_number,
+            UpdateIssueRequest {
+                title: None,
+                body: None,
+                state: Some("open".to_string()),
+                labels: None,
+            },
+        )
+        .await
     }
 
     /// List labels for a repository
     pub async fn list_labels(&self, owner: &str, repo: &str) -> Result<Vec<GitHubLabel>> {
         tracing::debug!("Fetching labels for {}/{}", owner, repo);
 
-        let url = self.base_url.join(&format!("repos/{}/{}/labels", owner, repo))?;
-        let response = self.send_with_retry(|| {
-            self.build_request(self.client.get(url.clone()))
-        }).await?;
+        let url = self
+            .base_url
+            .join(&format!("repos/{}/{}/labels", owner, repo))?;
+        let response = self
+            .send_with_retry(|| self.build_request(self.client.get(url.clone())))
+            .await?;
 
         let labels: Vec<GitHubLabel> = response.json().await?;
 
@@ -374,13 +414,16 @@ impl GitHubClient {
     ) -> Result<GitHubLabel> {
         tracing::debug!("Creating label {} in {}/{}", req.name, owner, repo);
 
-        let url = self.base_url.join(&format!("repos/{}/{}/labels", owner, repo))?;
-        let request_json = serde_json::to_value(&req)
-            .context("Failed to serialize request")?;
+        let url = self
+            .base_url
+            .join(&format!("repos/{}/{}/labels", owner, repo))?;
+        let request_json = serde_json::to_value(&req).context("Failed to serialize request")?;
 
-        let response = self.send_with_retry(|| {
-            self.build_request(self.client.post(url.clone()).json(&request_json))
-        }).await?;
+        let response = self
+            .send_with_retry(|| {
+                self.build_request(self.client.post(url.clone()).json(&request_json))
+            })
+            .await?;
 
         let label: GitHubLabel = response.json().await?;
 
@@ -395,7 +438,12 @@ impl GitHubClient {
         issue_number: i32,
         labels: Vec<String>,
     ) -> Result<Vec<GitHubLabel>> {
-        tracing::debug!("Setting labels on issue #{} in {}/{}", issue_number, owner, repo);
+        tracing::debug!(
+            "Setting labels on issue #{} in {}/{}",
+            issue_number,
+            owner,
+            repo
+        );
 
         let url = self.base_url.join(&format!(
             "repos/{}/{}/issues/{}/labels",
@@ -410,9 +458,11 @@ impl GitHubClient {
         let request_json = serde_json::to_value(&SetLabelsRequest { labels })
             .context("Failed to serialize request")?;
 
-        let response = self.send_with_retry(|| {
-            self.build_request(self.client.put(url.clone()).json(&request_json))
-        }).await?;
+        let response = self
+            .send_with_retry(|| {
+                self.build_request(self.client.put(url.clone()).json(&request_json))
+            })
+            .await?;
 
         let labels: Vec<GitHubLabel> = response.json().await?;
 
@@ -427,14 +477,11 @@ impl GitHubClient {
         let url = self
             .base_url
             .join(&format!("repos/{}/{}/actions/workflows", owner, repo))?;
-        let response = self.send_with_retry(|| {
-            self.build_request(
-                self.client
-                    .get(url.clone())
-                    .query(&[("per_page", "100")]),
-            )
-        })
-        .await?;
+        let response = self
+            .send_with_retry(|| {
+                self.build_request(self.client.get(url.clone()).query(&[("per_page", "100")]))
+            })
+            .await?;
 
         let body: ListWorkflowsResponse = response.json().await?;
         tracing::info!(

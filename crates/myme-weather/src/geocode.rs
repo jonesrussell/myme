@@ -51,9 +51,7 @@ pub async fn reverse_geocode(location: &Location) -> Option<String> {
 
     let url = format!(
         "{}?lat={}&lon={}&format=json&addressdetails=1&layer=address&zoom=10",
-        NOMINATIM_URL,
-        location.latitude,
-        location.longitude
+        NOMINATIM_URL, location.latitude, location.longitude
     );
 
     let response = match client.get(&url).send().await {
@@ -65,10 +63,7 @@ pub async fn reverse_geocode(location: &Location) -> Option<String> {
     };
 
     if !response.status().is_success() {
-        tracing::debug!(
-            "Reverse geocode returned status {}",
-            response.status()
-        );
+        tracing::debug!("Reverse geocode returned status {}", response.status());
         return None;
     }
 

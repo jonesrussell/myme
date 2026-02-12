@@ -1,12 +1,12 @@
-pub mod storage;
-pub mod oauth;
 pub mod github;
 pub mod google;
+pub mod oauth;
+pub mod storage;
 
-pub use storage::{SecureStorage, TokenSet};
-pub use oauth::{OAuth2Provider, OAuth2Config};
 pub use github::GitHubAuth;
 pub use google::{GoogleOAuth2Provider, GoogleTokenResponse, GoogleUserInfo};
+pub use oauth::{OAuth2Config, OAuth2Provider};
+pub use storage::{SecureStorage, TokenSet};
 
 use anyhow::Result;
 

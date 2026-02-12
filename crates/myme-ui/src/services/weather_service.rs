@@ -59,9 +59,9 @@ pub fn request_fetch(
                 loc
             }
             Err(e) => {
-                let _ = tx.send(WeatherServiceMessage::FetchDone(Err(WeatherError::Location(
-                    e.to_string(),
-                ))));
+                let _ = tx.send(WeatherServiceMessage::FetchDone(Err(
+                    WeatherError::Location(e.to_string()),
+                )));
                 return;
             }
         };

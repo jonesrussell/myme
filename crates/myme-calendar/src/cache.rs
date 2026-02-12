@@ -203,8 +203,12 @@ impl CalendarCache {
         )?;
 
         let rows = stmt.query_map(
-            params![calendar_id, time_min.timestamp_millis(), time_max.timestamp_millis()],
-            Self::row_to_event
+            params![
+                calendar_id,
+                time_min.timestamp_millis(),
+                time_max.timestamp_millis()
+            ],
+            Self::row_to_event,
         )?;
 
         rows.collect::<Result<Vec<_>, _>>()
@@ -243,9 +247,8 @@ impl CalendarCache {
 
     /// Clear all cached data.
     pub fn clear(&self) -> Result<()> {
-        self.conn.execute_batch(
-            "DELETE FROM events; DELETE FROM calendars; DELETE FROM sync_state;"
-        )?;
+        self.conn
+            .execute_batch("DELETE FROM events; DELETE FROM calendars; DELETE FROM sync_state;")?;
         Ok(())
     }
 
@@ -257,13 +260,21 @@ impl CalendarCache {
         let status_str: String = row.get(10)?;
 
         let start = if all_day != 0 {
-            EventTime::Date(DateTime::from_timestamp_millis(start_ms).unwrap_or_default().date_naive())
+            EventTime::Date(
+                DateTime::from_timestamp_millis(start_ms)
+                    .unwrap_or_default()
+                    .date_naive(),
+            )
         } else {
             EventTime::DateTime(DateTime::from_timestamp_millis(start_ms).unwrap_or_default())
         };
 
         let end = if all_day != 0 {
-            EventTime::Date(DateTime::from_timestamp_millis(end_ms).unwrap_or_default().date_naive())
+            EventTime::Date(
+                DateTime::from_timestamp_millis(end_ms)
+                    .unwrap_or_default()
+                    .date_naive(),
+            )
         } else {
             EventTime::DateTime(DateTime::from_timestamp_millis(end_ms).unwrap_or_default())
         };
@@ -340,9 +351,15 @@ mod tests {
     fn test_list_events_in_range() {
         let cache = CalendarCache::in_memory().unwrap();
 
-        cache.store_event(&create_test_event("e1", "Event 1", 1)).unwrap();
-        cache.store_event(&create_test_event("e2", "Event 2", 2)).unwrap();
-        cache.store_event(&create_test_event("e3", "Event 3", 48)).unwrap(); // 2 days from now
+        cache
+            .store_event(&create_test_event("e1", "Event 1", 1))
+            .unwrap();
+        cache
+            .store_event(&create_test_event("e2", "Event 2", 2))
+            .unwrap();
+        cache
+            .store_event(&create_test_event("e3", "Event 3", 48))
+            .unwrap(); // 2 days from now
 
         let now = Utc::now();
         let tomorrow = now + chrono::Duration::hours(24);
@@ -367,9 +384,15 @@ mod tests {
     fn test_upcoming_event_count() {
         let cache = CalendarCache::in_memory().unwrap();
 
-        cache.store_event(&create_test_event("e1", "Event 1", 1)).unwrap();
-        cache.store_event(&create_test_event("e2", "Event 2", 2)).unwrap();
-        cache.store_event(&create_test_event("e3", "Event 3", 48)).unwrap();
+        cache
+            .store_event(&create_test_event("e1", "Event 1", 1))
+            .unwrap();
+        cache
+            .store_event(&create_test_event("e2", "Event 2", 2))
+            .unwrap();
+        cache
+            .store_event(&create_test_event("e3", "Event 3", 48))
+            .unwrap();
 
         let count = cache.upcoming_event_count("primary", 24).unwrap();
         assert_eq!(count, 2);
@@ -411,7 +434,9 @@ mod tests {
     fn test_clear() {
         let cache = CalendarCache::in_memory().unwrap();
 
-        cache.store_event(&create_test_event("e1", "Event", 1)).unwrap();
+        cache
+            .store_event(&create_test_event("e1", "Event", 1))
+            .unwrap();
         cache.clear().unwrap();
 
         assert!(cache.get_event("primary", "e1").unwrap().is_none());

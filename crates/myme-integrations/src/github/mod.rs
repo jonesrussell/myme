@@ -164,7 +164,8 @@ impl GitHubClient {
             query_params.push(("sort", s));
         }
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .header("Authorization", format!("Bearer {}", self.access_token))
             .header("Accept", "application/vnd.github+json")
@@ -207,7 +208,8 @@ impl GitHubClient {
             query_params.push(("state", s));
         }
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .header("Authorization", format!("Bearer {}", self.access_token))
             .header("Accept", "application/vnd.github+json")
@@ -255,7 +257,8 @@ impl GitHubClient {
             body["description"] = serde_json::json!(desc);
         }
 
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .header("Authorization", format!("Bearer {}", self.access_token))
             .header("Accept", "application/vnd.github+json")
@@ -283,7 +286,8 @@ impl GitHubClient {
     pub async fn get_user(&self) -> Result<User> {
         let url = format!("{}/user", self.base_url);
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .header("Authorization", format!("Bearer {}", self.access_token))
             .header("Accept", "application/vnd.github+json")

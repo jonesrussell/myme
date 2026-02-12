@@ -132,7 +132,7 @@ impl GmailCache {
         let mut stmt = self.conn.prepare(sql)?;
 
         let rows = if let Some(lbl) = label {
-            let pattern = format!("%\"{}\"%" , lbl);
+            let pattern = format!("%\"{}\"%", lbl);
             stmt.query_map(params![pattern, limit], Self::row_to_message)?
         } else {
             stmt.query_map(params!["", limit], Self::row_to_message)?
@@ -144,7 +144,8 @@ impl GmailCache {
 
     /// Delete a message from the cache.
     pub fn delete_message(&self, id: &str) -> Result<()> {
-        self.conn.execute("DELETE FROM messages WHERE id = ?1", params![id])?;
+        self.conn
+            .execute("DELETE FROM messages WHERE id = ?1", params![id])?;
         Ok(())
     }
 
@@ -185,7 +186,11 @@ impl GmailCache {
             Ok(Label {
                 id: row.get(0)?,
                 name: row.get(1)?,
-                label_type: if label_type_str == "system" { LabelType::System } else { LabelType::User },
+                label_type: if label_type_str == "system" {
+                    LabelType::System
+                } else {
+                    LabelType::User
+                },
                 messages_total: row.get(3)?,
                 messages_unread: row.get(4)?,
             })
@@ -230,9 +235,8 @@ impl GmailCache {
 
     /// Clear all cached data.
     pub fn clear(&self) -> Result<()> {
-        self.conn.execute_batch(
-            "DELETE FROM messages; DELETE FROM labels; DELETE FROM sync_state;"
-        )?;
+        self.conn
+            .execute_batch("DELETE FROM messages; DELETE FROM labels; DELETE FROM sync_state;")?;
         Ok(())
     }
 
@@ -302,9 +306,15 @@ mod tests {
     fn test_list_messages() {
         let cache = GmailCache::in_memory().unwrap();
 
-        cache.store_message(&create_test_message("msg1", true)).unwrap();
-        cache.store_message(&create_test_message("msg2", false)).unwrap();
-        cache.store_message(&create_test_message("msg3", true)).unwrap();
+        cache
+            .store_message(&create_test_message("msg1", true))
+            .unwrap();
+        cache
+            .store_message(&create_test_message("msg2", false))
+            .unwrap();
+        cache
+            .store_message(&create_test_message("msg3", true))
+            .unwrap();
 
         let messages = cache.list_messages(None, 10).unwrap();
         assert_eq!(messages.len(), 3);
@@ -326,9 +336,15 @@ mod tests {
     fn test_unread_count() {
         let cache = GmailCache::in_memory().unwrap();
 
-        cache.store_message(&create_test_message("msg1", true)).unwrap();
-        cache.store_message(&create_test_message("msg2", false)).unwrap();
-        cache.store_message(&create_test_message("msg3", true)).unwrap();
+        cache
+            .store_message(&create_test_message("msg1", true))
+            .unwrap();
+        cache
+            .store_message(&create_test_message("msg2", false))
+            .unwrap();
+        cache
+            .store_message(&create_test_message("msg3", true))
+            .unwrap();
 
         assert_eq!(cache.unread_count().unwrap(), 2);
     }
@@ -375,7 +391,9 @@ mod tests {
     fn test_clear_cache() {
         let cache = GmailCache::in_memory().unwrap();
 
-        cache.store_message(&create_test_message("msg1", true)).unwrap();
+        cache
+            .store_message(&create_test_message("msg1", true))
+            .unwrap();
         cache.set_last_sync(12345).unwrap();
 
         cache.clear().unwrap();

@@ -90,7 +90,11 @@ impl qobject::JwtModel {
         let header = Header::new(alg);
 
         // Encode the token
-        match encode(&header, &claims, &EncodingKey::from_secret(secret_str.as_bytes())) {
+        match encode(
+            &header,
+            &claims,
+            &EncodingKey::from_secret(secret_str.as_bytes()),
+        ) {
             Ok(token) => {
                 tracing::info!("Generated JWT token with algorithm {:?}", alg);
                 self.as_mut().set_generated_token(QString::from(&token));

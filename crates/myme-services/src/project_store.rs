@@ -1,7 +1,7 @@
 // crates/myme-services/src/project_store.rs
 
 use anyhow::{Context, Result};
-use rusqlite::{Connection, OptionalExtension, params};
+use rusqlite::{params, Connection, OptionalExtension};
 use std::path::Path;
 
 use crate::project::{Project, Task, TaskStatus};
@@ -16,8 +16,7 @@ pub struct ProjectStore {
 impl ProjectStore {
     /// Open or create the database
     pub fn open(path: &Path) -> Result<Self> {
-        let conn = Connection::open(path)
-            .context("Failed to open projects database")?;
+        let conn = Connection::open(path).context("Failed to open projects database")?;
 
         let store = Self { conn };
         store.init_schema()?;
@@ -35,7 +34,9 @@ impl ProjectStore {
 
         let version: i32 = self
             .conn
-            .query_row("SELECT version FROM schema_version LIMIT 1", [], |row| row.get(0))
+            .query_row("SELECT version FROM schema_version LIMIT 1", [], |row| {
+                row.get(0)
+            })
             .optional()?
             .unwrap_or(0);
 
@@ -47,8 +48,9 @@ impl ProjectStore {
         }
 
         // Ensure schema exists
-        self.conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS projects (
+        self.conn
+            .execute_batch(
+                "CREATE TABLE IF NOT EXISTS projects (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 description TEXT,
@@ -76,8 +78,9 @@ impl ProjectStore {
             CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
             CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
             CREATE INDEX IF NOT EXISTS idx_project_repos_project ON project_repos(project_id);
-            CREATE INDEX IF NOT EXISTS idx_project_repos_repo ON project_repos(repo_id);"
-        ).context("Failed to initialize schema")?;
+            CREATE INDEX IF NOT EXISTS idx_project_repos_repo ON project_repos(repo_id);",
+            )
+            .context("Failed to initialize schema")?;
 
         Ok(())
     }
@@ -85,13 +88,11 @@ impl ProjectStore {
     /// Migrate from v1 (github_repo per project) to v2 (many-to-many)
     fn migrate_to_v2(&self, _from_version: i32) -> Result<()> {
         // Check if old schema exists
-        let old_exists: bool = self.conn
-            .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='projects'",
-                [],
-                |row| row.get::<_, i32>(0),
-            )?
-            > 0;
+        let old_exists: bool = self.conn.query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='projects'",
+            [],
+            |row| row.get::<_, i32>(0),
+        )? > 0;
 
         if !old_exists {
             self.conn.execute("DELETE FROM schema_version", [])?;
@@ -103,7 +104,8 @@ impl ProjectStore {
         }
 
         // Check if old schema has github_repo column
-        let table_info: Vec<String> = self.conn
+        let table_info: Vec<String> = self
+            .conn
             .prepare("PRAGMA table_info(projects)")?
             .query_map([], |row| row.get::<_, String>(1))?
             .collect::<Result<Vec<_>, _>>()?;
@@ -193,7 +195,9 @@ impl ProjectStore {
     fn migrate_to_v3(&self) -> Result<()> {
         let version: i32 = self
             .conn
-            .query_row("SELECT version FROM schema_version LIMIT 1", [], |row| row.get(0))
+            .query_row("SELECT version FROM schema_version LIMIT 1", [], |row| {
+                row.get(0)
+            })
             .optional()?
             .unwrap_or(2);
 
@@ -201,14 +205,11 @@ impl ProjectStore {
             return Ok(());
         }
 
-        let has_tasks: bool = self
-            .conn
-            .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='tasks'",
-                [],
-                |row| row.get::<_, i32>(0),
-            )?
-            > 0;
+        let has_tasks: bool = self.conn.query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='tasks'",
+            [],
+            |row| row.get::<_, i32>(0),
+        )? > 0;
 
         if !has_tasks {
             self.conn.execute("DELETE FROM schema_version", [])?;
@@ -301,17 +302,19 @@ impl ProjectStore {
     pub fn list_projects(&self) -> Result<Vec<Project>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, name, description, created_at
-             FROM projects ORDER BY created_at DESC"
+             FROM projects ORDER BY created_at DESC",
         )?;
 
-        let projects = stmt.query_map([], |row| {
-            Ok(Project {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                description: row.get(2)?,
-                created_at: row.get(3)?,
-            })
-        })?.collect::<Result<Vec<_>, _>>()?;
+        let projects = stmt
+            .query_map([], |row| {
+                Ok(Project {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    description: row.get(2)?,
+                    created_at: row.get(3)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(projects)
     }
@@ -320,26 +323,31 @@ impl ProjectStore {
     pub fn get_project(&self, id: &str) -> Result<Option<Project>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, name, description, created_at
-             FROM projects WHERE id = ?1"
+             FROM projects WHERE id = ?1",
         )?;
 
-        let project = stmt.query_row([id], |row| {
-            Ok(Project {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                description: row.get(2)?,
-                created_at: row.get(3)?,
+        let project = stmt
+            .query_row([id], |row| {
+                Ok(Project {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    description: row.get(2)?,
+                    created_at: row.get(3)?,
+                })
             })
-        }).optional()?;
+            .optional()?;
 
         Ok(project)
     }
 
     /// Delete a project, its project_repos links, and its tasks
     pub fn delete_project(&self, id: &str) -> Result<()> {
-        self.conn.execute("DELETE FROM tasks WHERE project_id = ?1", [id])?;
-        self.conn.execute("DELETE FROM project_repos WHERE project_id = ?1", [id])?;
-        self.conn.execute("DELETE FROM projects WHERE id = ?1", [id])?;
+        self.conn
+            .execute("DELETE FROM tasks WHERE project_id = ?1", [id])?;
+        self.conn
+            .execute("DELETE FROM project_repos WHERE project_id = ?1", [id])?;
+        self.conn
+            .execute("DELETE FROM projects WHERE id = ?1", [id])?;
         Ok(())
     }
 
@@ -363,21 +371,25 @@ impl ProjectStore {
 
     /// List repos associated with a project
     pub fn list_repos_for_project(&self, project_id: &str) -> Result<Vec<String>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT repo_id FROM project_repos WHERE project_id = ?1 ORDER BY repo_id"
-        )?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT repo_id FROM project_repos WHERE project_id = ?1 ORDER BY repo_id")?;
 
-        let repos = stmt.query_map([project_id], |row| row.get(0))?.collect::<Result<Vec<_>, _>>()?;
+        let repos = stmt
+            .query_map([project_id], |row| row.get(0))?
+            .collect::<Result<Vec<_>, _>>()?;
         Ok(repos)
     }
 
     /// List all distinct repo_ids linked to any project (owner/repo format)
     pub fn list_all_linked_repo_ids(&self) -> Result<Vec<String>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT DISTINCT repo_id FROM project_repos ORDER BY repo_id"
-        )?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT DISTINCT repo_id FROM project_repos ORDER BY repo_id")?;
 
-        let repos = stmt.query_map([], |row| row.get(0))?.collect::<Result<Vec<_>, _>>()?;
+        let repos = stmt
+            .query_map([], |row| row.get(0))?
+            .collect::<Result<Vec<_>, _>>()?;
         Ok(repos)
     }
 
@@ -388,17 +400,19 @@ impl ProjectStore {
              FROM projects p
              JOIN project_repos pr ON p.id = pr.project_id
              WHERE pr.repo_id = ?1
-             ORDER BY p.created_at DESC"
+             ORDER BY p.created_at DESC",
         )?;
 
-        let projects = stmt.query_map([repo_id], |row| {
-            Ok(Project {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                description: row.get(2)?,
-                created_at: row.get(3)?,
-            })
-        })?.collect::<Result<Vec<_>, _>>()?;
+        let projects = stmt
+            .query_map([repo_id], |row| {
+                Ok(Project {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    description: row.get(2)?,
+                    created_at: row.get(3)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(projects)
     }
@@ -432,43 +446,48 @@ impl ProjectStore {
     pub fn list_tasks_for_project(&self, project_id: &str) -> Result<Vec<Task>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, project_id, title, body, status, created_at, updated_at
-             FROM tasks WHERE project_id = ?1 ORDER BY created_at"
+             FROM tasks WHERE project_id = ?1 ORDER BY created_at",
         )?;
 
-        let tasks = stmt.query_map([project_id], |row| {
-            let status_str: String = row.get(4)?;
-            Ok(Task {
-                id: row.get(0)?,
-                project_id: row.get(1)?,
-                title: row.get(2)?,
-                body: row.get(3)?,
-                status: serde_json::from_str(&status_str).unwrap_or(TaskStatus::Todo),
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
-            })
-        })?.collect::<Result<Vec<_>, _>>()?;
+        let tasks = stmt
+            .query_map([project_id], |row| {
+                let status_str: String = row.get(4)?;
+                Ok(Task {
+                    id: row.get(0)?,
+                    project_id: row.get(1)?,
+                    title: row.get(2)?,
+                    body: row.get(3)?,
+                    status: serde_json::from_str(&status_str).unwrap_or(TaskStatus::Todo),
+                    created_at: row.get(5)?,
+                    updated_at: row.get(6)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(tasks)
     }
 
     /// Delete a task by id
     pub fn delete_task(&self, task_id: &str) -> Result<()> {
-        self.conn.execute("DELETE FROM tasks WHERE id = ?1", [task_id])?;
+        self.conn
+            .execute("DELETE FROM tasks WHERE id = ?1", [task_id])?;
         Ok(())
     }
 
     /// Count tasks by status for a project
     pub fn count_tasks_by_status(&self, project_id: &str) -> Result<Vec<(TaskStatus, i32)>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT status, COUNT(*) FROM tasks WHERE project_id = ?1 GROUP BY status"
-        )?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT status, COUNT(*) FROM tasks WHERE project_id = ?1 GROUP BY status")?;
 
-        let counts = stmt.query_map([project_id], |row| {
-            let status_str: String = row.get(0)?;
-            let count: i32 = row.get(1)?;
-            let status = serde_json::from_str(&status_str).unwrap_or(TaskStatus::Todo);
-            Ok((status, count))
-        })?.collect::<Result<Vec<_>, _>>()?;
+        let counts = stmt
+            .query_map([project_id], |row| {
+                let status_str: String = row.get(0)?;
+                let count: i32 = row.get(1)?;
+                let status = serde_json::from_str(&status_str).unwrap_or(TaskStatus::Todo);
+                Ok((status, count))
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(counts)
     }

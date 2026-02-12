@@ -160,11 +160,15 @@ impl qobject::GoogleAuthModel {
                 let code = wait_for_callback(port, &expected_state).await?;
 
                 // Exchange code for tokens
-                let token_response = provider.exchange_code(&code, port).await
+                let token_response = provider
+                    .exchange_code(&code, port)
+                    .await
                     .map_err(|e| format!("Token exchange failed: {}", e))?;
 
                 // Get user info
-                let user_info = provider.get_user_info(&token_response.access_token).await
+                let user_info = provider
+                    .get_user_info(&token_response.access_token)
+                    .await
                     .map_err(|e| format!("Failed to get user info: {}", e))?;
 
                 // Calculate expiration
@@ -175,7 +179,11 @@ impl qobject::GoogleAuthModel {
                     access_token: token_response.access_token.clone(),
                     refresh_token: token_response.refresh_token,
                     expires_at,
-                    scopes: token_response.scope.split(' ').map(|s| s.to_string()).collect(),
+                    scopes: token_response
+                        .scope
+                        .split(' ')
+                        .map(|s| s.to_string())
+                        .collect(),
                 };
 
                 SecureStorage::store_token("google", &token_set)
@@ -191,7 +199,13 @@ impl qobject::GoogleAuthModel {
 
     /// Poll for async operation results
     pub fn poll_channel(mut self: Pin<&mut Self>) {
-        let msg = match self.as_ref().rust().rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
+        let msg = match self
+            .as_ref()
+            .rust()
+            .rx
+            .as_ref()
+            .and_then(|rx| rx.try_recv().ok())
+        {
             Some(m) => m,
             None => return,
         };
@@ -306,13 +320,15 @@ async fn wait_for_callback(port: u16, expected_state: &str) -> Result<String, St
 
     tracing::info!("Waiting for OAuth callback on port {}", port);
 
-    let (mut stream, _) = listener.accept()
+    let (mut stream, _) = listener
+        .accept()
         .await
         .map_err(|e| format!("Accept failed: {}", e))?;
 
     let mut reader = BufReader::new(&mut stream);
     let mut request_line = String::new();
-    reader.read_line(&mut request_line)
+    reader
+        .read_line(&mut request_line)
         .await
         .map_err(|e| format!("Read failed: {}", e))?;
 
@@ -326,12 +342,14 @@ async fn wait_for_callback(port: u16, expected_state: &str) -> Result<String, St
     let url = url::Url::parse(&format!("http://localhost{}", parts[1]))
         .map_err(|e| format!("URL parse failed: {}", e))?;
 
-    let code = url.query_pairs()
+    let code = url
+        .query_pairs()
         .find(|(k, _): &(std::borrow::Cow<str>, std::borrow::Cow<str>)| k == "code")
         .map(|(_, v)| v.to_string())
         .ok_or("No code in callback")?;
 
-    let state = url.query_pairs()
+    let state = url
+        .query_pairs()
         .find(|(k, _): &(std::borrow::Cow<str>, std::borrow::Cow<str>)| k == "state")
         .map(|(_, v)| v.to_string())
         .ok_or("No state in callback")?;

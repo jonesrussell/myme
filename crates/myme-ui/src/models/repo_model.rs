@@ -146,7 +146,9 @@ impl qobject::RepoModel {
 
     pub fn fetch_repos(mut self: Pin<&mut Self>) {
         if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
-            self.as_mut().rust_mut().set_error("Operation in progress".into());
+            self.as_mut()
+                .rust_mut()
+                .set_error("Operation in progress".into());
             self.as_mut().error_occurred();
             return;
         }
@@ -155,7 +157,9 @@ impl qobject::RepoModel {
         let tx = match bridge::get_repo_service_tx() {
             Some(t) => t,
             None => {
-                self.as_mut().rust_mut().set_error("Repo service not initialized".into());
+                self.as_mut()
+                    .rust_mut()
+                    .set_error("Repo service not initialized".into());
                 self.as_mut().error_occurred();
                 return;
             }
@@ -205,10 +209,8 @@ impl qobject::RepoModel {
             }
         };
 
-        let (base_path, _) = bridge::get_repos_local_search_path().unwrap_or((
-            std::path::PathBuf::from("."),
-            true,
-        ));
+        let (base_path, _) =
+            bridge::get_repos_local_search_path().unwrap_or((std::path::PathBuf::from("."), true));
         let full_name = ent.full_name.clone();
         let sep = std::path::MAIN_SEPARATOR;
         let target_path = base_path.join(full_name.replace('/', &sep.to_string()));
@@ -336,9 +338,11 @@ impl qobject::RepoModel {
                         tracing::info!("Clone operation was cancelled");
                     }
                     Err(e) => {
-                        self.as_mut()
-                            .rust_mut()
-                            .set_error(myme_core::AppError::from(e.clone()).user_message().to_string());
+                        self.as_mut().rust_mut().set_error(
+                            myme_core::AppError::from(e.clone())
+                                .user_message()
+                                .to_string(),
+                        );
                         self.as_mut().error_occurred();
                     }
                 }
@@ -367,9 +371,11 @@ impl qobject::RepoModel {
                         tracing::info!("Pull operation was cancelled");
                     }
                     Err(e) => {
-                        self.as_mut()
-                            .rust_mut()
-                            .set_error(myme_core::AppError::from(e.clone()).user_message().to_string());
+                        self.as_mut().rust_mut().set_error(
+                            myme_core::AppError::from(e.clone())
+                                .user_message()
+                                .to_string(),
+                        );
                         self.as_mut().error_occurred();
                     }
                 }

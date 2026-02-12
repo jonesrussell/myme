@@ -1,0 +1,84 @@
+# MyMe project tasks. See https://taskfile.dev
+# Windows: full Qt build uses scripts (VS + Qt env). Unix: cargo only; Qt app is Windows-focused.
+
+version: '3'
+
+vars:
+  TEST_PACKAGES: >
+    -p myme-core
+    -p myme-services
+    -p myme-auth
+    -p myme-integrations
+    -p myme-weather
+    -p myme-gmail
+    -p myme-calendar
+
+tasks:
+  default:
+    desc: List all tasks.
+    cmds:
+      - task --list-all
+
+  build:
+    desc: Build Rust crates (release). For full Qt app on Windows use build:qt.
+    cmds:
+      - cargo build --release
+
+  build:rust:
+    desc: Alias for build (Rust only).
+    cmds:
+      - task build
+
+  build:qt:
+    desc: Full Qt app build (Rust + CMake + windeployqt). Windows only; uses scripts/build.ps1.
+    cmds:
+      - powershell -ExecutionPolicy Bypass -File ./scripts/build.ps1
+    platforms: [windows]
+
+  run:
+    desc: Run Rust binary (no UI).
+    cmds:
+      - cargo run --release
+
+  run:qt:
+    desc: Run Qt application. Requires build:qt first. Windows only.
+    cmds:
+      - ./build-qt/Release/myme-qt.exe
+    platforms: [windows]
+
+  test:
+    desc: Run tests for all crates except myme-ui (no Qt in test env).
+    cmds:
+      - cargo test --no-fail-fast {{.TEST_PACKAGES}}
+
+  fmt:
+    desc: Format Rust code.
+    cmds:
+      - cargo fmt --all
+
+  fmt:check:
+    desc: Check Rust formatting (CI).
+    cmds:
+      - cargo fmt --all -- --check
+
+  clippy:
+    desc: Run Clippy on testable crates (excludes myme-ui).
+    cmds:
+      - cargo clippy --all-targets --no-deps {{.TEST_PACKAGES}} -- -D warnings
+
+  clean:
+    desc: Remove Cargo build artifacts.
+    cmds:
+      - cargo clean
+
+  clean:qt:
+    desc: Remove Qt build directory (build-qt). Run after clean for full reset.
+    cmds:
+      - powershell -Command "if (Test-Path build-qt) { Remove-Item -Recurse -Force build-qt }"
+    platforms: [windows]
+
+  lint:
+    desc: Run fmt check and clippy (same as CI).
+    cmds:
+      - task fmt:check
+      - task clippy

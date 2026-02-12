@@ -75,10 +75,7 @@ pub fn request_fetch_workflows(
             };
             match client.list_workflows(owner, repo).await {
                 Ok(workflows) => {
-                    results.push(RepoWorkflows {
-                        repo_id,
-                        workflows,
-                    });
+                    results.push(RepoWorkflows { repo_id, workflows });
                 }
                 Err(e) => {
                     let _ = tx.send(WorkflowServiceMessage::FetchWorkflowsDone(Err(

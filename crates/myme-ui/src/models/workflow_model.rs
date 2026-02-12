@@ -44,13 +44,19 @@ pub mod qobject {
         fn get_workflow_count(self: &WorkflowModel, repo_index: i32) -> i32;
 
         #[qinvokable]
-        fn get_workflow_name(self: &WorkflowModel, repo_index: i32, workflow_index: i32) -> QString;
+        fn get_workflow_name(self: &WorkflowModel, repo_index: i32, workflow_index: i32)
+            -> QString;
 
         #[qinvokable]
-        fn get_workflow_path(self: &WorkflowModel, repo_index: i32, workflow_index: i32) -> QString;
+        fn get_workflow_path(self: &WorkflowModel, repo_index: i32, workflow_index: i32)
+            -> QString;
 
         #[qinvokable]
-        fn get_workflow_state(self: &WorkflowModel, repo_index: i32, workflow_index: i32) -> QString;
+        fn get_workflow_state(
+            self: &WorkflowModel,
+            repo_index: i32,
+            workflow_index: i32,
+        ) -> QString;
 
         #[qinvokable]
         fn get_workflow_html_url(
@@ -100,7 +106,11 @@ impl WorkflowModelRust {
         self.repo_workflows.get(index as usize)
     }
 
-    fn get_workflow(&self, repo_index: i32, workflow_index: i32) -> Option<&myme_services::GitHubWorkflow> {
+    fn get_workflow(
+        &self,
+        repo_index: i32,
+        workflow_index: i32,
+    ) -> Option<&myme_services::GitHubWorkflow> {
         let rw = self.get_repo_workflows(repo_index)?;
         if workflow_index < 0 {
             return None;
@@ -168,8 +178,9 @@ impl qobject::WorkflowModel {
                 match result {
                     Ok(mut data) => {
                         for rw in &mut data {
-                            rw.workflows
-                                .sort_by(|a, b| a.name.cmp(&b.name).then_with(|| a.path.cmp(&b.path)));
+                            rw.workflows.sort_by(|a, b| {
+                                a.name.cmp(&b.name).then_with(|| a.path.cmp(&b.path))
+                            });
                         }
                         self.as_mut().rust_mut().repo_workflows = data;
                         self.as_mut().workflows_changed();
@@ -232,11 +243,7 @@ impl qobject::WorkflowModel {
             .unwrap_or_else(|| QString::from(""))
     }
 
-    pub fn get_workflow_html_url(
-        &self,
-        repo_index: i32,
-        workflow_index: i32,
-    ) -> QString {
+    pub fn get_workflow_html_url(&self, repo_index: i32, workflow_index: i32) -> QString {
         self.rust()
             .get_workflow(repo_index, workflow_index)
             .and_then(|w| w.html_url.as_ref())

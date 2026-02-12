@@ -11,5 +11,5 @@ pub mod types;
 pub use cache::GmailCache;
 pub use client::GmailClient;
 pub use error::GmailError;
-pub use sync::{SyncAction, SyncQueue, QueuedAction};
+pub use sync::{QueuedAction, SyncAction, SyncQueue};
 pub use types::{Label, LabelType, Message, MessageListResponse, MessageRef};

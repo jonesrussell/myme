@@ -129,10 +129,7 @@ mod tests {
     #[test]
     fn test_status_blocked_priority() {
         // Blocked should take priority over other labels
-        let status = TaskStatus::from_github(
-            "open",
-            &["todo".to_string(), "blocked".to_string()],
-        );
+        let status = TaskStatus::from_github("open", &["todo".to_string(), "blocked".to_string()]);
         assert_eq!(status, TaskStatus::Blocked);
     }
 

@@ -32,9 +32,7 @@ impl EventTime {
     pub fn as_datetime(&self) -> DateTime<Utc> {
         match self {
             EventTime::DateTime(dt) => *dt,
-            EventTime::Date(d) => d.and_hms_opt(0, 0, 0)
-                .unwrap()
-                .and_utc(),
+            EventTime::Date(d) => d.and_hms_opt(0, 0, 0).unwrap().and_utc(),
         }
     }
 }
@@ -186,11 +184,13 @@ pub struct ApiCalendar {
 impl Event {
     /// Convert API response to local Event.
     pub fn from_api(api: ApiEvent, calendar_id: &str) -> Self {
-        let (start, all_day) = api.start
+        let (start, all_day) = api
+            .start
             .map(|t| parse_event_time(&t))
             .unwrap_or((EventTime::DateTime(Utc::now()), false));
 
-        let end = api.end
+        let end = api
+            .end
             .map(|t| parse_event_time(&t).0)
             .unwrap_or_else(|| start.clone());
 
@@ -201,20 +201,24 @@ impl Event {
             _ => EventStatus::Confirmed,
         };
 
-        let attendees = api.attendees.into_iter().map(|a| {
-            let response_status = match a.response_status.as_deref() {
-                Some("accepted") => ResponseStatus::Accepted,
-                Some("declined") => ResponseStatus::Declined,
-                Some("tentative") => ResponseStatus::Tentative,
-                _ => ResponseStatus::NeedsAction,
-            };
-            Attendee {
-                email: a.email,
-                display_name: a.display_name,
-                response_status,
-                is_organizer: a.organizer,
-            }
-        }).collect();
+        let attendees = api
+            .attendees
+            .into_iter()
+            .map(|a| {
+                let response_status = match a.response_status.as_deref() {
+                    Some("accepted") => ResponseStatus::Accepted,
+                    Some("declined") => ResponseStatus::Declined,
+                    Some("tentative") => ResponseStatus::Tentative,
+                    _ => ResponseStatus::NeedsAction,
+                };
+                Attendee {
+                    email: a.email,
+                    display_name: a.display_name,
+                    response_status,
+                    is_organizer: a.organizer,
+                }
+            })
+            .collect();
 
         Self {
             id: api.id,
@@ -363,6 +367,9 @@ mod tests {
 
         let date = EventTime::Date(NaiveDate::from_ymd_opt(2024, 2, 1).unwrap());
         let as_dt = date.as_datetime();
-        assert_eq!(as_dt.date_naive(), NaiveDate::from_ymd_opt(2024, 2, 1).unwrap());
+        assert_eq!(
+            as_dt.date_naive(),
+            NaiveDate::from_ymd_opt(2024, 2, 1).unwrap()
+        );
     }
 }

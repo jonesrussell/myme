@@ -369,8 +369,7 @@ impl qobject::JsonModel {
                     if !map_b.contains_key(key) {
                         diffs.push(format!("- {}: removed", new_path));
                     } else {
-                        let sub_diff =
-                            Self::generate_diff(&map_a[key], &map_b[key], &new_path);
+                        let sub_diff = Self::generate_diff(&map_a[key], &map_b[key], &new_path);
                         if !sub_diff.is_empty() {
                             diffs.push(sub_diff);
                         }

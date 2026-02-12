@@ -182,8 +182,9 @@ impl qobject::TimeModel {
         let naive_dt = match parsed {
             Some(dt) => dt,
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Could not parse datetime. Try: YYYY-MM-DD HH:MM:SS"));
+                self.as_mut().set_error_message(QString::from(
+                    "Could not parse datetime. Try: YYYY-MM-DD HH:MM:SS",
+                ));
                 return;
             }
         };
@@ -326,7 +327,9 @@ impl qobject::TimeModel {
             "New timestamp: {}\nISO 8601: {}\nLocal: {}",
             new_datetime.timestamp(),
             new_datetime.to_rfc3339(),
-            new_datetime.with_timezone(&Local).format("%Y-%m-%d %H:%M:%S %Z")
+            new_datetime
+                .with_timezone(&Local)
+                .format("%Y-%m-%d %H:%M:%S %Z")
         );
 
         self.as_mut().set_arithmetic_result(QString::from(&result));
@@ -363,19 +366,44 @@ impl qobject::TimeModel {
             format!("{} seconds {}", seconds, suffix)
         } else if seconds < 3600 {
             let minutes = seconds / 60;
-            format!("{} minute{} {}", minutes, if minutes == 1 { "" } else { "s" }, suffix)
+            format!(
+                "{} minute{} {}",
+                minutes,
+                if minutes == 1 { "" } else { "s" },
+                suffix
+            )
         } else if seconds < 86400 {
             let hours = seconds / 3600;
-            format!("{} hour{} {}", hours, if hours == 1 { "" } else { "s" }, suffix)
+            format!(
+                "{} hour{} {}",
+                hours,
+                if hours == 1 { "" } else { "s" },
+                suffix
+            )
         } else if seconds < 2592000 {
             let days = seconds / 86400;
-            format!("{} day{} {}", days, if days == 1 { "" } else { "s" }, suffix)
+            format!(
+                "{} day{} {}",
+                days,
+                if days == 1 { "" } else { "s" },
+                suffix
+            )
         } else if seconds < 31536000 {
             let months = seconds / 2592000;
-            format!("{} month{} {}", months, if months == 1 { "" } else { "s" }, suffix)
+            format!(
+                "{} month{} {}",
+                months,
+                if months == 1 { "" } else { "s" },
+                suffix
+            )
         } else {
             let years = seconds / 31536000;
-            format!("{} year{} {}", years, if years == 1 { "" } else { "s" }, suffix)
+            format!(
+                "{} year{} {}",
+                years,
+                if years == 1 { "" } else { "s" },
+                suffix
+            )
         }
     }
 

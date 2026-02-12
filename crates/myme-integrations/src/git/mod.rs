@@ -40,13 +40,20 @@ impl GitOperations {
     /// * `base_path` - Base directory to search for repositories
     /// * `max_depth` - Maximum directory depth to search (default: 3)
     #[tracing::instrument(skip(base_path), fields(path = %base_path.display()), level = "info")]
-    pub fn discover_repositories(base_path: &Path, max_depth: Option<usize>) -> Result<Vec<LocalRepo>> {
+    pub fn discover_repositories(
+        base_path: &Path,
+        max_depth: Option<usize>,
+    ) -> Result<Vec<LocalRepo>> {
         let max_depth = max_depth.unwrap_or(3);
         let mut repos = Vec::new();
 
         Self::walk_directory(base_path, &mut repos, 0, max_depth)?;
 
-        tracing::info!("Discovered {} git repositories in {:?}", repos.len(), base_path);
+        tracing::info!(
+            "Discovered {} git repositories in {:?}",
+            repos.len(),
+            base_path
+        );
         Ok(repos)
     }
 
@@ -77,7 +84,12 @@ impl GitOperations {
                         if let Some(name) = subpath.file_name() {
                             if let Some(name_str) = name.to_str() {
                                 if !name_str.starts_with('.') || name_str == ".git" {
-                                    let _ = Self::walk_directory(&subpath, repos, current_depth + 1, max_depth);
+                                    let _ = Self::walk_directory(
+                                        &subpath,
+                                        repos,
+                                        current_depth + 1,
+                                        max_depth,
+                                    );
                                 }
                             }
                         }
@@ -94,8 +106,7 @@ impl GitOperations {
     /// # Arguments
     /// * `path` - Path to the repository
     pub fn get_repository_info(path: &Path) -> Result<LocalRepo> {
-        let repo = Git2Repository::open(path)
-            .context("Failed to open git repository")?;
+        let repo = Git2Repository::open(path).context("Failed to open git repository")?;
 
         let name = path
             .file_name()
@@ -104,12 +115,14 @@ impl GitOperations {
             .to_string();
 
         // Get current branch
-        let current_branch = repo.head()
+        let current_branch = repo
+            .head()
             .ok()
             .and_then(|head| head.shorthand().map(|s| s.to_string()));
 
         // Get remote URL
-        let remote_url = repo.find_remote("origin")
+        let remote_url = repo
+            .find_remote("origin")
             .ok()
             .and_then(|remote| remote.url().map(|s| s.to_string()));
 
@@ -118,7 +131,8 @@ impl GitOperations {
         status_opts.include_untracked(true);
         status_opts.recurse_untracked_dirs(true);
 
-        let statuses = repo.statuses(Some(&mut status_opts))
+        let statuses = repo
+            .statuses(Some(&mut status_opts))
             .context("Failed to get repository status")?;
 
         let uncommitted_changes = statuses.len();
@@ -130,10 +144,8 @@ impl GitOperations {
                 if let Ok(commit) = repo.find_commit(target) {
                     let message = commit.message().unwrap_or("").to_string();
                     let time = commit.time();
-                    let datetime = chrono::DateTime::from_timestamp(
-                        time.seconds(),
-                        0,
-                    ).map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string());
+                    let datetime = chrono::DateTime::from_timestamp(time.seconds(), 0)
+                        .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string());
 
                     (Some(message), datetime)
                 } else {
@@ -167,8 +179,8 @@ impl GitOperations {
     pub fn clone_repository(url: &str, target_path: &Path) -> Result<LocalRepo> {
         tracing::info!("Cloning repository from {} to {:?}", url, target_path);
 
-        let _repo = Git2Repository::clone(url, target_path)
-            .context("Failed to clone repository")?;
+        let _repo =
+            Git2Repository::clone(url, target_path).context("Failed to clone repository")?;
 
         tracing::info!("Successfully cloned repository");
 
@@ -181,16 +193,17 @@ impl GitOperations {
     /// * `path` - Repository path
     #[tracing::instrument(skip(path), fields(repo = %path.display()), level = "info")]
     pub fn fetch(path: &Path) -> Result<()> {
-        let repo = Git2Repository::open(path)
-            .context("Failed to open git repository")?;
+        let repo = Git2Repository::open(path).context("Failed to open git repository")?;
 
         let head = repo.head().context("Failed to get HEAD reference")?;
         let branch_name = head.shorthand().context("Failed to get branch name")?;
 
-        let mut remote = repo.find_remote("origin")
+        let mut remote = repo
+            .find_remote("origin")
             .context("Failed to find remote 'origin'")?;
 
-        remote.fetch(&[branch_name], None, None)
+        remote
+            .fetch(&[branch_name], None, None)
             .context("Failed to fetch from remote")?;
 
         tracing::info!("Fetched latest for {:?}", path);
@@ -205,15 +218,17 @@ impl GitOperations {
     pub fn pull(path: &Path) -> Result<()> {
         Self::fetch(path)?;
 
-        let repo = Git2Repository::open(path)
-            .context("Failed to open git repository")?;
+        let repo = Git2Repository::open(path).context("Failed to open git repository")?;
 
-        let fetch_head = repo.find_reference("FETCH_HEAD")
+        let fetch_head = repo
+            .find_reference("FETCH_HEAD")
             .context("Failed to find FETCH_HEAD")?;
-        let fetch_commit = repo.reference_to_annotated_commit(&fetch_head)
+        let fetch_commit = repo
+            .reference_to_annotated_commit(&fetch_head)
             .context("Failed to resolve FETCH_HEAD")?;
 
-        let (analysis, _) = repo.merge_analysis(&[&fetch_commit])
+        let (analysis, _) = repo
+            .merge_analysis(&[&fetch_commit])
             .context("Failed to analyze merge")?;
 
         if analysis.is_up_to_date() {
@@ -222,10 +237,15 @@ impl GitOperations {
         }
 
         if analysis.is_fast_forward() {
-            let refname = format!("refs/heads/{}", repo.head().context("HEAD")?.shorthand().context("branch")?);
-            let mut reference = repo.find_reference(&refname)
+            let refname = format!(
+                "refs/heads/{}",
+                repo.head().context("HEAD")?.shorthand().context("branch")?
+            );
+            let mut reference = repo
+                .find_reference(&refname)
                 .context("Failed to find branch ref")?;
-            reference.set_target(fetch_commit.id(), "fast-forward")
+            reference
+                .set_target(fetch_commit.id(), "fast-forward")
                 .context("Failed to update ref")?;
             repo.set_head(&refname).context("Failed to set HEAD")?;
             repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))
@@ -245,9 +265,11 @@ impl GitOperations {
             let tree_oid = index.write_tree().context("Failed to write tree")?;
             let tree = repo.find_tree(tree_oid).context("Failed to find tree")?;
             let head_ref = repo.head().context("HEAD")?;
-            let head_commit = repo.find_commit(head_ref.target().context("HEAD target")?)
+            let head_commit = repo
+                .find_commit(head_ref.target().context("HEAD target")?)
                 .context("Failed to find HEAD commit")?;
-            let their_commit = repo.find_commit(fetch_commit.id())
+            let their_commit = repo
+                .find_commit(fetch_commit.id())
                 .context("Failed to find fetch commit")?;
             let sig = repo.signature().context("Failed to get signature")?;
             repo.commit(
@@ -272,21 +294,20 @@ impl GitOperations {
     /// * `path` - Repository path
     #[tracing::instrument(skip(path), fields(repo = %path.display()), level = "info")]
     pub fn push(path: &Path) -> Result<()> {
-        let repo = Git2Repository::open(path)
-            .context("Failed to open git repository")?;
+        let repo = Git2Repository::open(path).context("Failed to open git repository")?;
 
         // Get the current branch
-        let head = repo.head()
-            .context("Failed to get HEAD reference")?;
+        let head = repo.head().context("Failed to get HEAD reference")?;
 
-        let branch_name = head.shorthand()
-            .context("Failed to get branch name")?;
+        let branch_name = head.shorthand().context("Failed to get branch name")?;
 
         // Push to origin
-        let mut remote = repo.find_remote("origin")
+        let mut remote = repo
+            .find_remote("origin")
             .context("Failed to find remote 'origin'")?;
 
-        remote.push(&[format!("refs/heads/{}", branch_name)], None)
+        remote
+            .push(&[format!("refs/heads/{}", branch_name)], None)
             .context("Failed to push to remote")?;
 
         tracing::info!("Pushed changes for {:?}", path);
@@ -298,14 +319,14 @@ impl GitOperations {
     /// # Arguments
     /// * `path` - Repository path
     pub fn get_uncommitted_files(path: &Path) -> Result<Vec<(String, String)>> {
-        let repo = Git2Repository::open(path)
-            .context("Failed to open git repository")?;
+        let repo = Git2Repository::open(path).context("Failed to open git repository")?;
 
         let mut status_opts = StatusOptions::new();
         status_opts.include_untracked(true);
         status_opts.recurse_untracked_dirs(true);
 
-        let statuses = repo.statuses(Some(&mut status_opts))
+        let statuses = repo
+            .statuses(Some(&mut status_opts))
             .context("Failed to get repository status")?;
 
         let mut files = Vec::new();
@@ -372,7 +393,11 @@ mod tests {
         git2::Repository::init(&nested).unwrap();
 
         let repos = GitOperations::discover_repositories(base, Some(5)).unwrap();
-        assert!(repos.len() >= 3, "expected at least 3 repos, got {}", repos.len());
+        assert!(
+            repos.len() >= 3,
+            "expected at least 3 repos, got {}",
+            repos.len()
+        );
         let names: Vec<_> = repos.iter().map(|r| r.name.as_str()).collect();
         assert!(names.contains(&"repo1"));
         assert!(names.contains(&"repo2"));

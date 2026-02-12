@@ -180,12 +180,15 @@ impl GmailClient {
         );
 
         if let Some(reply_id) = reply_to_id {
-            headers.push_str(&format!("In-Reply-To: {}\r\nReferences: {}\r\n", reply_id, reply_id));
+            headers.push_str(&format!(
+                "In-Reply-To: {}\r\nReferences: {}\r\n",
+                reply_id, reply_id
+            ));
         }
 
         let raw_message = format!("{}\r\n{}", headers, body);
-        let encoded = base64::engine::general_purpose::URL_SAFE_NO_PAD
-            .encode(raw_message.as_bytes());
+        let encoded =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(raw_message.as_bytes());
 
         let request_body = serde_json::json!({
             "raw": encoded,
@@ -367,10 +370,7 @@ mod tests {
 
         Mock::given(method("GET"))
             .and(path("/gmail/v1/users/me/messages"))
-            .respond_with(
-                ResponseTemplate::new(429)
-                    .append_header("Retry-After", "30")
-            )
+            .respond_with(ResponseTemplate::new(429).append_header("Retry-After", "30"))
             .mount(&mock_server)
             .await;
 
@@ -395,7 +395,9 @@ mod tests {
             .await;
 
         let client = GmailClient::new_with_base_url("test_token", &mock_server.uri());
-        let result = client.modify_labels("msg123", &["STARRED"], &["UNREAD"]).await;
+        let result = client
+            .modify_labels("msg123", &["STARRED"], &["UNREAD"])
+            .await;
 
         assert!(result.is_ok());
     }
@@ -434,7 +436,10 @@ mod tests {
             .await;
 
         let client = GmailClient::new_with_base_url("test_token", &mock_server.uri());
-        let result = client.list_message_ids(Some("is:unread"), None).await.unwrap();
+        let result = client
+            .list_message_ids(Some("is:unread"), None)
+            .await
+            .unwrap();
 
         assert_eq!(result.messages.len(), 1);
     }

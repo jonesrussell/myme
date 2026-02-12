@@ -242,7 +242,9 @@ impl GitHubError {
             GitHubError::RateLimited { .. } => {
                 "GitHub rate limit exceeded. Please wait and try again."
             }
-            GitHubError::RepoNotFound { .. } => "Repository not found. Check the URL and try again.",
+            GitHubError::RepoNotFound { .. } => {
+                "Repository not found. Check the URL and try again."
+            }
             GitHubError::Unauthorized => "GitHub authentication failed. Please sign in again.",
             GitHubError::Forbidden => "You don't have permission to access this resource.",
             GitHubError::ApiError { status, .. } if *status >= 500 => {

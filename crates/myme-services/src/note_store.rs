@@ -8,9 +8,7 @@ use rusqlite::{params, Connection};
 use std::path::Path;
 use uuid::Uuid;
 
-use crate::note_backend::{
-    validate_content, NoteBackend, NoteBackendError, NoteBackendResult,
-};
+use crate::note_backend::{validate_content, NoteBackend, NoteBackendError, NoteBackendResult};
 use crate::todo::Todo;
 
 /// SQLite-based note storage.
@@ -126,9 +124,9 @@ impl SqliteNoteStore {
 
     /// Get the note count.
     pub fn count(&self) -> anyhow::Result<usize> {
-        let count: i64 =
-            self.conn
-                .query_row("SELECT COUNT(*) FROM notes", [], |row| row.get(0))?;
+        let count: i64 = self
+            .conn
+            .query_row("SELECT COUNT(*) FROM notes", [], |row| row.get(0))?;
         Ok(count as usize)
     }
 }
@@ -160,7 +158,10 @@ impl NoteBackend for SqliteNoteStore {
             .query(params![id])
             .map_err(|e| NoteBackendError::storage(e.to_string()))?;
 
-        match rows.next().map_err(|e| NoteBackendError::storage(e.to_string()))? {
+        match rows
+            .next()
+            .map_err(|e| NoteBackendError::storage(e.to_string()))?
+        {
             Some(row) => Ok(Some(
                 Self::row_to_todo(row).map_err(|e| NoteBackendError::storage(e.to_string()))?,
             )),

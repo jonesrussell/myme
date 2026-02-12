@@ -14,8 +14,7 @@ use myme_calendar::{Calendar, CalendarCache, Event};
 use crate::bridge;
 use crate::services::google_common::{get_google_access_token, get_google_cache_path};
 use crate::services::{
-    request_calendar_fetch_events, request_calendar_fetch_today_events,
-    CalendarServiceMessage,
+    request_calendar_fetch_events, request_calendar_fetch_today_events, CalendarServiceMessage,
 };
 
 #[cxx_qt::bridge]
@@ -115,7 +114,8 @@ impl qobject::CalendarModel {
         let access_token = match CalendarModelRust::get_access_token() {
             Some(t) => t,
             None => {
-                self.as_mut().set_error_message(QString::from("Not authenticated"));
+                self.as_mut()
+                    .set_error_message(QString::from("Not authenticated"));
                 self.as_mut().set_authenticated(false);
                 return;
             }
@@ -125,7 +125,8 @@ impl qobject::CalendarModel {
         let tx = match bridge::get_calendar_service_tx() {
             Some(t) => t,
             None => {
-                self.as_mut().set_error_message(QString::from("Service channel not ready"));
+                self.as_mut()
+                    .set_error_message(QString::from("Service channel not ready"));
                 return;
             }
         };
@@ -142,7 +143,8 @@ impl qobject::CalendarModel {
         let access_token = match CalendarModelRust::get_access_token() {
             Some(t) => t,
             None => {
-                self.as_mut().set_error_message(QString::from("Not authenticated"));
+                self.as_mut()
+                    .set_error_message(QString::from("Not authenticated"));
                 self.as_mut().set_authenticated(false);
                 return;
             }
@@ -152,7 +154,8 @@ impl qobject::CalendarModel {
         let tx = match bridge::get_calendar_service_tx() {
             Some(t) => t,
             None => {
-                self.as_mut().set_error_message(QString::from("Service channel not ready"));
+                self.as_mut()
+                    .set_error_message(QString::from("Service channel not ready"));
                 return;
             }
         };
@@ -238,8 +241,7 @@ impl qobject::CalendarModel {
                             } else {
                                 &event.summary
                             };
-                            self.as_mut()
-                                .set_next_event_summary(QString::from(summary));
+                            self.as_mut().set_next_event_summary(QString::from(summary));
                             let time_str = event.start.as_datetime().format("%H:%M").to_string();
                             self.as_mut()
                                 .set_next_event_time(QString::from(time_str.as_str()));

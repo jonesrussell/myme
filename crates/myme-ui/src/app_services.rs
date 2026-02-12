@@ -123,39 +123,48 @@ pub struct AppServices {
     /// Repo service channel sender
     repo_service_tx: RwLock<Option<std::sync::mpsc::Sender<RepoServiceMessage>>>,
     /// Repo service channel receiver
-    repo_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<RepoServiceMessage>>>>,
+    repo_service_rx:
+        RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<RepoServiceMessage>>>>,
     /// Note service channel sender
     note_service_tx: RwLock<Option<std::sync::mpsc::Sender<NoteServiceMessage>>>,
     /// Note service channel receiver
-    note_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<NoteServiceMessage>>>>,
+    note_service_rx:
+        RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<NoteServiceMessage>>>>,
     /// Weather service channel sender
     weather_service_tx: RwLock<Option<std::sync::mpsc::Sender<WeatherServiceMessage>>>,
     /// Weather service channel receiver
-    weather_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<WeatherServiceMessage>>>>,
+    weather_service_rx:
+        RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<WeatherServiceMessage>>>>,
     /// Auth service channel sender
     auth_service_tx: RwLock<Option<std::sync::mpsc::Sender<AuthServiceMessage>>>,
     /// Auth service channel receiver
-    auth_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<AuthServiceMessage>>>>,
+    auth_service_rx:
+        RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<AuthServiceMessage>>>>,
     /// Project service channel sender
     project_service_tx: RwLock<Option<std::sync::mpsc::Sender<ProjectServiceMessage>>>,
     /// Project service channel receiver
-    project_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<ProjectServiceMessage>>>>,
+    project_service_rx:
+        RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<ProjectServiceMessage>>>>,
     /// Workflow service channel sender
     workflow_service_tx: RwLock<Option<std::sync::mpsc::Sender<WorkflowServiceMessage>>>,
     /// Workflow service channel receiver
-    workflow_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<WorkflowServiceMessage>>>>,
+    workflow_service_rx:
+        RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<WorkflowServiceMessage>>>>,
     /// Kanban service channel sender
     kanban_service_tx: RwLock<Option<std::sync::mpsc::Sender<KanbanServiceMessage>>>,
     /// Kanban service channel receiver
-    kanban_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<KanbanServiceMessage>>>>,
+    kanban_service_rx:
+        RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<KanbanServiceMessage>>>>,
     /// Gmail service channel sender
     gmail_service_tx: RwLock<Option<std::sync::mpsc::Sender<GmailServiceMessage>>>,
     /// Gmail service channel receiver
-    gmail_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<GmailServiceMessage>>>>,
+    gmail_service_rx:
+        RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<GmailServiceMessage>>>>,
     /// Calendar service channel sender
     calendar_service_tx: RwLock<Option<std::sync::mpsc::Sender<CalendarServiceMessage>>>,
     /// Calendar service channel receiver
-    calendar_service_rx: RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<CalendarServiceMessage>>>>,
+    calendar_service_rx:
+        RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<CalendarServiceMessage>>>>,
 
     /// Cancellation token for repo operations (clone, pull)
     repo_cancel_token: RwLock<Option<Arc<CancellationToken>>>,

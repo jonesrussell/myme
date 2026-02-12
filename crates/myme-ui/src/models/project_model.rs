@@ -56,10 +56,18 @@ pub mod qobject {
 
         /// Add repo to project by project ID (convenience when index not available)
         #[qinvokable]
-        fn add_repo_to_project_by_id(self: Pin<&mut ProjectModel>, project_id: &QString, repo_id: &QString);
+        fn add_repo_to_project_by_id(
+            self: Pin<&mut ProjectModel>,
+            project_id: &QString,
+            repo_id: &QString,
+        );
 
         #[qinvokable]
-        fn remove_repo_from_project(self: Pin<&mut ProjectModel>, project_index: i32, repo_id: &QString);
+        fn remove_repo_from_project(
+            self: Pin<&mut ProjectModel>,
+            project_index: i32,
+            repo_id: &QString,
+        );
 
         #[qinvokable]
         fn remove_project(self: Pin<&mut ProjectModel>, index: i32);
@@ -361,11 +369,7 @@ impl qobject::ProjectModel {
     }
 
     /// Add a repo to a project (validates repo exists on GitHub first) - non-blocking
-    pub fn add_repo_to_project(
-        mut self: Pin<&mut Self>,
-        project_index: i32,
-        repo_id: &QString,
-    ) {
+    pub fn add_repo_to_project(mut self: Pin<&mut Self>, project_index: i32, repo_id: &QString) {
         self.as_mut().rust_mut().ensure_initialized();
 
         if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
@@ -559,11 +563,14 @@ impl qobject::ProjectModel {
         match msg {
             ProjectServiceMessage::FetchRepoDone(result) => {
                 let (project_id, repo_id) = match &self.as_ref().rust().op_state {
-                    OpState::AddingRepoToProject { project_id, repo_id } => {
-                        (project_id.clone(), repo_id.clone())
-                    }
+                    OpState::AddingRepoToProject {
+                        project_id,
+                        repo_id,
+                    } => (project_id.clone(), repo_id.clone()),
                     _ => {
-                        tracing::warn!("FetchRepoDone received but not in AddingRepoToProject state");
+                        tracing::warn!(
+                            "FetchRepoDone received but not in AddingRepoToProject state"
+                        );
                         return;
                     }
                 };
@@ -629,7 +636,10 @@ impl qobject::ProjectModel {
         self.as_mut().rust_mut().ensure_initialized();
 
         let is_authenticated = crate::bridge::is_github_authenticated();
-        tracing::info!("check_auth: is_github_authenticated() = {}", is_authenticated);
+        tracing::info!(
+            "check_auth: is_github_authenticated() = {}",
+            is_authenticated
+        );
 
         self.as_mut().set_authenticated(is_authenticated);
         tracing::info!("check_auth: set_authenticated({}) called", is_authenticated);

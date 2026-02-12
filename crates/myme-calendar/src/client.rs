@@ -172,19 +172,34 @@ impl CalendarClient {
         let mut body = serde_json::Map::new();
 
         if let Some(s) = summary {
-            body.insert("summary".to_string(), serde_json::Value::String(s.to_string()));
+            body.insert(
+                "summary".to_string(),
+                serde_json::Value::String(s.to_string()),
+            );
         }
         if let Some(s) = start {
-            body.insert("start".to_string(), serde_json::json!({ "dateTime": s.to_rfc3339() }));
+            body.insert(
+                "start".to_string(),
+                serde_json::json!({ "dateTime": s.to_rfc3339() }),
+            );
         }
         if let Some(e) = end {
-            body.insert("end".to_string(), serde_json::json!({ "dateTime": e.to_rfc3339() }));
+            body.insert(
+                "end".to_string(),
+                serde_json::json!({ "dateTime": e.to_rfc3339() }),
+            );
         }
         if let Some(d) = description {
-            body.insert("description".to_string(), serde_json::Value::String(d.to_string()));
+            body.insert(
+                "description".to_string(),
+                serde_json::Value::String(d.to_string()),
+            );
         }
         if let Some(l) = location {
-            body.insert("location".to_string(), serde_json::Value::String(l.to_string()));
+            body.insert(
+                "location".to_string(),
+                serde_json::Value::String(l.to_string()),
+            );
         }
 
         let response = self
@@ -232,11 +247,7 @@ impl CalendarClient {
 
     /// Quick add an event using natural language.
     #[instrument(skip(self), level = "info")]
-    pub async fn quick_add(
-        &self,
-        calendar_id: &str,
-        text: &str,
-    ) -> Result<Event, CalendarError> {
+    pub async fn quick_add(&self, calendar_id: &str, text: &str) -> Result<Event, CalendarError> {
         let url = format!(
             "{}/calendars/{}/events/quickAdd?text={}",
             self.base_url,
@@ -340,10 +351,17 @@ mod tests {
             .await;
 
         let client = CalendarClient::new_with_base_url("test_token", &mock_server.uri());
-        let time_min = DateTime::parse_from_rfc3339("2024-02-01T00:00:00Z").unwrap().with_timezone(&Utc);
-        let time_max = DateTime::parse_from_rfc3339("2024-02-28T23:59:59Z").unwrap().with_timezone(&Utc);
+        let time_min = DateTime::parse_from_rfc3339("2024-02-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let time_max = DateTime::parse_from_rfc3339("2024-02-28T23:59:59Z")
+            .unwrap()
+            .with_timezone(&Utc);
 
-        let response = client.list_events("primary", time_min, time_max, None).await.unwrap();
+        let response = client
+            .list_events("primary", time_min, time_max, None)
+            .await
+            .unwrap();
 
         assert_eq!(response.items.len(), 1);
         assert_eq!(response.items[0].summary, Some("Meeting".to_string()));
@@ -394,10 +412,7 @@ mod tests {
 
         Mock::given(method("GET"))
             .and(path("/users/me/calendarList"))
-            .respond_with(
-                ResponseTemplate::new(429)
-                    .append_header("Retry-After", "60")
-            )
+            .respond_with(ResponseTemplate::new(429).append_header("Retry-After", "60"))
             .mount(&mock_server)
             .await;
 

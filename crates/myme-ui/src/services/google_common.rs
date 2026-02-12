@@ -29,17 +29,12 @@ pub fn get_google_access_token() -> Option<String> {
         let provider = GoogleOAuth2Provider::new(client_id, client_secret);
 
         let new_tokens = rt.block_on(provider.refresh_token(refresh_token)).ok()?;
-        let expires_at =
-            chrono::Utc::now().timestamp() + new_tokens.expires_in as i64;
+        let expires_at = chrono::Utc::now().timestamp() + new_tokens.expires_in as i64;
         let new_token_set = myme_auth::TokenSet {
             access_token: new_tokens.access_token.clone(),
             refresh_token: new_tokens.refresh_token.or(token_set.refresh_token.clone()),
             expires_at,
-            scopes: new_tokens
-                .scope
-                .split(' ')
-                .map(|s| s.to_string())
-                .collect(),
+            scopes: new_tokens.scope.split(' ').map(|s| s.to_string()).collect(),
         };
         let _ = SecureStorage::store_token("google", &new_token_set);
         return Some(new_tokens.access_token);

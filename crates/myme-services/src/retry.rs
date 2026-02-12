@@ -149,7 +149,10 @@ pub fn is_retryable_status(status: StatusCode) -> RetryDecision {
 ///     || async { client.get(url).send().await }
 /// ).await?;
 /// ```
-pub async fn with_retry<F, Fut>(config: RetryConfig, operation: F) -> Result<Response, reqwest::Error>
+pub async fn with_retry<F, Fut>(
+    config: RetryConfig,
+    operation: F,
+) -> Result<Response, reqwest::Error>
 where
     F: Fn() -> Fut,
     Fut: Future<Output = Result<Response, reqwest::Error>>,
@@ -173,7 +176,9 @@ where
                 let status = response.status();
 
                 // Check if the response status is retryable
-                if is_retryable_status(status) == RetryDecision::Retry && attempt < config.max_retries {
+                if is_retryable_status(status) == RetryDecision::Retry
+                    && attempt < config.max_retries
+                {
                     tracing::warn!(
                         "Request returned retryable status {}, attempt {} of {}",
                         status,
@@ -252,22 +257,52 @@ mod tests {
     #[test]
     fn test_retryable_status_codes() {
         // Server errors should retry
-        assert_eq!(is_retryable_status(StatusCode::INTERNAL_SERVER_ERROR), RetryDecision::Retry);
-        assert_eq!(is_retryable_status(StatusCode::BAD_GATEWAY), RetryDecision::Retry);
-        assert_eq!(is_retryable_status(StatusCode::SERVICE_UNAVAILABLE), RetryDecision::Retry);
-        assert_eq!(is_retryable_status(StatusCode::GATEWAY_TIMEOUT), RetryDecision::Retry);
+        assert_eq!(
+            is_retryable_status(StatusCode::INTERNAL_SERVER_ERROR),
+            RetryDecision::Retry
+        );
+        assert_eq!(
+            is_retryable_status(StatusCode::BAD_GATEWAY),
+            RetryDecision::Retry
+        );
+        assert_eq!(
+            is_retryable_status(StatusCode::SERVICE_UNAVAILABLE),
+            RetryDecision::Retry
+        );
+        assert_eq!(
+            is_retryable_status(StatusCode::GATEWAY_TIMEOUT),
+            RetryDecision::Retry
+        );
 
         // Rate limiting should retry
-        assert_eq!(is_retryable_status(StatusCode::TOO_MANY_REQUESTS), RetryDecision::Retry);
+        assert_eq!(
+            is_retryable_status(StatusCode::TOO_MANY_REQUESTS),
+            RetryDecision::Retry
+        );
 
         // Client errors should NOT retry
-        assert_eq!(is_retryable_status(StatusCode::BAD_REQUEST), RetryDecision::NoRetry);
-        assert_eq!(is_retryable_status(StatusCode::UNAUTHORIZED), RetryDecision::NoRetry);
-        assert_eq!(is_retryable_status(StatusCode::FORBIDDEN), RetryDecision::NoRetry);
-        assert_eq!(is_retryable_status(StatusCode::NOT_FOUND), RetryDecision::NoRetry);
+        assert_eq!(
+            is_retryable_status(StatusCode::BAD_REQUEST),
+            RetryDecision::NoRetry
+        );
+        assert_eq!(
+            is_retryable_status(StatusCode::UNAUTHORIZED),
+            RetryDecision::NoRetry
+        );
+        assert_eq!(
+            is_retryable_status(StatusCode::FORBIDDEN),
+            RetryDecision::NoRetry
+        );
+        assert_eq!(
+            is_retryable_status(StatusCode::NOT_FOUND),
+            RetryDecision::NoRetry
+        );
 
         // Success should NOT retry
         assert_eq!(is_retryable_status(StatusCode::OK), RetryDecision::NoRetry);
-        assert_eq!(is_retryable_status(StatusCode::CREATED), RetryDecision::NoRetry);
+        assert_eq!(
+            is_retryable_status(StatusCode::CREATED),
+            RetryDecision::NoRetry
+        );
     }
 }

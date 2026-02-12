@@ -256,8 +256,15 @@ pub struct GoogleConfig {
 impl GoogleConfig {
     /// Check if credentials are configured
     pub fn is_configured(&self) -> bool {
-        self.client_id.as_ref().map(|s| !s.is_empty()).unwrap_or(false)
-            && self.client_secret.as_ref().map(|s| !s.is_empty()).unwrap_or(false)
+        self.client_id
+            .as_ref()
+            .map(|s| !s.is_empty())
+            .unwrap_or(false)
+            && self
+                .client_secret
+                .as_ref()
+                .map(|s| !s.is_empty())
+                .unwrap_or(false)
     }
 }
 
@@ -341,11 +348,10 @@ impl Config {
             return Ok(config);
         }
 
-        let contents = std::fs::read_to_string(&config_path)
-            .context("Failed to read config file")?;
+        let contents =
+            std::fs::read_to_string(&config_path).context("Failed to read config file")?;
 
-        let config: Config = toml::from_str(&contents)
-            .context("Failed to parse config file")?;
+        let config: Config = toml::from_str(&contents).context("Failed to parse config file")?;
 
         Ok(config)
     }
@@ -355,12 +361,10 @@ impl Config {
     pub fn load_cached() -> Arc<Self> {
         CACHED_CONFIG
             .get_or_init(|| {
-                Arc::new(
-                    Self::load().unwrap_or_else(|e| {
-                        tracing::warn!("Config load failed, using default: {}", e);
-                        Self::default()
-                    }),
-                )
+                Arc::new(Self::load().unwrap_or_else(|e| {
+                    tracing::warn!("Config load failed, using default: {}", e);
+                    Self::default()
+                }))
             })
             .clone()
     }
@@ -399,13 +403,19 @@ impl Config {
         if self.ui.window_width == 0 {
             result.add_error("ui.window_width", "Window width must be greater than 0");
         } else if self.ui.window_width > 10000 {
-            result.add_warning("ui.window_width", "Window width is unusually large (>10000)");
+            result.add_warning(
+                "ui.window_width",
+                "Window width is unusually large (>10000)",
+            );
         }
 
         if self.ui.window_height == 0 {
             result.add_error("ui.window_height", "Window height must be greater than 0");
         } else if self.ui.window_height > 10000 {
-            result.add_warning("ui.window_height", "Window height is unusually large (>10000)");
+            result.add_warning(
+                "ui.window_height",
+                "Window height is unusually large (>10000)",
+            );
         }
 
         // Validate weather refresh interval
@@ -434,18 +444,12 @@ impl Config {
         if !repos_path.exists() {
             result.add_warning(
                 "repos.local_search_path",
-                format!(
-                    "Path does not exist: {}",
-                    repos_path.display()
-                ),
+                format!("Path does not exist: {}", repos_path.display()),
             );
         } else if !repos_path.is_dir() {
             result.add_error(
                 "repos.local_search_path",
-                format!(
-                    "Path is not a directory: {}",
-                    repos_path.display()
-                ),
+                format!("Path is not a directory: {}", repos_path.display()),
             );
         }
 
@@ -466,15 +470,12 @@ impl Config {
 
         // Ensure config directory exists
         if let Some(parent) = config_path.parent() {
-            std::fs::create_dir_all(parent)
-                .context("Failed to create config directory")?;
+            std::fs::create_dir_all(parent).context("Failed to create config directory")?;
         }
 
-        let contents = toml::to_string_pretty(self)
-            .context("Failed to serialize config")?;
+        let contents = toml::to_string_pretty(self).context("Failed to serialize config")?;
 
-        std::fs::write(&config_path, contents)
-            .context("Failed to write config file")?;
+        std::fs::write(&config_path, contents).context("Failed to write config file")?;
 
         Ok(())
     }
@@ -498,7 +499,11 @@ mod tests {
         let config = Config::default();
         let result = config.validate();
         // Default config should be valid (only warnings, no errors)
-        assert!(result.is_valid(), "Default config should be valid: {:?}", result.errors);
+        assert!(
+            result.is_valid(),
+            "Default config should be valid: {:?}",
+            result.errors
+        );
     }
 
     #[test]

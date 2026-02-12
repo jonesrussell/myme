@@ -5,7 +5,9 @@ impl From<KanbanError> for AppError {
     fn from(e: KanbanError) -> Self {
         match e {
             KanbanError::Network(s) => AppError::GitHub(GitHubError::message(s)),
-            KanbanError::NotInitialized => AppError::Service("Kanban service not initialized".into()),
+            KanbanError::NotInitialized => {
+                AppError::Service("Kanban service not initialized".into())
+            }
         }
     }
 }

@@ -48,15 +48,14 @@ pub enum NoteServiceMessage {
 
 /// Request to fetch all notes asynchronously.
 /// Sends `FetchDone` on the channel when complete.
-pub fn request_fetch(
-    tx: &std::sync::mpsc::Sender<NoteServiceMessage>,
-    client: Arc<NoteClient>,
-) {
+pub fn request_fetch(tx: &std::sync::mpsc::Sender<NoteServiceMessage>, client: Arc<NoteClient>) {
     let tx = tx.clone();
     let runtime = match bridge::get_runtime() {
         Some(r) => r,
         None => {
-            let _ = tx.send(NoteServiceMessage::FetchDone(Err(NoteError::NotInitialized)));
+            let _ = tx.send(NoteServiceMessage::FetchDone(Err(
+                NoteError::NotInitialized,
+            )));
             return;
         }
     };
@@ -81,7 +80,9 @@ pub fn request_create(
     let runtime = match bridge::get_runtime() {
         Some(r) => r,
         None => {
-            let _ = tx.send(NoteServiceMessage::CreateDone(Err(NoteError::NotInitialized)));
+            let _ = tx.send(NoteServiceMessage::CreateDone(Err(
+                NoteError::NotInitialized,
+            )));
             return;
         }
     };

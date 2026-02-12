@@ -190,10 +190,9 @@ mod tests {
 
     #[test]
     fn kanban_service_message_variants() {
-        let _sync_err: KanbanServiceMessage =
-            KanbanServiceMessage::SyncDone {
-                repo_id: "owner/repo".into(),
-                result: Err(KanbanError::NotInitialized),
-            };
+        let _sync_err: KanbanServiceMessage = KanbanServiceMessage::SyncDone {
+            repo_id: "owner/repo".into(),
+            result: Err(KanbanError::NotInitialized),
+        };
     }
 }

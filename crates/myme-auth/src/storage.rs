@@ -80,14 +80,16 @@ impl SecureStorage {
             return Ok(None);
         }
 
-        tracing::info!("Found legacy token file for {}, migrating to keyring...", service);
+        tracing::info!(
+            "Found legacy token file for {}, migrating to keyring...",
+            service
+        );
 
         // Read the legacy token
-        let json = fs::read_to_string(&path)
-            .context("Failed to read legacy token file")?;
+        let json = fs::read_to_string(&path).context("Failed to read legacy token file")?;
 
-        let token_set: TokenSet = serde_json::from_str(&json)
-            .context("Failed to deserialize legacy token")?;
+        let token_set: TokenSet =
+            serde_json::from_str(&json).context("Failed to deserialize legacy token")?;
 
         // Store in keyring
         if let Err(e) = Self::store_in_keyring(service, &token_set) {
@@ -101,7 +103,10 @@ impl SecureStorage {
             tracing::warn!("Failed to delete legacy token file after migration: {}", e);
             // Don't fail the migration if we can't delete the file
         } else {
-            tracing::info!("Successfully migrated {} token to keyring and deleted legacy file", service);
+            tracing::info!(
+                "Successfully migrated {} token to keyring and deleted legacy file",
+                service
+            );
         }
 
         Ok(Some(token_set))
@@ -109,13 +114,13 @@ impl SecureStorage {
 
     /// Store a token in the system keyring.
     fn store_in_keyring(service: &str, token_set: &TokenSet) -> Result<()> {
-        let entry = Entry::new(KEYRING_SERVICE, service)
-            .context("Failed to create keyring entry")?;
+        let entry =
+            Entry::new(KEYRING_SERVICE, service).context("Failed to create keyring entry")?;
 
-        let json = serde_json::to_string(token_set)
-            .context("Failed to serialize token set")?;
+        let json = serde_json::to_string(token_set).context("Failed to serialize token set")?;
 
-        entry.set_password(&json)
+        entry
+            .set_password(&json)
             .context("Failed to store token in keyring")?;
 
         Ok(())
@@ -123,14 +128,15 @@ impl SecureStorage {
 
     /// Retrieve a token from the system keyring.
     fn retrieve_from_keyring(service: &str) -> Result<TokenSet> {
-        let entry = Entry::new(KEYRING_SERVICE, service)
-            .context("Failed to create keyring entry")?;
+        let entry =
+            Entry::new(KEYRING_SERVICE, service).context("Failed to create keyring entry")?;
 
-        let json = entry.get_password()
+        let json = entry
+            .get_password()
             .context("Failed to retrieve token from keyring")?;
 
-        let token_set: TokenSet = serde_json::from_str(&json)
-            .context("Failed to deserialize token from keyring")?;
+        let token_set: TokenSet =
+            serde_json::from_str(&json).context("Failed to deserialize token from keyring")?;
 
         Ok(token_set)
     }

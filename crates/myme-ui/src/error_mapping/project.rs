@@ -5,7 +5,9 @@ impl From<ProjectError> for AppError {
     fn from(e: ProjectError) -> Self {
         match e {
             ProjectError::Network(s) => AppError::GitHub(GitHubError::message(s)),
-            ProjectError::NotInitialized => AppError::Service("Project service not initialized".into()),
+            ProjectError::NotInitialized => {
+                AppError::Service("Project service not initialized".into())
+            }
         }
     }
 }

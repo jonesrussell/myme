@@ -127,8 +127,19 @@ pub enum LabelType {
 
 impl Label {
     const SYSTEM_LABELS: &'static [&'static str] = &[
-        "INBOX", "SENT", "DRAFT", "TRASH", "SPAM", "STARRED", "IMPORTANT", "UNREAD",
-        "CATEGORY_PERSONAL", "CATEGORY_SOCIAL", "CATEGORY_PROMOTIONS", "CATEGORY_UPDATES", "CATEGORY_FORUMS",
+        "INBOX",
+        "SENT",
+        "DRAFT",
+        "TRASH",
+        "SPAM",
+        "STARRED",
+        "IMPORTANT",
+        "UNREAD",
+        "CATEGORY_PERSONAL",
+        "CATEGORY_SOCIAL",
+        "CATEGORY_PROMOTIONS",
+        "CATEGORY_UPDATES",
+        "CATEGORY_FORUMS",
     ];
 
     pub fn is_system_label(id: &str) -> bool {

@@ -78,8 +78,8 @@ pub extern "C" fn initialize_weather_services() -> bool {
 }
 
 /// Get the initialized weather services for use by WeatherModels
-pub fn get_weather_services(
-) -> Option<(Arc<WeatherProvider>, WeatherCache, tokio::runtime::Handle)> {
+pub fn get_weather_services() -> Option<(Arc<WeatherProvider>, WeatherCache, tokio::runtime::Handle)>
+{
     app_services::weather_services()
 }
 

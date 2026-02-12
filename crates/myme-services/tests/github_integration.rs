@@ -4,7 +4,7 @@
 //! so we can't easily use wiremock without modifying the implementation.
 //! These tests verify the client creation and response parsing work correctly.
 
-use myme_services::{GitHubClient, CreateIssueRequest, UpdateIssueRequest};
+use myme_services::{CreateIssueRequest, GitHubClient, UpdateIssueRequest};
 
 /// Helper to create a test repo JSON
 fn test_repo(id: i64, name: &str, full_name: &str) -> serde_json::Value {
