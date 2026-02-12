@@ -1,7 +1,6 @@
 pub mod app;
 pub mod config;
 pub mod error;
-pub mod repo_op_state;
 
 pub use app::App;
 pub use config::{Config, GitHubConfig, NotesConfig, TemperatureUnit, WeatherConfig};

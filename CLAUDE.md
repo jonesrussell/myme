@@ -87,7 +87,7 @@ This is a Rust workspace with 8 member crates:
 ```
 myme/
 ├── crates/
-│   ├── myme-core/          # Application lifecycle, config, plugin system
+│   ├── myme-core/          # Application lifecycle, config, error types
 │   ├── myme-ui/            # cxx-qt bridge, 16 QML models (NoteModel, RepoModel, GmailModel, etc.)
 │   ├── myme-services/      # HTTP API clients (Todo/Note API)
 │   ├── myme-auth/          # OAuth2 flows, secure token storage
@@ -156,7 +156,7 @@ myme/
 
 ### Component Responsibilities
 
-**myme-core**: Core application lifecycle (`App` struct), configuration management (TOML-based, cross-platform paths), plugin system traits (`PluginProvider`, `PluginContext`).
+**myme-core**: Core application lifecycle (`App` struct), configuration management (TOML-based, cross-platform paths), error type hierarchy.
 
 **myme-services**: HTTP clients for external APIs (e.g. GitHub) and local stores (NoteClient/SQLite, ProjectStore). Each async client uses structured logging and retry where applicable.
 
@@ -345,7 +345,6 @@ Tools follow a consistent pattern: add entry to `tools` array, create `Component
 ### Configuration & Error Handling
 - [crates/myme-core/src/config.rs](crates/myme-core/src/config.rs) - Configuration management with validation
 - [crates/myme-core/src/error.rs](crates/myme-core/src/error.rs) - Error type hierarchy with user messages
-- [crates/myme-core/src/plugin.rs](crates/myme-core/src/plugin.rs) - Plugin system traits (deferred)
 
 ### Service Layer
 - [crates/myme-services/src/todo.rs](crates/myme-services/src/todo.rs) - Todo/Note data types (Todo, TodoCreateRequest, TodoUpdateRequest)
@@ -526,5 +525,5 @@ $env:RUST_LOG="debug" # Adds detailed operation internals
 - WorkflowModel and WorkflowsPage for GitHub Actions management
 - AppContext QML singleton for global app state
 
-**Phase 4** (Planned): Project Scaffolding + Plugin System
+**Phase 4** (Planned): Project Scaffolding
 - Project templates (Laravel, Drupal, Node.js), scaffold wizard UI
