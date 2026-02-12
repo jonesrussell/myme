@@ -228,6 +228,15 @@ pub enum GitHubError {
 }
 
 impl GitHubError {
+    /// Create a GitHubError from an arbitrary message (e.g. from UI service layer).
+    /// Uses status 0 to indicate non-HTTP origin.
+    pub fn message(msg: impl Into<String>) -> Self {
+        GitHubError::ApiError {
+            status: 0,
+            message: msg.into(),
+        }
+    }
+
     pub fn user_message(&self) -> &'static str {
         match self {
             GitHubError::RateLimited { .. } => {

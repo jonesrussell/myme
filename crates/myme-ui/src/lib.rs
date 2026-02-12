@@ -1,5 +1,6 @@
 pub mod app_services;
 pub mod bridge;
+pub mod error_mapping;
 pub mod models;
 pub mod services;
 
