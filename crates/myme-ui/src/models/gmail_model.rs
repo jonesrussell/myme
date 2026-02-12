@@ -228,7 +228,9 @@ impl qobject::GmailModel {
                         self.as_mut().messages_changed();
                     }
                     Err(e) => {
-                        self.as_mut().rust_mut().set_error(&e);
+                        self.as_mut()
+                            .rust_mut()
+                            .set_error(myme_core::AppError::from(e).user_message());
                     }
                 }
             }
@@ -239,7 +241,9 @@ impl qobject::GmailModel {
                         self.fetch_messages();
                     }
                     Err(e) => {
-                        self.as_mut().rust_mut().set_error(&e);
+                        self.as_mut()
+                            .rust_mut()
+                            .set_error(myme_core::AppError::from(e).user_message());
                     }
                 }
             }

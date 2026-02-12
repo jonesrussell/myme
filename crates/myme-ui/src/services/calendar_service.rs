@@ -8,13 +8,33 @@ use myme_calendar::{Calendar, CalendarCache, CalendarClient, Event};
 
 use crate::bridge;
 
+/// Error type for Calendar operations.
+#[derive(Debug, Clone)]
+pub enum CalendarError {
+    Network(String),
+    Auth(String),
+    NotInitialized,
+}
+
+impl std::fmt::Display for CalendarError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CalendarError::Network(s) => write!(f, "Calendar error: {}", s),
+            CalendarError::Auth(s) => write!(f, "Calendar auth error: {}", s),
+            CalendarError::NotInitialized => write!(f, "Calendar service not initialized"),
+        }
+    }
+}
+
+impl std::error::Error for CalendarError {}
+
 /// Messages sent from async operations back to the UI thread.
 #[derive(Debug)]
 pub enum CalendarServiceMessage {
     /// Result of fetching events.
-    FetchEventsDone(Result<Vec<Event>, String>),
+    FetchEventsDone(Result<Vec<Event>, CalendarError>),
     /// Result of fetching calendar list.
-    FetchCalendarsDone(Result<Vec<Calendar>, String>),
+    FetchCalendarsDone(Result<Vec<Calendar>, CalendarError>),
 }
 
 /// Request to fetch events for the next 7 days.
@@ -28,7 +48,7 @@ pub fn request_fetch_events(
         Some(r) => r,
         None => {
             let _ = tx.send(CalendarServiceMessage::FetchEventsDone(Err(
-                "Runtime not available".to_string(),
+                CalendarError::NotInitialized,
             )));
             return;
         }
@@ -42,7 +62,7 @@ pub fn request_fetch_events(
         let result = client
             .list_events("primary", time_min, time_max, None)
             .await
-            .map_err(|e| e.to_string())
+            .map_err(|e| CalendarError::Network(e.to_string()))
             .map(|response| {
                 response
                     .items
@@ -73,7 +93,7 @@ pub fn request_fetch_today_events(
         Some(r) => r,
         None => {
             let _ = tx.send(CalendarServiceMessage::FetchEventsDone(Err(
-                "Runtime not available".to_string(),
+                CalendarError::NotInitialized,
             )));
             return;
         }
@@ -94,7 +114,7 @@ pub fn request_fetch_today_events(
         let result = client
             .list_events("primary", time_min, time_max, None)
             .await
-            .map_err(|e| e.to_string())
+            .map_err(|e| CalendarError::Network(e.to_string()))
             .map(|response| {
                 response
                     .items

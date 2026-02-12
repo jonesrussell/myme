@@ -36,10 +36,10 @@ pub use weather_service::{
 pub use gmail_service::{
     request_archive as request_gmail_archive, request_fetch as request_gmail_fetch,
     request_mark_as_read as request_gmail_mark_as_read, request_trash as request_gmail_trash,
-    GmailServiceMessage,
+    GmailError, GmailServiceMessage,
 };
 pub use calendar_service::{
     request_fetch_events as request_calendar_fetch_events,
     request_fetch_today_events as request_calendar_fetch_today_events,
-    CalendarServiceMessage,
+    CalendarError, CalendarServiceMessage,
 };

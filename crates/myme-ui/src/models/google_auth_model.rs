@@ -279,7 +279,7 @@ impl qobject::GoogleAuthModel {
                 tracing::error!("Sign out failed: {}", e);
                 self.as_mut()
                     .rust_mut()
-                    .set_error(&format!("Sign out failed: {}", e));
+                    .set_error(myme_core::AppError::from(e).user_message());
             }
         }
     }

@@ -7,13 +7,33 @@ use myme_gmail::{GmailCache, GmailClient, Message};
 
 use crate::bridge;
 
+/// Error type for Gmail operations.
+#[derive(Debug, Clone)]
+pub enum GmailError {
+    Network(String),
+    Auth(String),
+    NotInitialized,
+}
+
+impl std::fmt::Display for GmailError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GmailError::Network(s) => write!(f, "Gmail error: {}", s),
+            GmailError::Auth(s) => write!(f, "Gmail auth error: {}", s),
+            GmailError::NotInitialized => write!(f, "Gmail service not initialized"),
+        }
+    }
+}
+
+impl std::error::Error for GmailError {}
+
 /// Messages sent from async operations back to the UI thread.
 #[derive(Debug)]
 pub enum GmailServiceMessage {
     /// Result of fetching messages.
-    FetchDone(Result<Vec<Message>, String>),
+    FetchDone(Result<Vec<Message>, GmailError>),
     /// Result of an action (mark read, archive, trash); carries message_id or error.
-    ActionDone(Result<String, String>),
+    ActionDone(Result<String, GmailError>),
 }
 
 /// Request to fetch messages asynchronously.
@@ -27,7 +47,7 @@ pub fn request_fetch(
         Some(r) => r,
         None => {
             let _ = tx.send(GmailServiceMessage::FetchDone(Err(
-                "Runtime not available".to_string(),
+                GmailError::NotInitialized,
             )));
             return;
         }
@@ -40,7 +60,7 @@ pub fn request_fetch(
             let list_response = client
                 .list_message_ids(Some("in:inbox"), None)
                 .await
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| GmailError::Network(e.to_string()))?;
 
             let mut messages = Vec::new();
             for msg_ref in list_response.messages.into_iter().take(20) {
@@ -75,7 +95,7 @@ pub fn request_mark_as_read(
         Some(r) => r,
         None => {
             let _ = tx.send(GmailServiceMessage::ActionDone(Err(
-                "Runtime not available".to_string(),
+                GmailError::NotInitialized,
             )));
             return;
         }
@@ -87,7 +107,7 @@ pub fn request_mark_as_read(
             .mark_as_read(&message_id)
             .await
             .map(|_| message_id)
-            .map_err(|e| e.to_string());
+            .map_err(|e| GmailError::Network(e.to_string()));
         let _ = tx.send(GmailServiceMessage::ActionDone(result));
     });
 }
@@ -103,7 +123,7 @@ pub fn request_archive(
         Some(r) => r,
         None => {
             let _ = tx.send(GmailServiceMessage::ActionDone(Err(
-                "Runtime not available".to_string(),
+                GmailError::NotInitialized,
             )));
             return;
         }
@@ -115,7 +135,7 @@ pub fn request_archive(
             .archive_message(&message_id)
             .await
             .map(|_| message_id)
-            .map_err(|e| e.to_string());
+            .map_err(|e| GmailError::Network(e.to_string()));
         let _ = tx.send(GmailServiceMessage::ActionDone(result));
     });
 }
@@ -131,7 +151,7 @@ pub fn request_trash(
         Some(r) => r,
         None => {
             let _ = tx.send(GmailServiceMessage::ActionDone(Err(
-                "Runtime not available".to_string(),
+                GmailError::NotInitialized,
             )));
             return;
         }
@@ -143,7 +163,7 @@ pub fn request_trash(
             .trash_message(&message_id)
             .await
             .map(|_| message_id)
-            .map_err(|e| e.to_string());
+            .map_err(|e| GmailError::Network(e.to_string()));
         let _ = tx.send(GmailServiceMessage::ActionDone(result));
     });
 }

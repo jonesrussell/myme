@@ -255,7 +255,9 @@ impl qobject::CalendarModel {
                         self.as_mut().events_changed();
                     }
                     Err(e) => {
-                        self.as_mut().rust_mut().set_error(&e);
+                        self.as_mut()
+                            .rust_mut()
+                            .set_error(myme_core::AppError::from(e).user_message());
                     }
                 }
             }
@@ -269,7 +271,9 @@ impl qobject::CalendarModel {
                         self.as_mut().calendars_changed();
                     }
                     Err(e) => {
-                        self.as_mut().rust_mut().set_error(&e);
+                        self.as_mut()
+                            .rust_mut()
+                            .set_error(myme_core::AppError::from(e).user_message());
                     }
                 }
             }
