@@ -135,6 +135,29 @@ Rectangle {
                     visible: !editing
 
                     ToolButton {
+                        text: noteModel.get_pinned(noteIndex) ? Icons.starFill : Icons.pushPin
+                        font.family: Icons.family
+                        font.pixelSize: 14
+                        onClicked: noteModel.set_pinned(noteIndex, !noteModel.get_pinned(noteIndex))
+                        ToolTip.text: noteModel.get_pinned(noteIndex) ? "Unpin" : "Pin"
+                        ToolTip.visible: hovered
+
+                        background: Rectangle {
+                            radius: Theme.buttonRadius
+                            color: parent.hovered ? Theme.primary + "30" : "transparent"
+                        }
+
+                        contentItem: Text {
+                            text: parent.text
+                            font.family: Icons.family
+                            color: noteModel.get_pinned(noteIndex) ? Theme.primary : Theme.textMuted
+                            font.pixelSize: 14
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
+
+                    ToolButton {
                         text: Icons.squaresFour
                         font.family: Icons.family
                         font.pixelSize: 14
@@ -177,7 +200,7 @@ Rectangle {
                     }
 
                     ToolButton {
-                        text: noteModel.get_archived(noteIndex) ? "Restore" : Icons.trash
+                        text: noteModel.get_archived(noteIndex) ? "Restore" : Icons.archiveBox
                         font.family: Icons.family
                         font.pixelSize: 14
                         onClicked: noteModel.get_archived(noteIndex)
@@ -194,15 +217,66 @@ Rectangle {
                         contentItem: Text {
                             text: parent.text
                             font.family: Icons.family
-                            color: Theme.error
+                            color: Theme.textMuted
                             font.pixelSize: 14
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
                     }
+
+                    ToolButton {
+                        id: overflowBtn
+                        text: Icons.dotsThree
+                        font.family: Icons.family
+                        font.pixelSize: 14
+                        onClicked: overflowMenu.open()
+
+                        background: Rectangle {
+                            radius: Theme.buttonRadius
+                            color: parent.hovered ? Theme.surfaceHover : "transparent"
+                        }
+
+                        contentItem: Text {
+                            text: parent.text
+                            font.family: Icons.family
+                            color: Theme.textMuted
+                            font.pixelSize: 14
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+
+                        Menu {
+                            id: overflowMenu
+                            width: 180
+
+                            MenuItem {
+                                text: "Change color"
+                                onTriggered: colorPicker.open()
+                            }
+                            MenuItem {
+                                text: noteModel.get_pinned(noteIndex) ? "Unpin" : "Pin"
+                                onTriggered: noteModel.set_pinned(noteIndex, !noteModel.get_pinned(noteIndex))
+                            }
+                            MenuItem {
+                                text: noteModel.get_archived(noteIndex) ? "Restore" : "Archive"
+                                onTriggered: noteModel.get_archived(noteIndex)
+                                    ? noteModel.unarchive_note(noteIndex)
+                                    : noteModel.archive_note(noteIndex)
+                            }
+                            MenuItem {
+                                text: "Promote to Project"
+                                onTriggered: noteCard.promoteRequested(noteIndex, noteModel.get_content(noteIndex))
+                            }
+                        }
+                    }
                 }
             }
         }
+    }
+
+    ColorPicker {
+        id: colorPicker
+        onColorPicked: (hex) => noteModel.set_color(noteIndex, hex)
     }
 
     signal promoteRequested(int index, string title)

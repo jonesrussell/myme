@@ -97,4 +97,10 @@ QtObject {
     readonly property string calendarCheck: "\ue9d5"
     readonly property string clock: "\uea52"
     readonly property string mapPin: "\uebe1"
+
+    // Notes / Keep-style
+    readonly property string pushPin: "\uec87"
+    readonly property string archiveBox: "\ue958"
+    readonly property string tag: "\ued54"
+    readonly property string palette: "\uebe8"
 }
