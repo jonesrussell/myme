@@ -52,6 +52,18 @@ impl NoteClient {
         .await?
     }
 
+    /// List notes with reminders.
+    pub async fn list_with_reminders(&self) -> Result<Vec<Todo>> {
+        let store = self.0.clone();
+        tokio::task::spawn_blocking(move || {
+            store
+                .lock()
+                .list_with_reminders()
+                .map_err(|e| anyhow::anyhow!("{}", e))
+        })
+        .await?
+    }
+
     /// Get a note by ID.
     pub async fn get_todo(&self, id: i64) -> Result<Todo> {
         let store = self.0.clone();
@@ -146,6 +158,7 @@ impl std::fmt::Debug for NoteClient {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
     use super::*;
 
     fn create_client() -> NoteClient {

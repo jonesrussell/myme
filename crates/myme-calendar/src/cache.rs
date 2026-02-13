@@ -305,6 +305,7 @@ impl CalendarCache {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
     use super::*;
 
     fn create_test_event(id: &str, summary: &str, start_hours_from_now: i64) -> Event {

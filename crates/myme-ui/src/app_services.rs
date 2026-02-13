@@ -181,6 +181,8 @@ impl AppServices {
     pub fn init() -> Arc<Self> {
         SERVICES
             .get_or_init(|| {
+                // Runtime creation failure is fatal; no recovery.
+                #[allow(clippy::expect_used)]
                 let runtime = tokio::runtime::Builder::new_multi_thread()
                     .enable_all()
                     .thread_name("myme-tokio")
@@ -619,6 +621,7 @@ pub fn get_repos_local_search_path() -> Option<(std::path::PathBuf, bool)> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
     use super::*;
 
     #[test]

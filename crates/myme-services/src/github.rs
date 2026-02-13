@@ -134,7 +134,7 @@ impl GitHubClient {
             .context("Failed to create HTTP client")?;
 
         Ok(Self {
-            base_url: Url::parse(GITHUB_API_URL).unwrap(),
+            base_url: Url::parse(GITHUB_API_URL).context("constant GITHUB_API_URL is valid")?,
             client: Arc::new(client),
             token,
             retry_config: RetryConfig::default(),
@@ -496,6 +496,7 @@ impl GitHubClient {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
     use super::*;
 
     #[test]

@@ -37,3 +37,6 @@ keyring.workspace = true
 uuid = { version = "1.0", features = ["v4"] }
 urlencoding = "2.1"
 reqwest.workspace = true
+
+[lints]
+workspace = true

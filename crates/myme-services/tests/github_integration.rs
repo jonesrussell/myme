@@ -4,6 +4,8 @@
 //! so we can't easily use wiremock without modifying the implementation.
 //! These tests verify the client creation and response parsing work correctly.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use myme_services::{CreateIssueRequest, GitHubClient, UpdateIssueRequest};
 
 /// Helper to create a test repo JSON

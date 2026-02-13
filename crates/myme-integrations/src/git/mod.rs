@@ -352,6 +352,7 @@ impl GitOperations {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
     use super::*;
     use std::fs;
     use std::io::Write;

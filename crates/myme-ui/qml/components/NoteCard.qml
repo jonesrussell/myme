@@ -160,6 +160,22 @@ Rectangle {
                 }
 
                 RowLayout {
+                    visible: noteModel && noteModel.get_reminder(noteIndex).length > 0
+                    spacing: Theme.spacingXs
+                    Label {
+                        text: Icons.clock
+                        font.family: Icons.family
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.primary
+                    }
+                    Label {
+                        text: noteModel ? noteModel.get_reminder(noteIndex) : ""
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.primary
+                    }
+                }
+
+                RowLayout {
                     Layout.fillWidth: true
                     spacing: Theme.spacingXs
                     visible: !editing
@@ -300,6 +316,138 @@ Rectangle {
                             MenuItem {
                                 text: "Add label"
                                 onTriggered: addLabelPopup.open()
+                            }
+                            MenuItem {
+                                text: noteModel.get_reminder(noteIndex).length > 0 ? "Remove reminder" : "Add reminder"
+                                onTriggered: {
+                                    if (noteModel.get_reminder(noteIndex).length > 0) {
+                                        noteModel.set_reminder(noteIndex, "");
+                                    } else {
+                                        reminderPopup.open();
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Popup {
+                        id: reminderPopup
+                        width: 280
+                        padding: Theme.spacingMd
+
+                        background: Rectangle {
+                            color: Theme.surface
+                            border.color: Theme.border
+                            border.width: 1
+                            radius: Theme.cardRadius
+                        }
+
+                        onOpened: {
+                            const now = new Date();
+                            reminderDateField.text = now.getFullYear() + "-"
+                                + String(now.getMonth() + 1).padStart(2, "0") + "-"
+                                + String(now.getDate()).padStart(2, "0");
+                            reminderHour.value = now.getHours();
+                            reminderMinute.value = now.getMinutes();
+                        }
+
+                        ColumnLayout {
+                            width: parent.width - Theme.spacingMd * 2
+                            spacing: Theme.spacingSm
+
+                            Label {
+                                text: "Set reminder"
+                                font.pixelSize: Theme.fontSizeMedium
+                                font.bold: true
+                                color: Theme.text
+                            }
+                            TextField {
+                                id: reminderDateField
+                                placeholderText: "YYYY-MM-DD"
+                                Layout.fillWidth: true
+                                font.pixelSize: Theme.fontSizeNormal
+
+                                background: Rectangle {
+                                    color: Theme.inputBg
+                                    border.color: Theme.inputBorder
+                                    border.width: 1
+                                    radius: Theme.inputRadius
+                                }
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: Theme.spacingSm
+                                Label {
+                                    text: "Time:"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Theme.textSecondary
+                                }
+                                SpinBox {
+                                    id: reminderHour
+                                    from: 0
+                                    to: 23
+                                    value: 9
+
+                                    contentItem: TextInput {
+                                        text: reminderHour.textFromValue(reminderHour.value,
+                                            Locale.standardLocale)
+                                        font.pixelSize: Theme.fontSizeNormal
+                                        color: Theme.text
+                                        horizontalAlignment: Qt.AlignHCenter
+                                        verticalAlignment: Qt.AlignVCenter
+                                        readOnly: !reminderHour.editable
+                                        validator: reminderHour.validator
+                                        inputMethodHints: Qt.ImhFormattedNumbersOnly
+                                    }
+                                }
+                                Label { text: ":"; color: Theme.text }
+                                SpinBox {
+                                    id: reminderMinute
+                                    from: 0
+                                    to: 59
+                                    value: 0
+
+                                    contentItem: TextInput {
+                                        text: reminderMinute.textFromValue(reminderMinute.value,
+                                            Locale.standardLocale)
+                                        font.pixelSize: Theme.fontSizeNormal
+                                        color: Theme.text
+                                        horizontalAlignment: Qt.AlignHCenter
+                                        verticalAlignment: Qt.AlignVCenter
+                                        readOnly: !reminderMinute.editable
+                                        validator: reminderMinute.validator
+                                        inputMethodHints: Qt.ImhFormattedNumbersOnly
+                                    }
+                                }
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Button {
+                                    text: "Set"
+                                    onClicked: {
+                                        const parts = reminderDateField.text.trim().split(/[-T\s]/);
+                                        if (parts.length >= 3) {
+                                            const year = parseInt(parts[0], 10);
+                                            const month = parseInt(parts[1], 10);
+                                            const day = parseInt(parts[2], 10);
+                                            if (!isNaN(year) && !isNaN(month) && !isNaN(day)
+                                                    && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                                                const iso = String(year) + "-"
+                                                    + String(month).padStart(2, "0") + "-"
+                                                    + String(day).padStart(2, "0") + "T"
+                                                    + String(reminderHour.value).padStart(2, "0") + ":"
+                                                    + String(reminderMinute.value).padStart(2, "0") + ":00Z";
+                                                noteModel.set_reminder(noteIndex, iso);
+                                                reminderPopup.close();
+                                            }
+                                        }
+                                    }
+                                }
+                                Button {
+                                    text: "Cancel"
+                                    flat: true
+                                    onClicked: reminderPopup.close()
+                                }
                             }
                         }
                     }

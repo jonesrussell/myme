@@ -208,6 +208,11 @@ impl NoteBackend for SqliteNoteStore {
             .collect())
     }
 
+    fn list_with_reminders(&self) -> NoteBackendResult<Vec<Todo>> {
+        let notes = self.list()?;
+        Ok(notes.into_iter().filter(|n| n.reminder.is_some()).collect())
+    }
+
     fn get(&self, id: i64) -> NoteBackendResult<Option<Todo>> {
         let mut stmt = self
             .conn
@@ -348,6 +353,7 @@ impl NoteBackend for SqliteNoteStore {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
     use super::*;
 
     fn create_test_store() -> SqliteNoteStore {

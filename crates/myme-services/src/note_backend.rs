@@ -65,6 +65,9 @@ pub trait NoteBackend: Send {
     /// List notes filtered by label (non-archived only).
     fn list_by_label(&self, label: &str) -> NoteBackendResult<Vec<Todo>>;
 
+    /// List notes with reminders set (non-archived only).
+    fn list_with_reminders(&self) -> NoteBackendResult<Vec<Todo>>;
+
     /// Get a note by ID.
     ///
     /// Returns `None` if the note doesn't exist.
@@ -152,6 +155,7 @@ pub fn validate_content(content: &str) -> NoteBackendResult<()> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
     use super::*;
 
     #[test]

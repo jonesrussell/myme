@@ -216,11 +216,14 @@ where
 
     // All retries exhausted
     tracing::error!("All {} retry attempts exhausted", config.max_retries + 1);
+    // Invariant: retry loop sets last_error before exiting.
+    #[allow(clippy::expect_used)]
     Err(last_error.expect("at least one error should have occurred"))
 }
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
     use super::*;
 
     #[test]

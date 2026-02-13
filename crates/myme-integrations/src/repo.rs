@@ -95,6 +95,7 @@ pub fn match_repos(local: &[LocalRepo], remote: &[GitHubRepo]) -> Vec<RepoEntry>
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
     use super::*;
     use std::path::PathBuf;
 

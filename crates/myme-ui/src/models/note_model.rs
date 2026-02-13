@@ -131,6 +131,7 @@ enum OpState {
 enum NoteFilter {
     All,
     Archived,
+    Reminders,
     Label(String),
 }
 
@@ -231,6 +232,7 @@ impl qobject::NoteModel {
         let service_filter = match &self.as_ref().rust().filter {
             NoteFilter::All => ServiceFilter::All,
             NoteFilter::Archived => ServiceFilter::Archived,
+            NoteFilter::Reminders => ServiceFilter::Reminders,
             NoteFilter::Label(label) => ServiceFilter::Label(label.clone()),
         };
         request_note_fetch_with_filter(&tx, client, service_filter);
@@ -500,6 +502,7 @@ impl qobject::NoteModel {
         } else {
             match f.as_str() {
                 "archived" => NoteFilter::Archived,
+                "reminders" => NoteFilter::Reminders,
                 _ => NoteFilter::All,
             }
         };
@@ -519,6 +522,7 @@ impl qobject::NoteModel {
         let service_filter = match &new_filter {
             NoteFilter::All => ServiceFilter::All,
             NoteFilter::Archived => ServiceFilter::Archived,
+            NoteFilter::Reminders => ServiceFilter::Reminders,
             NoteFilter::Label(label) => ServiceFilter::Label(label.clone()),
         };
         request_note_fetch_with_filter(&tx, client, service_filter);
@@ -577,9 +581,10 @@ impl qobject::NoteModel {
                         tracing::info!("Updated note at index {}", index);
                         self.as_mut().rust_mut().clear_error();
                         if index < self.as_ref().rust().notes.len() {
-                            let filter = &self.as_ref().rust().filter;
-                            let should_remove = (matches!(filter, NoteFilter::All) && updated_note.archived)
-                                || (matches!(filter, NoteFilter::Archived) && !updated_note.archived);
+                            let filter = self.as_ref().rust().filter.clone();
+                            let should_remove = (matches!(&filter, NoteFilter::All) && updated_note.archived)
+                                || (matches!(&filter, NoteFilter::Archived) && !updated_note.archived)
+                                || (matches!(&filter, NoteFilter::Reminders) && updated_note.reminder.is_none());
                             if should_remove {
                                 self.as_mut().rust_mut().notes.remove(index);
                             } else {
@@ -696,7 +701,7 @@ impl qobject::NoteModel {
         self.rust()
             .get_note(index)
             .and_then(|note| note.reminder.as_ref())
-            .map(|dt| QString::from(dt.format("%Y-%m-%dT%H:%M:%SZ").to_string()))
+            .map(|dt| QString::from(dt.format("%Y-%m-%d %H:%M").to_string()))
             .unwrap_or_else(|| QString::from(""))
     }
 }

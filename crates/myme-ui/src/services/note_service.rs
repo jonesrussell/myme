@@ -81,10 +81,9 @@ pub fn request_fetch_with_filter(
 
     runtime.spawn(async move {
         let result = match filter {
-            NoteFilter::All | NoteFilter::Pinned | NoteFilter::Reminders => {
-                client.list_todos().await
-            }
+            NoteFilter::All | NoteFilter::Pinned => client.list_todos().await,
             NoteFilter::Archived => client.list_archived().await,
+            NoteFilter::Reminders => client.list_with_reminders().await,
             NoteFilter::Label(ref label) => client.list_by_label(label).await,
         };
         let result = result.map_err(|e| NoteError::Network(e.to_string()));
@@ -200,6 +199,7 @@ pub fn request_delete(
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
     use super::*;
 
     #[test]

@@ -263,6 +263,7 @@ fn parse_event_time(api: &ApiEventTime) -> (EventTime, bool) {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
     use super::*;
 
     #[test]

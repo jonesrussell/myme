@@ -264,6 +264,7 @@ mod linux_impl {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
     use super::*;
 
     // These tests require actual location services, so they're ignored by default

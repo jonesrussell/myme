@@ -102,8 +102,14 @@ pub fn request_fetch_today_events(
     runtime.spawn(async move {
         let client = CalendarClient::new(&access_token);
         let today = Utc::now().date_naive();
-        let time_min = today.and_hms_opt(0, 0, 0).unwrap().and_utc();
-        let time_max = today.and_hms_opt(23, 59, 59).unwrap().and_utc();
+        let time_min = match today.and_hms_opt(0, 0, 0) {
+            Some(t) => t.and_utc(),
+            None => return,
+        };
+        let time_max = match today.and_hms_opt(23, 59, 59) {
+            Some(t) => t.and_utc(),
+            None => return,
+        };
 
         let result = client
             .list_events("primary", time_min, time_max, None)

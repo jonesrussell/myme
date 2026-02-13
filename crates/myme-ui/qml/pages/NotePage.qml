@@ -85,7 +85,10 @@ Page {
                 ToolButton {
                     text: "All"
                     font.pixelSize: Theme.fontSizeSmall
-                    onClicked: noteModel.set_filter("all")
+                    onClicked: {
+                        labelFilterField.text = "";
+                        noteModel.set_filter("all");
+                    }
                     ToolTip.text: "All notes"
                     ToolTip.visible: hovered
 
@@ -108,6 +111,27 @@ Page {
                     font.pixelSize: Theme.fontSizeSmall
                     onClicked: noteModel.set_filter("archived")
                     ToolTip.text: "Archived notes"
+                    ToolTip.visible: hovered
+
+                    background: Rectangle {
+                        radius: Theme.buttonRadius
+                        color: parent.hovered ? Theme.surfaceHover : "transparent"
+                    }
+
+                    contentItem: Text {
+                        text: parent.text
+                        color: Theme.text
+                        font.pixelSize: Theme.fontSizeSmall
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+
+                ToolButton {
+                    text: "Reminders"
+                    font.pixelSize: Theme.fontSizeSmall
+                    onClicked: noteModel.set_filter("reminders")
+                    ToolTip.text: "Notes with reminders"
                     ToolTip.visible: hovered
 
                     background: Rectangle {

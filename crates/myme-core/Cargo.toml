@@ -23,3 +23,6 @@ url.workspace = true
 
 # Database (for error type conversions)
 rusqlite = { version = "0.31", features = ["bundled"] }
+
+[lints]
+workspace = true
