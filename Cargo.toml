@@ -57,9 +57,9 @@ todo = "deny"
 needless_borrow = "deny"
 needless_lifetimes = "deny"
 clone_on_copy = "deny"
-# Ergonomics
-must_use_candidate = "warn"
-missing_errors_doc = "warn"
+# Ergonomics (allow for now; can set to warn when ready to add docs/attributes)
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
 # Noise
 module_name_repetitions = "allow"
 too_many_arguments = "allow"

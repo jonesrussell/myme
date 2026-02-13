@@ -37,6 +37,8 @@ impl App {
 
 impl Default for App {
     fn default() -> Self {
+        // Creating default App loads config; failure is fatal.
+        #[allow(clippy::expect_used)]
         Self::new().expect("Failed to create default App")
     }
 }
