@@ -105,28 +105,19 @@ pub trait NoteBackend: Send {
     /// Default implementation fetches the note and updates with inverted done status.
     fn toggle_done(&self, id: i64) -> NoteBackendResult<Todo> {
         let note = self.get(id)?.ok_or_else(|| NoteBackendError::not_found(id.to_string()))?;
-        let req = TodoUpdateRequest {
-            done: Some(!note.done),
-            ..Default::default()
-        };
+        let req = TodoUpdateRequest { done: Some(!note.done), ..Default::default() };
         self.update(id, req)
     }
 
     /// Mark a note as done.
     fn mark_done(&self, id: i64) -> NoteBackendResult<Todo> {
-        let req = TodoUpdateRequest {
-            done: Some(true),
-            ..Default::default()
-        };
+        let req = TodoUpdateRequest { done: Some(true), ..Default::default() };
         self.update(id, req)
     }
 
     /// Mark a note as not done.
     fn mark_undone(&self, id: i64) -> NoteBackendResult<Todo> {
-        let req = TodoUpdateRequest {
-            done: Some(false),
-            ..Default::default()
-        };
+        let req = TodoUpdateRequest { done: Some(false), ..Default::default() };
         self.update(id, req)
     }
 }

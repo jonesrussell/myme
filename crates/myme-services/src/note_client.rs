@@ -103,19 +103,13 @@ impl NoteClient {
 
     /// Mark a note as done.
     pub async fn mark_done(&self, id: i64) -> Result<Todo> {
-        let req = TodoUpdateRequest {
-            done: Some(true),
-            ..Default::default()
-        };
+        let req = TodoUpdateRequest { done: Some(true), ..Default::default() };
         self.update_todo(id, req).await
     }
 
     /// Mark a note as not done.
     pub async fn mark_undone(&self, id: i64) -> Result<Todo> {
-        let req = TodoUpdateRequest {
-            done: Some(false),
-            ..Default::default()
-        };
+        let req = TodoUpdateRequest { done: Some(false), ..Default::default() };
         self.update_todo(id, req).await
     }
 

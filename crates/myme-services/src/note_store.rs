@@ -391,10 +391,7 @@ mod tests {
         let note = store.create("Test note", false).unwrap();
         assert!(!note.done);
 
-        let req = TodoUpdateRequest {
-            done: Some(true),
-            ..Default::default()
-        };
+        let req = TodoUpdateRequest { done: Some(true), ..Default::default() };
         let updated = store.update(note.id, req).unwrap();
         assert!(updated.done);
 
@@ -433,10 +430,7 @@ mod tests {
     fn test_update_nonexistent() {
         let store = create_test_store();
 
-        let req = TodoUpdateRequest {
-            content: Some("content".to_string()),
-            ..Default::default()
-        };
+        let req = TodoUpdateRequest { content: Some("content".to_string()), ..Default::default() };
         let result = store.update(99999, req);
         assert!(matches!(result, Err(NoteBackendError::NotFound(_))));
     }
@@ -467,18 +461,12 @@ mod tests {
 
         let note = store.create("Valid content", false).unwrap();
 
-        let req = TodoUpdateRequest {
-            content: Some("".to_string()),
-            ..Default::default()
-        };
+        let req = TodoUpdateRequest { content: Some("".to_string()), ..Default::default() };
         let result = store.update(note.id, req);
         assert!(matches!(result, Err(NoteBackendError::Validation(_))));
 
         let long_content = "a".repeat(1001);
-        let req2 = TodoUpdateRequest {
-            content: Some(long_content),
-            ..Default::default()
-        };
+        let req2 = TodoUpdateRequest { content: Some(long_content), ..Default::default() };
         let result = store.update(note.id, req2);
         assert!(matches!(result, Err(NoteBackendError::Validation(_))));
     }
