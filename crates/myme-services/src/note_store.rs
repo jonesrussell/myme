@@ -214,7 +214,7 @@ impl NoteBackend for SqliteNoteStore {
 
         match rows.next().map_err(|e| NoteBackendError::storage(e.to_string()))? {
             Some(row) => Ok(Some(
-                Self::row_to_todo(&row).map_err(|e| NoteBackendError::storage(e.to_string()))?,
+                Self::row_to_todo(row).map_err(|e| NoteBackendError::storage(e.to_string()))?,
             )),
             None => Ok(None),
         }
@@ -373,8 +373,10 @@ mod tests {
         let store = create_test_store();
 
         let note = store.create("Original content", false).unwrap();
-        let mut req = TodoUpdateRequest::default();
-        req.content = Some("Updated content".to_string());
+        let req = TodoUpdateRequest {
+            content: Some("Updated content".to_string()),
+            ..Default::default()
+        };
         let updated = store.update(note.id, req).unwrap();
 
         assert_eq!(updated.content, "Updated content");
@@ -389,8 +391,10 @@ mod tests {
         let note = store.create("Test note", false).unwrap();
         assert!(!note.done);
 
-        let mut req = TodoUpdateRequest::default();
-        req.done = Some(true);
+        let req = TodoUpdateRequest {
+            done: Some(true),
+            ..Default::default()
+        };
         let updated = store.update(note.id, req).unwrap();
         assert!(updated.done);
 
@@ -429,8 +433,10 @@ mod tests {
     fn test_update_nonexistent() {
         let store = create_test_store();
 
-        let mut req = TodoUpdateRequest::default();
-        req.content = Some("content".to_string());
+        let req = TodoUpdateRequest {
+            content: Some("content".to_string()),
+            ..Default::default()
+        };
         let result = store.update(99999, req);
         assert!(matches!(result, Err(NoteBackendError::NotFound(_))));
     }
@@ -461,14 +467,18 @@ mod tests {
 
         let note = store.create("Valid content", false).unwrap();
 
-        let mut req = TodoUpdateRequest::default();
-        req.content = Some("".to_string());
+        let req = TodoUpdateRequest {
+            content: Some("".to_string()),
+            ..Default::default()
+        };
         let result = store.update(note.id, req);
         assert!(matches!(result, Err(NoteBackendError::Validation(_))));
 
         let long_content = "a".repeat(1001);
-        let mut req2 = TodoUpdateRequest::default();
-        req2.content = Some(long_content);
+        let req2 = TodoUpdateRequest {
+            content: Some(long_content),
+            ..Default::default()
+        };
         let result = store.update(note.id, req2);
         assert!(matches!(result, Err(NoteBackendError::Validation(_))));
     }

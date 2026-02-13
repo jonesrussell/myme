@@ -214,8 +214,14 @@ impl CalendarCache {
     /// Get events for today.
     pub fn get_today_events(&self, calendar_id: &str) -> Result<Vec<Event>> {
         let today = Utc::now().date_naive();
-        let start = today.and_hms_opt(0, 0, 0).unwrap().and_utc();
-        let end = today.and_hms_opt(23, 59, 59).unwrap().and_utc();
+        let start = match today.and_hms_opt(0, 0, 0) {
+            Some(t) => t.and_utc(),
+            None => return Ok(vec![]),
+        };
+        let end = match today.and_hms_opt(23, 59, 59) {
+            Some(t) => t.and_utc(),
+            None => return Ok(vec![]),
+        };
         self.list_events(calendar_id, start, end)
     }
 
