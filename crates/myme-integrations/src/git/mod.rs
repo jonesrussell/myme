@@ -371,7 +371,7 @@ mod tests {
         let repo1_path = base.join("repo1");
         fs::create_dir_all(&repo1_path).unwrap();
         let repo1 = git2::Repository::init(&repo1_path).unwrap();
-        let _sig = repo1.signature().unwrap();
+        let _sig = git2::Signature::now("Test", "test@test.com").unwrap();
         let mut index = repo1.index().unwrap();
         let tree_id = index.write_tree().unwrap();
         let tree = repo1.find_tree(tree_id).unwrap();
@@ -410,7 +410,7 @@ mod tests {
         let remote_dir = tempfile::tempdir().expect("remote temp dir");
         let remote_path = remote_dir.path();
         let repo = git2::Repository::init(remote_path).unwrap();
-        let sig = repo.signature().unwrap();
+        let sig = git2::Signature::now("Test", "test@test.com").unwrap();
 
         // Add and commit a file
         let readme = remote_path.join("README");
@@ -443,7 +443,7 @@ mod tests {
         let remote_dir = tempfile::tempdir().expect("remote");
         let remote_path = remote_dir.path();
         let remote_repo = git2::Repository::init(remote_path).unwrap();
-        let sig = remote_repo.signature().unwrap();
+        let sig = git2::Signature::now("Test", "test@test.com").unwrap();
         let readme = remote_path.join("file.txt");
         fs::File::create(&readme).unwrap().write_all(b"v1").unwrap();
         let mut index = remote_repo.index().unwrap();
