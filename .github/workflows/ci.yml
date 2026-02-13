@@ -38,10 +38,9 @@ jobs:
 
       - name: Clippy (no myme-ui; requires Qt)
         run: |
-          cargo clippy --all-targets --no-deps -- \
-            -D warnings \
+          cargo clippy --all-targets --no-deps \
             -p myme-core -p myme-services -p myme-auth -p myme-integrations \
-            -p myme-weather -p myme-gmail -p myme-calendar
+            -p myme-weather -p myme-gmail -p myme-calendar -- -D warnings
 
   test:
     name: Test
