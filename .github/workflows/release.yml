@@ -20,8 +20,9 @@ jobs:
 
       - name: Extract version from tag
         id: version
-        shell: bash
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          $ver = $env:GITHUB_REF -replace '^refs/tags/v', ''
+          echo "VERSION=$ver" >> $env:GITHUB_OUTPUT
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -48,9 +49,19 @@ jobs:
           cache: true
 
       - name: Set Qt path
+        shell: pwsh
         run: |
-          $qt = $env:QT_ROOT_DIR -replace '/', '\'
-          echo "QT_ROOT=$qt" >> $env:GITHUB_ENV
+          # aqtinstall installs to dir/version/arch; prefer action env if set
+          $qtRoot = if ($env:QT_ROOT_DIR) {
+            $env:QT_ROOT_DIR -replace '/', '\'
+          } else {
+            Join-Path $env:GITHUB_WORKSPACE "qt-install\6.10.1\win64_msvc2022_64"
+          }
+          if (-not (Test-Path $qtRoot)) {
+            Write-Error "Qt root not found: $qtRoot"
+            exit 1
+          }
+          echo "QT_ROOT=$qtRoot" >> $env:GITHUB_ENV
 
       - name: Build Rust (with MSVC and Qt env)
         run: |
@@ -80,7 +91,7 @@ jobs:
 
       - name: Bundle Qt dependencies
         run: |
-          & "$env:QT_ROOT\bin\windeployqt.exe" --release --qmldir crates/myme-ui/qml dist/myme/myme-qt.exe
+          & "$env:QT_ROOT\bin\windeployqt.exe" --release --no-translations --qmldir crates/myme-ui/qml dist/myme/myme-qt.exe
 
       - name: Create portable ZIP
         env:
