@@ -46,18 +46,13 @@ pub fn request_authenticate(
     let runtime = match bridge::get_runtime() {
         Some(r) => r,
         None => {
-            let _ = tx.send(AuthServiceMessage::AuthenticateDone(Err(
-                AuthError::NotInitialized,
-            )));
+            let _ = tx.send(AuthServiceMessage::AuthenticateDone(Err(AuthError::NotInitialized)));
             return;
         }
     };
 
     runtime.spawn(async move {
-        let result = provider
-            .authenticate()
-            .await
-            .map_err(|e| AuthError::OAuth(e.to_string()));
+        let result = provider.authenticate().await.map_err(|e| AuthError::OAuth(e.to_string()));
         let _ = tx.send(AuthServiceMessage::AuthenticateDone(result));
     });
 }

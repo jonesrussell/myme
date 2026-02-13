@@ -175,17 +175,11 @@ impl qobject::WeatherModel {
         self.as_mut().set_feels_like(data.current.feels_like);
         self.as_mut().set_humidity(data.current.humidity as i32);
         self.as_mut().set_wind_speed(data.current.wind_speed);
-        self.as_mut()
-            .set_condition(QString::from(data.current.condition.description()));
-        self.as_mut()
-            .set_condition_icon(QString::from(data.current.condition.icon_name()));
+        self.as_mut().set_condition(QString::from(data.current.condition.description()));
+        self.as_mut().set_condition_icon(QString::from(data.current.condition.icon_name()));
 
-        let location_name = data
-            .location
-            .city_name
-            .as_deref()
-            .map(QString::from)
-            .unwrap_or_else(|| {
+        let location_name =
+            data.location.city_name.as_deref().map(QString::from).unwrap_or_else(|| {
                 QString::from(format!(
                     "{:.2}, {:.2}",
                     data.location.latitude, data.location.longitude
@@ -197,12 +191,9 @@ impl qobject::WeatherModel {
         if let Some(today) = data.forecast.first() {
             self.as_mut().set_today_high(today.high);
             self.as_mut().set_today_low(today.low);
-            self.as_mut()
-                .set_precipitation_chance(today.precipitation_chance as i32);
-            self.as_mut()
-                .set_sunrise(QString::from(today.sunrise.format("%H:%M").to_string()));
-            self.as_mut()
-                .set_sunset(QString::from(today.sunset.format("%H:%M").to_string()));
+            self.as_mut().set_precipitation_chance(today.precipitation_chance as i32);
+            self.as_mut().set_sunrise(QString::from(today.sunrise.format("%H:%M").to_string()));
+            self.as_mut().set_sunset(QString::from(today.sunset.format("%H:%M").to_string()));
         }
 
         // Store weather data for forecast methods
@@ -223,8 +214,7 @@ impl qobject::WeatherModel {
         let provider = match &self.as_ref().rust().provider {
             Some(p) => p.clone(),
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Weather service not initialized"));
+                self.as_mut().set_error_message(QString::from("Weather service not initialized"));
                 self.as_mut().error_occurred();
                 return;
             }
@@ -234,9 +224,7 @@ impl qobject::WeatherModel {
         let cache_result: Option<(WeatherData, bool, bool)> =
             self.as_ref().rust().cache.as_ref().and_then(|cache| {
                 if !cache.is_expired() {
-                    cache
-                        .get()
-                        .map(|data| (data.clone(), cache.is_stale(), cache.is_expired()))
+                    cache.get().map(|data| (data.clone(), cache.is_stale(), cache.is_expired()))
                 } else {
                     None
                 }
@@ -260,8 +248,7 @@ impl qobject::WeatherModel {
         let tx = match bridge::get_weather_service_tx() {
             Some(t) => t,
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Service channel not ready"));
+                self.as_mut().set_error_message(QString::from("Service channel not ready"));
                 self.as_mut().error_occurred();
                 return;
             }
@@ -342,11 +329,7 @@ impl qobject::WeatherModel {
     }
 
     pub fn forecast_count(&self) -> i32 {
-        self.rust()
-            .weather_data
-            .as_ref()
-            .map(|d| d.forecast.len() as i32)
-            .unwrap_or(0)
+        self.rust().weather_data.as_ref().map(|d| d.forecast.len() as i32).unwrap_or(0)
     }
 
     pub fn get_forecast_date(&self, index: i32) -> QString {

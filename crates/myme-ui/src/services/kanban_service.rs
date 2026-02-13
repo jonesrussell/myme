@@ -42,17 +42,11 @@ pub struct IssueResult {
 #[derive(Debug)]
 pub enum KanbanServiceMessage {
     /// Result of updating an issue (move_task, update_task)
-    UpdateIssueDone {
-        index: i32,
-        result: Result<IssueResult, KanbanError>,
-    },
+    UpdateIssueDone { index: i32, result: Result<IssueResult, KanbanError> },
     /// Result of creating an issue
     CreateIssueDone(Result<IssueResult, KanbanError>),
     /// Result of syncing one repo (fetching issues)
-    SyncDone {
-        repo_id: String,
-        result: Result<Vec<IssueResult>, KanbanError>,
-    },
+    SyncDone { repo_id: String, result: Result<Vec<IssueResult>, KanbanError> },
 }
 
 /// Request to update an issue asynchronously.
@@ -108,9 +102,8 @@ pub fn request_create_issue(
     let runtime = match bridge::get_runtime() {
         Some(r) => r,
         None => {
-            let _ = tx.send(KanbanServiceMessage::CreateIssueDone(Err(
-                KanbanError::NotInitialized,
-            )));
+            let _ =
+                tx.send(KanbanServiceMessage::CreateIssueDone(Err(KanbanError::NotInitialized)));
             return;
         }
     };

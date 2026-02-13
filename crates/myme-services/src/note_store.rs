@@ -89,11 +89,8 @@ impl SqliteNoteStore {
             .collect::<Result<Vec<_>, _>>()?;
 
         let has_pinned = table_info.iter().any(|(name, _)| name == "pinned");
-        let id_type = table_info
-            .iter()
-            .find(|(name, _)| name == "id")
-            .map(|(_, t)| t.as_str())
-            .unwrap_or("");
+        let id_type =
+            table_info.iter().find(|(name, _)| name == "id").map(|(_, t)| t.as_str()).unwrap_or("");
 
         Ok(!has_pinned || id_type == "TEXT")
     }
@@ -121,11 +118,8 @@ impl SqliteNoteStore {
 
         let labels: Vec<String> = serde_json::from_str(&labels_str).unwrap_or_default();
 
-        let reminder = reminder_str.and_then(|s| {
-            DateTime::parse_from_rfc3339(&s)
-                .ok()
-                .map(|dt| dt.with_timezone(&Utc))
-        });
+        let reminder = reminder_str
+            .and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc)));
 
         Ok(Todo {
             id,
@@ -154,9 +148,7 @@ impl SqliteNoteStore {
 
     /// Get the note count.
     pub fn count(&self) -> anyhow::Result<usize> {
-        let count: i64 = self
-            .conn
-            .query_row("SELECT COUNT(*) FROM notes", [], |row| row.get(0))?;
+        let count: i64 = self.conn.query_row("SELECT COUNT(*) FROM notes", [], |row| row.get(0))?;
         Ok(count as usize)
     }
 }
@@ -177,8 +169,7 @@ impl NoteBackend for SqliteNoteStore {
             .query_map([], Self::row_to_todo)
             .map_err(|e| NoteBackendError::storage(e.to_string()))?;
 
-        rows.collect::<Result<Vec<_>, _>>()
-            .map_err(|e| NoteBackendError::storage(e.to_string()))
+        rows.collect::<Result<Vec<_>, _>>().map_err(|e| NoteBackendError::storage(e.to_string()))
     }
 
     fn list_archived(&self) -> NoteBackendResult<Vec<Todo>> {
@@ -196,16 +187,12 @@ impl NoteBackend for SqliteNoteStore {
             .query_map([], Self::row_to_todo)
             .map_err(|e| NoteBackendError::storage(e.to_string()))?;
 
-        rows.collect::<Result<Vec<_>, _>>()
-            .map_err(|e| NoteBackendError::storage(e.to_string()))
+        rows.collect::<Result<Vec<_>, _>>().map_err(|e| NoteBackendError::storage(e.to_string()))
     }
 
     fn list_by_label(&self, label: &str) -> NoteBackendResult<Vec<Todo>> {
         let notes = self.list()?;
-        Ok(notes
-            .into_iter()
-            .filter(|n| n.labels.iter().any(|l| l == label))
-            .collect())
+        Ok(notes.into_iter().filter(|n| n.labels.iter().any(|l| l == label)).collect())
     }
 
     fn list_with_reminders(&self) -> NoteBackendResult<Vec<Todo>> {
@@ -222,14 +209,10 @@ impl NoteBackend for SqliteNoteStore {
             )
             .map_err(|e| NoteBackendError::storage(e.to_string()))?;
 
-        let mut rows = stmt
-            .query(params![id])
-            .map_err(|e| NoteBackendError::storage(e.to_string()))?;
+        let mut rows =
+            stmt.query(params![id]).map_err(|e| NoteBackendError::storage(e.to_string()))?;
 
-        match rows
-            .next()
-            .map_err(|e| NoteBackendError::storage(e.to_string()))?
-        {
+        match rows.next().map_err(|e| NoteBackendError::storage(e.to_string()))? {
             Some(row) => Ok(Some(
                 Self::row_to_todo(&row).map_err(|e| NoteBackendError::storage(e.to_string()))?,
             )),
@@ -273,9 +256,7 @@ impl NoteBackend for SqliteNoteStore {
     }
 
     fn update(&self, id: i64, request: TodoUpdateRequest) -> NoteBackendResult<Todo> {
-        let mut note = self
-            .get(id)?
-            .ok_or_else(|| NoteBackendError::not_found(id.to_string()))?;
+        let mut note = self.get(id)?.ok_or_else(|| NoteBackendError::not_found(id.to_string()))?;
 
         if let Some(ref new_content) = request.content {
             validate_content(new_content)?;
@@ -335,10 +316,7 @@ impl NoteBackend for SqliteNoteStore {
     }
 
     fn delete(&self, id: i64) -> NoteBackendResult<()> {
-        if !self
-            .exists(id)
-            .map_err(|e| NoteBackendError::storage(e.to_string()))?
-        {
+        if !self.exists(id).map_err(|e| NoteBackendError::storage(e.to_string()))? {
             return Err(NoteBackendError::not_found(id.to_string()));
         }
 

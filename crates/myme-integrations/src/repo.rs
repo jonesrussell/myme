@@ -31,10 +31,7 @@ pub struct RepoEntry {
 
 /// Build owner/repo from LocalRepo's remote_url if it's a GitHub URL.
 fn local_owner_repo(local: &LocalRepo) -> Option<String> {
-    local
-        .remote_url
-        .as_deref()
-        .and_then(repo_url::normalize_github_url)
+    local.remote_url.as_deref().and_then(repo_url::normalize_github_url)
 }
 
 /// Build owner/repo from GitHubRepo (clone_url or full_name).
@@ -81,14 +78,7 @@ pub fn match_repos(local: &[LocalRepo], remote: &[GitHubRepo]) -> Vec<RepoEntry>
             (None, None) => continue,
         };
         let id = RepoId(id_str);
-        out.push(RepoEntry {
-            id,
-            full_name,
-            local: loc,
-            github: gh,
-            state,
-            busy: false,
-        });
+        out.push(RepoEntry { id, full_name, local: loc, github: gh, state, busy: false });
     }
     out
 }
@@ -143,10 +133,7 @@ mod tests {
     #[test]
     fn test_github_only() {
         let local: Vec<LocalRepo> = vec![];
-        let remote = vec![github(
-            "owner/repo",
-            Some("https://github.com/owner/repo.git"),
-        )];
+        let remote = vec![github("owner/repo", Some("https://github.com/owner/repo.git"))];
         let out = match_repos(&local, &remote);
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].state, RepoState::GitHubOnly);
@@ -157,15 +144,9 @@ mod tests {
 
     #[test]
     fn test_both() {
-        let local_repos = vec![local(
-            Some("https://github.com/owner/repo.git"),
-            "repo",
-            "/home/user/dev/repo",
-        )];
-        let remote = vec![github(
-            "owner/repo",
-            Some("https://github.com/owner/repo.git"),
-        )];
+        let local_repos =
+            vec![local(Some("https://github.com/owner/repo.git"), "repo", "/home/user/dev/repo")];
+        let remote = vec![github("owner/repo", Some("https://github.com/owner/repo.git"))];
         let out = match_repos(&local_repos, &remote);
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].state, RepoState::Both);

@@ -31,11 +31,8 @@ pub fn normalize_github_url(url: &str) -> Option<String> {
 
     // https?://github.com/owner/repo[.git][/...]
     if url.starts_with("https://github.com/") || url.starts_with("http://github.com/") {
-        let prefix = if url.starts_with("https://") {
-            "https://github.com/"
-        } else {
-            "http://github.com/"
-        };
+        let prefix =
+            if url.starts_with("https://") { "https://github.com/" } else { "http://github.com/" };
         let rest = url.strip_prefix(prefix).unwrap_or(url);
         let path = rest.split('?').next().unwrap_or(rest);
         let path = path.split('#').next().unwrap_or(path);
@@ -57,10 +54,7 @@ mod tests {
 
     #[test]
     fn test_https_without_git() {
-        assert_eq!(
-            normalize_github_url("https://github.com/foo/bar"),
-            Some("foo/bar".to_string())
-        );
+        assert_eq!(normalize_github_url("https://github.com/foo/bar"), Some("foo/bar".to_string()));
     }
 
     #[test]
@@ -81,18 +75,12 @@ mod tests {
 
     #[test]
     fn test_ssh_with_git() {
-        assert_eq!(
-            normalize_github_url("git@github.com:foo/bar.git"),
-            Some("foo/bar".to_string())
-        );
+        assert_eq!(normalize_github_url("git@github.com:foo/bar.git"), Some("foo/bar".to_string()));
     }
 
     #[test]
     fn test_ssh_without_git() {
-        assert_eq!(
-            normalize_github_url("git@github.com:foo/bar"),
-            Some("foo/bar".to_string())
-        );
+        assert_eq!(normalize_github_url("git@github.com:foo/bar"), Some("foo/bar".to_string()));
     }
 
     #[test]
@@ -109,9 +97,6 @@ mod tests {
 
     #[test]
     fn test_trimmed() {
-        assert_eq!(
-            normalize_github_url("  https://github.com/x/y  "),
-            Some("x/y".to_string())
-        );
+        assert_eq!(normalize_github_url("  https://github.com/x/y  "), Some("x/y".to_string()));
     }
 }

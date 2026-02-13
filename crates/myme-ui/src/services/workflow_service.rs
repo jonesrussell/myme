@@ -66,10 +66,7 @@ pub fn request_fetch_workflows(
             let (owner, repo) = match parts.as_slice() {
                 [o, r] => (*o, *r),
                 _ => {
-                    results.push(RepoWorkflows {
-                        repo_id,
-                        workflows: vec![],
-                    });
+                    results.push(RepoWorkflows { repo_id, workflows: vec![] });
                     continue;
                 }
             };

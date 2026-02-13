@@ -260,52 +260,22 @@ mod tests {
     #[test]
     fn test_retryable_status_codes() {
         // Server errors should retry
-        assert_eq!(
-            is_retryable_status(StatusCode::INTERNAL_SERVER_ERROR),
-            RetryDecision::Retry
-        );
-        assert_eq!(
-            is_retryable_status(StatusCode::BAD_GATEWAY),
-            RetryDecision::Retry
-        );
-        assert_eq!(
-            is_retryable_status(StatusCode::SERVICE_UNAVAILABLE),
-            RetryDecision::Retry
-        );
-        assert_eq!(
-            is_retryable_status(StatusCode::GATEWAY_TIMEOUT),
-            RetryDecision::Retry
-        );
+        assert_eq!(is_retryable_status(StatusCode::INTERNAL_SERVER_ERROR), RetryDecision::Retry);
+        assert_eq!(is_retryable_status(StatusCode::BAD_GATEWAY), RetryDecision::Retry);
+        assert_eq!(is_retryable_status(StatusCode::SERVICE_UNAVAILABLE), RetryDecision::Retry);
+        assert_eq!(is_retryable_status(StatusCode::GATEWAY_TIMEOUT), RetryDecision::Retry);
 
         // Rate limiting should retry
-        assert_eq!(
-            is_retryable_status(StatusCode::TOO_MANY_REQUESTS),
-            RetryDecision::Retry
-        );
+        assert_eq!(is_retryable_status(StatusCode::TOO_MANY_REQUESTS), RetryDecision::Retry);
 
         // Client errors should NOT retry
-        assert_eq!(
-            is_retryable_status(StatusCode::BAD_REQUEST),
-            RetryDecision::NoRetry
-        );
-        assert_eq!(
-            is_retryable_status(StatusCode::UNAUTHORIZED),
-            RetryDecision::NoRetry
-        );
-        assert_eq!(
-            is_retryable_status(StatusCode::FORBIDDEN),
-            RetryDecision::NoRetry
-        );
-        assert_eq!(
-            is_retryable_status(StatusCode::NOT_FOUND),
-            RetryDecision::NoRetry
-        );
+        assert_eq!(is_retryable_status(StatusCode::BAD_REQUEST), RetryDecision::NoRetry);
+        assert_eq!(is_retryable_status(StatusCode::UNAUTHORIZED), RetryDecision::NoRetry);
+        assert_eq!(is_retryable_status(StatusCode::FORBIDDEN), RetryDecision::NoRetry);
+        assert_eq!(is_retryable_status(StatusCode::NOT_FOUND), RetryDecision::NoRetry);
 
         // Success should NOT retry
         assert_eq!(is_retryable_status(StatusCode::OK), RetryDecision::NoRetry);
-        assert_eq!(
-            is_retryable_status(StatusCode::CREATED),
-            RetryDecision::NoRetry
-        );
+        assert_eq!(is_retryable_status(StatusCode::CREATED), RetryDecision::NoRetry);
     }
 }

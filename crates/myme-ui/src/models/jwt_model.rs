@@ -50,14 +50,12 @@ impl qobject::JwtModel {
 
         // Validate inputs
         if payload_str.trim().is_empty() {
-            self.as_mut()
-                .set_error_message(QString::from("Payload is required"));
+            self.as_mut().set_error_message(QString::from("Payload is required"));
             return;
         }
 
         if secret_str.is_empty() {
-            self.as_mut()
-                .set_error_message(QString::from("Secret key is required"));
+            self.as_mut().set_error_message(QString::from("Secret key is required"));
             return;
         }
 
@@ -65,16 +63,14 @@ impl qobject::JwtModel {
         let claims: Value = match serde_json::from_str(&payload_str) {
             Ok(v) => v,
             Err(e) => {
-                self.as_mut()
-                    .set_error_message(QString::from(format!("Invalid JSON: {}", e)));
+                self.as_mut().set_error_message(QString::from(format!("Invalid JSON: {}", e)));
                 return;
             }
         };
 
         // Ensure claims is an object
         if !claims.is_object() {
-            self.as_mut()
-                .set_error_message(QString::from("Payload must be a JSON object"));
+            self.as_mut().set_error_message(QString::from("Payload must be a JSON object"));
             return;
         }
 
@@ -90,11 +86,7 @@ impl qobject::JwtModel {
         let header = Header::new(alg);
 
         // Encode the token
-        match encode(
-            &header,
-            &claims,
-            &EncodingKey::from_secret(secret_str.as_bytes()),
-        ) {
+        match encode(&header, &claims, &EncodingKey::from_secret(secret_str.as_bytes())) {
             Ok(token) => {
                 tracing::info!("Generated JWT token with algorithm {:?}", alg);
                 self.as_mut().set_generated_token(QString::from(&token));

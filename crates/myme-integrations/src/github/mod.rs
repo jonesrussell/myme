@@ -136,11 +136,7 @@ impl GitHubClient {
             .build()
             .context("Failed to create HTTP client")?;
 
-        Ok(Self {
-            client,
-            access_token,
-            base_url: "https://api.github.com".to_string(),
-        })
+        Ok(Self { client, access_token, base_url: "https://api.github.com".to_string() })
     }
 
     /// List repositories for the authenticated user
@@ -224,10 +220,8 @@ impl GitHubClient {
             anyhow::bail!("GitHub API error {}: {}", status, body);
         }
 
-        let issues: Vec<Issue> = response
-            .json::<Vec<Issue>>()
-            .await
-            .context("Failed to parse GitHub API response")?;
+        let issues: Vec<Issue> =
+            response.json::<Vec<Issue>>().await.context("Failed to parse GitHub API response")?;
 
         tracing::info!("Fetched {} issues from {}/{}", issues.len(), owner, repo);
         Ok(issues)
@@ -273,10 +267,8 @@ impl GitHubClient {
             anyhow::bail!("GitHub API error {}: {}", status, body);
         }
 
-        let repo: Repository = response
-            .json::<Repository>()
-            .await
-            .context("Failed to parse GitHub API response")?;
+        let repo: Repository =
+            response.json::<Repository>().await.context("Failed to parse GitHub API response")?;
 
         tracing::info!("Created repository: {}", repo.full_name);
         Ok(repo)
@@ -301,10 +293,8 @@ impl GitHubClient {
             anyhow::bail!("GitHub API error {}: {}", status, body);
         }
 
-        let user: User = response
-            .json::<User>()
-            .await
-            .context("Failed to parse GitHub API response")?;
+        let user: User =
+            response.json::<User>().await.context("Failed to parse GitHub API response")?;
 
         tracing::info!("Authenticated as: {}", user.login);
         Ok(user)

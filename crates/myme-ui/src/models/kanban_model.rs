@@ -133,8 +133,7 @@ impl qobject::KanbanModel {
         let store = match &self.as_ref().rust().store {
             Some(s) => s.clone(),
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Project store not initialized"));
+                self.as_mut().set_error_message(QString::from("Project store not initialized"));
                 return;
             }
         };
@@ -151,33 +150,24 @@ impl qobject::KanbanModel {
         match store_guard.get_project(&project_id_str) {
             Ok(Some(_)) => {}
             Ok(None) => {
-                self.as_mut()
-                    .set_error_message(QString::from("Project not found"));
+                self.as_mut().set_error_message(QString::from("Project not found"));
                 self.as_mut().set_loading(false);
                 return;
             }
             Err(e) => {
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                self.as_mut().rust_mut().set_error(myme_core::AppError::from(e).user_message());
                 self.as_mut().set_loading(false);
                 return;
             }
         }
 
-        let repo_ids = store_guard
-            .list_repos_for_project(&project_id_str)
-            .unwrap_or_default();
+        let repo_ids = store_guard.list_repos_for_project(&project_id_str).unwrap_or_default();
         let repo_ids_json = serde_json::to_string(&repo_ids).unwrap_or_else(|_| "[]".to_string());
         self.as_mut().set_repo_ids(QString::from(&repo_ids_json));
 
         match store_guard.list_tasks_for_project(&project_id_str) {
             Ok(tasks) => {
-                tracing::info!(
-                    "Loaded {} tasks for project {}",
-                    tasks.len(),
-                    project_id_str
-                );
+                tracing::info!("Loaded {} tasks for project {}", tasks.len(), project_id_str);
                 drop(store_guard);
                 self.as_mut().rust_mut().tasks = tasks;
                 self.as_mut().set_loading(false);
@@ -186,9 +176,7 @@ impl qobject::KanbanModel {
             Err(e) => {
                 tracing::error!("Failed to load tasks: {}", e);
                 drop(store_guard);
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                self.as_mut().rust_mut().set_error(myme_core::AppError::from(e).user_message());
                 self.as_mut().set_loading(false);
             }
         }
@@ -230,11 +218,7 @@ impl qobject::KanbanModel {
 
     pub fn count_by_status(&self, status: QString) -> i32 {
         let target_status = KanbanModelRust::status_from_string(&status.to_string());
-        self.rust()
-            .tasks
-            .iter()
-            .filter(|t| t.status == target_status)
-            .count() as i32
+        self.rust().tasks.iter().filter(|t| t.status == target_status).count() as i32
     }
 
     pub fn tasks_for_status(&self, status: QString) -> QString {
@@ -274,9 +258,7 @@ impl qobject::KanbanModel {
 
         let store_guard = store.lock();
         if let Err(e) = store_guard.upsert_task(&task) {
-            self.as_mut()
-                .rust_mut()
-                .set_error(myme_core::AppError::from(e).user_message());
+            self.as_mut().rust_mut().set_error(myme_core::AppError::from(e).user_message());
             return;
         }
 
@@ -292,8 +274,7 @@ impl qobject::KanbanModel {
 
         let title_str = title.to_string().trim().to_string();
         if title_str.is_empty() {
-            self.as_mut()
-                .set_error_message(QString::from("Task title cannot be empty"));
+            self.as_mut().set_error_message(QString::from("Task title cannot be empty"));
             return;
         }
 
@@ -321,17 +302,14 @@ impl qobject::KanbanModel {
         let store = match &self.as_ref().rust().store {
             Some(s) => s.clone(),
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Project store not initialized"));
+                self.as_mut().set_error_message(QString::from("Project store not initialized"));
                 return;
             }
         };
 
         let store_guard = store.lock();
         if let Err(e) = store_guard.upsert_task(&task) {
-            self.as_mut()
-                .rust_mut()
-                .set_error(myme_core::AppError::from(e).user_message());
+            self.as_mut().rust_mut().set_error(myme_core::AppError::from(e).user_message());
             return;
         }
 
@@ -350,8 +328,7 @@ impl qobject::KanbanModel {
 
         let title_str = title.to_string().trim().to_string();
         if title_str.is_empty() {
-            self.as_mut()
-                .set_error_message(QString::from("Task title cannot be empty"));
+            self.as_mut().set_error_message(QString::from("Task title cannot be empty"));
             return;
         }
 
@@ -373,9 +350,7 @@ impl qobject::KanbanModel {
 
         let store_guard = store.lock();
         if let Err(e) = store_guard.upsert_task(&task) {
-            self.as_mut()
-                .rust_mut()
-                .set_error(myme_core::AppError::from(e).user_message());
+            self.as_mut().rust_mut().set_error(myme_core::AppError::from(e).user_message());
             return;
         }
 

@@ -63,10 +63,7 @@ impl WeatherProvider {
             .user_agent(USER_AGENT)
             .build()?;
 
-        Ok(Self {
-            client: Arc::new(client),
-            unit,
-        })
+        Ok(Self { client: Arc::new(client), unit })
     }
 
     /// Set temperature unit preference
@@ -96,16 +93,11 @@ impl WeatherProvider {
         if !response.status().is_success() {
             let status = response.status();
             let text = response.text().await.unwrap_or_default();
-            return Err(WeatherError::Parse(format!(
-                "API error {}: {}",
-                status, text
-            )));
+            return Err(WeatherError::Parse(format!("API error {}: {}", status, text)));
         }
 
-        let api_response: api::ForecastResponse = response
-            .json()
-            .await
-            .map_err(|e| WeatherError::Parse(e.to_string()))?;
+        let api_response: api::ForecastResponse =
+            response.json().await.map_err(|e| WeatherError::Parse(e.to_string()))?;
 
         self.parse_response(api_response, location)
     }
@@ -167,12 +159,7 @@ impl WeatherProvider {
             });
         }
 
-        Ok(WeatherData {
-            current,
-            forecast,
-            location: location.clone(),
-            fetched_at: now,
-        })
+        Ok(WeatherData { current, forecast, location: location.clone(), fetched_at: now })
     }
 
     fn parse_time_from_datetime(datetime_str: &str) -> Result<NaiveTime, WeatherError> {

@@ -112,8 +112,7 @@ impl qobject::GmailModel {
         let access_token = match GmailModelRust::get_access_token() {
             Some(t) => t,
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Not authenticated"));
+                self.as_mut().set_error_message(QString::from("Not authenticated"));
                 self.as_mut().set_authenticated(false);
                 return;
             }
@@ -123,8 +122,7 @@ impl qobject::GmailModel {
         let tx = match bridge::get_gmail_service_tx() {
             Some(t) => t,
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Service channel not ready"));
+                self.as_mut().set_error_message(QString::from("Service channel not ready"));
                 return;
             }
         };
@@ -242,9 +240,7 @@ impl qobject::GmailModel {
                     self.fetch_messages();
                 }
                 Err(e) => {
-                    self.as_mut()
-                        .rust_mut()
-                        .set_error(myme_core::AppError::from(e).user_message());
+                    self.as_mut().rust_mut().set_error(myme_core::AppError::from(e).user_message());
                 }
             },
         }

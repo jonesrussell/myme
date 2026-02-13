@@ -80,10 +80,7 @@ impl SecureStorage {
             return Ok(None);
         }
 
-        tracing::info!(
-            "Found legacy token file for {}, migrating to keyring...",
-            service
-        );
+        tracing::info!("Found legacy token file for {}, migrating to keyring...", service);
 
         // Read the legacy token
         let json = fs::read_to_string(&path).context("Failed to read legacy token file")?;
@@ -119,9 +116,7 @@ impl SecureStorage {
 
         let json = serde_json::to_string(token_set).context("Failed to serialize token set")?;
 
-        entry
-            .set_password(&json)
-            .context("Failed to store token in keyring")?;
+        entry.set_password(&json).context("Failed to store token in keyring")?;
 
         Ok(())
     }
@@ -131,9 +126,7 @@ impl SecureStorage {
         let entry =
             Entry::new(KEYRING_SERVICE, service).context("Failed to create keyring entry")?;
 
-        let json = entry
-            .get_password()
-            .context("Failed to retrieve token from keyring")?;
+        let json = entry.get_password().context("Failed to retrieve token from keyring")?;
 
         let token_set: TokenSet =
             serde_json::from_str(&json).context("Failed to deserialize token from keyring")?;

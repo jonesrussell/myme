@@ -117,8 +117,7 @@ impl qobject::AuthModel {
         let tx = match bridge::get_auth_service_tx() {
             Some(t) => t,
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Service channel not ready"));
+                self.as_mut().set_error_message(QString::from("Service channel not ready"));
                 return;
             }
         };
@@ -173,13 +172,8 @@ impl qobject::AuthModel {
     pub fn check_auth(mut self: Pin<&mut Self>) {
         self.as_mut().rust_mut().ensure_initialized();
 
-        let is_authenticated = self
-            .as_ref()
-            .rust()
-            .provider
-            .as_ref()
-            .map(|p| p.is_authenticated())
-            .unwrap_or(false);
+        let is_authenticated =
+            self.as_ref().rust().provider.as_ref().map(|p| p.is_authenticated()).unwrap_or(false);
 
         let was_authenticated = self.as_ref().rust().authenticated;
         self.as_mut().set_authenticated(is_authenticated);
@@ -205,9 +199,7 @@ impl qobject::AuthModel {
             }
             Err(e) => {
                 tracing::error!("Sign out failed: {}", e);
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                self.as_mut().rust_mut().set_error(myme_core::AppError::from(e).user_message());
             }
         }
     }

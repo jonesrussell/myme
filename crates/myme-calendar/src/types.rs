@@ -32,7 +32,11 @@ impl EventTime {
     pub fn as_datetime(&self) -> DateTime<Utc> {
         match self {
             EventTime::DateTime(dt) => *dt,
-            EventTime::Date(d) => d.and_hms_opt(0, 0, 0).unwrap().and_utc(),
+            EventTime::Date(d) => {
+                // Midnight is valid for any NaiveDate.
+                #[allow(clippy::expect_used)]
+                d.and_hms_opt(0, 0, 0).expect("midnight is valid for any NaiveDate").and_utc()
+            }
         }
     }
 }
@@ -174,10 +178,7 @@ impl Event {
             .map(|t| parse_event_time(&t))
             .unwrap_or((EventTime::DateTime(Utc::now()), false));
 
-        let end = api
-            .end
-            .map(|t| parse_event_time(&t).0)
-            .unwrap_or_else(|| start.clone());
+        let end = api.end.map(|t| parse_event_time(&t).0).unwrap_or_else(|| start.clone());
 
         let status = match api.status.as_deref() {
             Some("confirmed") => EventStatus::Confirmed,
@@ -353,9 +354,6 @@ mod tests {
 
         let date = EventTime::Date(NaiveDate::from_ymd_opt(2024, 2, 1).unwrap());
         let as_dt = date.as_datetime();
-        assert_eq!(
-            as_dt.date_naive(),
-            NaiveDate::from_ymd_opt(2024, 2, 1).unwrap()
-        );
+        assert_eq!(as_dt.date_naive(), NaiveDate::from_ymd_opt(2024, 2, 1).unwrap());
     }
 }

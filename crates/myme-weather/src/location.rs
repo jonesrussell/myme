@@ -84,17 +84,11 @@ mod windows_impl {
                 }
             })?;
 
-        let coord = position
-            .Coordinate()
-            .map_err(|e| LocationError::Other(e.to_string()))?;
+        let coord = position.Coordinate().map_err(|e| LocationError::Other(e.to_string()))?;
 
-        let point = coord
-            .Point()
-            .map_err(|e| LocationError::Other(e.to_string()))?;
+        let point = coord.Point().map_err(|e| LocationError::Other(e.to_string()))?;
 
-        let pos = point
-            .Position()
-            .map_err(|e| LocationError::Other(e.to_string()))?;
+        let pos = point.Position().map_err(|e| LocationError::Other(e.to_string()))?;
 
         let accuracy = coord.Accuracy().ok();
 
@@ -132,9 +126,7 @@ mod linux_impl {
     }
 
     pub async fn get_location() -> Result<Location, LocationError> {
-        let conn = Connection::system()
-            .await
-            .map_err(|_| LocationError::ServiceUnavailable)?;
+        let conn = Connection::system().await.map_err(|_| LocationError::ServiceUnavailable)?;
 
         // Create a client
         let reply: zbus::Message = conn
@@ -148,10 +140,8 @@ mod linux_impl {
             .await
             .map_err(|e| LocationError::Other(e.to_string()))?;
 
-        let client_path: zbus::zvariant::OwnedObjectPath = reply
-            .body()
-            .deserialize()
-            .map_err(|e| LocationError::Other(e.to_string()))?;
+        let client_path: zbus::zvariant::OwnedObjectPath =
+            reply.body().deserialize().map_err(|e| LocationError::Other(e.to_string()))?;
 
         // Set desktop ID (required)
         conn.call_method(
@@ -159,11 +149,7 @@ mod linux_impl {
             client_path.as_str(),
             Some("org.freedesktop.DBus.Properties"),
             "Set",
-            &(
-                "org.freedesktop.GeoClue2.Client",
-                "DesktopId",
-                zbus::zvariant::Value::from("myme"),
-            ),
+            &("org.freedesktop.GeoClue2.Client", "DesktopId", zbus::zvariant::Value::from("myme")),
         )
         .await
         .map_err(|e| LocationError::Other(e.to_string()))?;
@@ -191,10 +177,8 @@ mod linux_impl {
             .await
             .map_err(|e| LocationError::Other(e.to_string()))?;
 
-        let location_value: zbus::zvariant::OwnedValue = location_reply
-            .body()
-            .deserialize()
-            .map_err(|e| LocationError::Other(e.to_string()))?;
+        let location_value: zbus::zvariant::OwnedValue =
+            location_reply.body().deserialize().map_err(|e| LocationError::Other(e.to_string()))?;
 
         let location_path: zbus::zvariant::OwnedObjectPath = location_value
             .try_into()
@@ -212,10 +196,8 @@ mod linux_impl {
             .await
             .map_err(|e| LocationError::Other(e.to_string()))?;
 
-        let lat_value: zbus::zvariant::OwnedValue = lat_reply
-            .body()
-            .deserialize()
-            .map_err(|e| LocationError::Other(e.to_string()))?;
+        let lat_value: zbus::zvariant::OwnedValue =
+            lat_reply.body().deserialize().map_err(|e| LocationError::Other(e.to_string()))?;
 
         let latitude: f64 = lat_value
             .try_into()
@@ -233,10 +215,8 @@ mod linux_impl {
             .await
             .map_err(|e| LocationError::Other(e.to_string()))?;
 
-        let lon_value: zbus::zvariant::OwnedValue = lon_reply
-            .body()
-            .deserialize()
-            .map_err(|e| LocationError::Other(e.to_string()))?;
+        let lon_value: zbus::zvariant::OwnedValue =
+            lon_reply.body().deserialize().map_err(|e| LocationError::Other(e.to_string()))?;
 
         let longitude: f64 = lon_value
             .try_into()
@@ -253,12 +233,7 @@ mod linux_impl {
             )
             .await;
 
-        Ok(Location {
-            latitude,
-            longitude,
-            accuracy_meters: None,
-            city_name: None,
-        })
+        Ok(Location { latitude, longitude, accuracy_meters: None, city_name: None })
     }
 }
 

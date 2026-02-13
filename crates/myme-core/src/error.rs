@@ -231,10 +231,7 @@ impl GitHubError {
     /// Create a GitHubError from an arbitrary message (e.g. from UI service layer).
     /// Uses status 0 to indicate non-HTTP origin.
     pub fn message(msg: impl Into<String>) -> Self {
-        GitHubError::ApiError {
-            status: 0,
-            message: msg.into(),
-        }
+        GitHubError::ApiError { status: 0, message: msg.into() }
     }
 
     pub fn user_message(&self) -> &'static str {
@@ -302,10 +299,7 @@ impl ReqwestErrorExt for reqwest::Error {
         } else if self.is_connect() {
             NetworkError::ConnectionFailed(self.to_string())
         } else if let Some(status) = self.status() {
-            NetworkError::ServerError {
-                status: status.as_u16(),
-                message: self.to_string(),
-            }
+            NetworkError::ServerError { status: status.as_u16(), message: self.to_string() }
         } else {
             NetworkError::ConnectionFailed(self.to_string())
         }
@@ -361,9 +355,6 @@ mod tests {
     #[test]
     fn test_user_message_propagation() {
         let app_err = AppError::Auth(AuthError::TokenExpired);
-        assert_eq!(
-            app_err.user_message(),
-            "Your session has expired. Please sign in again."
-        );
+        assert_eq!(app_err.user_message(), "Your session has expired. Please sign in again.");
     }
 }

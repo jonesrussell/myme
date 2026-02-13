@@ -7,9 +7,8 @@ use myme_services::{NoteClient, Todo as Note, TodoUpdateRequest};
 
 use crate::bridge;
 use crate::services::{
-    request_note_create, request_note_delete, request_note_fetch_with_filter,
-    request_note_toggle, request_note_update, NoteServiceFilter as ServiceFilter,
-    NoteServiceMessage,
+    request_note_create, request_note_delete, request_note_fetch_with_filter, request_note_toggle,
+    request_note_update, NoteServiceFilter as ServiceFilter, NoteServiceMessage,
 };
 
 #[cxx_qt::bridge]
@@ -206,8 +205,7 @@ impl qobject::NoteModel {
         let client = match &self.as_ref().rust().client {
             Some(c) => c.clone(),
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Not initialized"));
+                self.as_mut().set_error_message(QString::from("Not initialized"));
                 self.as_mut().error_occurred();
                 return;
             }
@@ -218,8 +216,7 @@ impl qobject::NoteModel {
         let tx = match bridge::get_note_service_tx() {
             Some(t) => t,
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Service channel not ready"));
+                self.as_mut().set_error_message(QString::from("Service channel not ready"));
                 self.as_mut().error_occurred();
                 return;
             }
@@ -252,8 +249,7 @@ impl qobject::NoteModel {
         let client = match &self.as_ref().rust().client {
             Some(c) => c.clone(),
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Not initialized"));
+                self.as_mut().set_error_message(QString::from("Not initialized"));
                 self.as_mut().error_occurred();
                 return;
             }
@@ -264,8 +260,7 @@ impl qobject::NoteModel {
         let tx = match bridge::get_note_service_tx() {
             Some(t) => t,
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Service channel not ready"));
+                self.as_mut().set_error_message(QString::from("Service channel not ready"));
                 self.as_mut().error_occurred();
                 return;
             }
@@ -418,11 +413,7 @@ impl qobject::NoteModel {
     pub fn set_color(mut self: Pin<&mut Self>, index: i32, color: &QString) {
         let color_str = color.to_string();
         let mut req = TodoUpdateRequest::default();
-        req.color = Some(if color_str.trim().is_empty() {
-            None
-        } else {
-            Some(color_str)
-        });
+        req.color = Some(if color_str.trim().is_empty() { None } else { Some(color_str) });
         self.as_mut().send_update(index, req);
     }
 
@@ -582,9 +573,12 @@ impl qobject::NoteModel {
                         self.as_mut().rust_mut().clear_error();
                         if index < self.as_ref().rust().notes.len() {
                             let filter = self.as_ref().rust().filter.clone();
-                            let should_remove = (matches!(&filter, NoteFilter::All) && updated_note.archived)
-                                || (matches!(&filter, NoteFilter::Archived) && !updated_note.archived)
-                                || (matches!(&filter, NoteFilter::Reminders) && updated_note.reminder.is_none());
+                            let should_remove = (matches!(&filter, NoteFilter::All)
+                                && updated_note.archived)
+                                || (matches!(&filter, NoteFilter::Archived)
+                                    && !updated_note.archived)
+                                || (matches!(&filter, NoteFilter::Reminders)
+                                    && updated_note.reminder.is_none());
                             if should_remove {
                                 self.as_mut().rust_mut().notes.remove(index);
                             } else {
@@ -635,10 +629,7 @@ impl qobject::NoteModel {
     }
 
     pub fn get_done(&self, index: i32) -> bool {
-        self.rust()
-            .get_note(index)
-            .map(|note| note.done)
-            .unwrap_or(false)
+        self.rust().get_note(index).map(|note| note.done).unwrap_or(false)
     }
 
     pub fn get_id(&self, index: i32) -> QString {
@@ -664,17 +655,11 @@ impl qobject::NoteModel {
     }
 
     pub fn get_pinned(&self, index: i32) -> bool {
-        self.rust()
-            .get_note(index)
-            .map(|note| note.pinned)
-            .unwrap_or(false)
+        self.rust().get_note(index).map(|note| note.pinned).unwrap_or(false)
     }
 
     pub fn get_archived(&self, index: i32) -> bool {
-        self.rust()
-            .get_note(index)
-            .map(|note| note.archived)
-            .unwrap_or(false)
+        self.rust().get_note(index).map(|note| note.archived).unwrap_or(false)
     }
 
     pub fn get_labels(&self, index: i32) -> QStringList {
@@ -691,10 +676,7 @@ impl qobject::NoteModel {
     }
 
     pub fn get_is_checklist(&self, index: i32) -> bool {
-        self.rust()
-            .get_note(index)
-            .map(|note| note.is_checklist)
-            .unwrap_or(false)
+        self.rust().get_note(index).map(|note| note.is_checklist).unwrap_or(false)
     }
 
     pub fn get_reminder(&self, index: i32) -> QString {

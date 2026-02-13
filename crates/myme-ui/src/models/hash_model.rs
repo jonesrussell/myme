@@ -164,6 +164,8 @@ impl qobject::HashModel {
             return;
         }
 
+        // HMAC accepts any key size.
+        #[allow(clippy::expect_used)]
         let result = match algorithm.as_str() {
             "sha256" => {
                 let mut mac = Hmac::<Sha256>::new_from_slice(key.as_bytes())
@@ -184,12 +186,7 @@ impl qobject::HashModel {
     }
 
     pub fn compare(mut self: Pin<&mut Self>) {
-        let compare = self
-            .as_ref()
-            .compare_hash()
-            .to_string()
-            .to_lowercase()
-            .replace(" ", "");
+        let compare = self.as_ref().compare_hash().to_string().to_lowercase().replace(" ", "");
 
         if compare.is_empty() {
             self.as_mut().set_compare_result(QString::from(""));
@@ -205,8 +202,7 @@ impl qobject::HashModel {
 
         for (hash, name) in hashes {
             if hash.to_lowercase() == compare {
-                self.as_mut()
-                    .set_compare_result(QString::from(&format!("match:{}", name)));
+                self.as_mut().set_compare_result(QString::from(&format!("match:{}", name)));
                 return;
             }
         }

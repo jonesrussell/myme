@@ -37,14 +37,8 @@ impl std::error::Error for RepoError {}
 #[derive(Debug)]
 pub enum RepoServiceMessage {
     RefreshDone(Result<Vec<RepoEntry>, RepoError>),
-    CloneDone {
-        index: usize,
-        result: Result<(), RepoError>,
-    },
-    PullDone {
-        index: usize,
-        result: Result<(), RepoError>,
-    },
+    CloneDone { index: usize, result: Result<(), RepoError> },
+    PullDone { index: usize, result: Result<(), RepoError> },
 }
 
 const GITHUB_CACHE_TTL_SECS: u64 = 60;
@@ -113,15 +107,12 @@ pub fn request_refresh(tx: &std::sync::mpsc::Sender<RepoServiceMessage>) {
         let local = match local {
             Ok(Ok(repos)) => repos,
             Ok(Err(e)) => {
-                let _ = tx.send(RepoServiceMessage::RefreshDone(Err(RepoError::Git(
-                    e.to_string(),
-                ))));
+                let _ =
+                    tx.send(RepoServiceMessage::RefreshDone(Err(RepoError::Git(e.to_string()))));
                 return;
             }
             Err(e) => {
-                let _ = tx.send(RepoServiceMessage::RefreshDone(Err(RepoError::Io(
-                    e.to_string(),
-                ))));
+                let _ = tx.send(RepoServiceMessage::RefreshDone(Err(RepoError::Io(e.to_string()))));
                 return;
             }
         };
@@ -257,13 +248,8 @@ mod tests {
         let _refresh_ok: RepoServiceMessage = RepoServiceMessage::RefreshDone(Ok(vec![]));
         let _refresh_err: RepoServiceMessage =
             RepoServiceMessage::RefreshDone(Err(RepoError::Config("x".into())));
-        let _clone: RepoServiceMessage = RepoServiceMessage::CloneDone {
-            index: 0,
-            result: Ok(()),
-        };
-        let _pull: RepoServiceMessage = RepoServiceMessage::PullDone {
-            index: 1,
-            result: Err(RepoError::Git("e".into())),
-        };
+        let _clone: RepoServiceMessage = RepoServiceMessage::CloneDone { index: 0, result: Ok(()) };
+        let _pull: RepoServiceMessage =
+            RepoServiceMessage::PullDone { index: 1, result: Err(RepoError::Git("e".into())) };
     }
 }

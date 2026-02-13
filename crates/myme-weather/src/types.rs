@@ -170,14 +170,8 @@ mod tests {
 
     #[test]
     fn test_wmo_code_partly_cloudy() {
-        assert_eq!(
-            WeatherCondition::from_wmo_code(1),
-            WeatherCondition::PartlyCloudy
-        );
-        assert_eq!(
-            WeatherCondition::from_wmo_code(2),
-            WeatherCondition::PartlyCloudy
-        );
+        assert_eq!(WeatherCondition::from_wmo_code(1), WeatherCondition::PartlyCloudy);
+        assert_eq!(WeatherCondition::from_wmo_code(2), WeatherCondition::PartlyCloudy);
     }
 
     #[test]
@@ -193,18 +187,9 @@ mod tests {
 
     #[test]
     fn test_wmo_code_drizzle() {
-        assert_eq!(
-            WeatherCondition::from_wmo_code(51),
-            WeatherCondition::Drizzle
-        );
-        assert_eq!(
-            WeatherCondition::from_wmo_code(53),
-            WeatherCondition::Drizzle
-        );
-        assert_eq!(
-            WeatherCondition::from_wmo_code(55),
-            WeatherCondition::Drizzle
-        );
+        assert_eq!(WeatherCondition::from_wmo_code(51), WeatherCondition::Drizzle);
+        assert_eq!(WeatherCondition::from_wmo_code(53), WeatherCondition::Drizzle);
+        assert_eq!(WeatherCondition::from_wmo_code(55), WeatherCondition::Drizzle);
     }
 
     #[test]
@@ -216,18 +201,9 @@ mod tests {
 
     #[test]
     fn test_wmo_code_heavy_rain() {
-        assert_eq!(
-            WeatherCondition::from_wmo_code(65),
-            WeatherCondition::HeavyRain
-        );
-        assert_eq!(
-            WeatherCondition::from_wmo_code(81),
-            WeatherCondition::HeavyRain
-        );
-        assert_eq!(
-            WeatherCondition::from_wmo_code(82),
-            WeatherCondition::HeavyRain
-        );
+        assert_eq!(WeatherCondition::from_wmo_code(65), WeatherCondition::HeavyRain);
+        assert_eq!(WeatherCondition::from_wmo_code(81), WeatherCondition::HeavyRain);
+        assert_eq!(WeatherCondition::from_wmo_code(82), WeatherCondition::HeavyRain);
     }
 
     #[test]
@@ -250,26 +226,14 @@ mod tests {
 
     #[test]
     fn test_wmo_code_thunderstorm() {
-        assert_eq!(
-            WeatherCondition::from_wmo_code(95),
-            WeatherCondition::Thunderstorm
-        );
-        assert_eq!(
-            WeatherCondition::from_wmo_code(96),
-            WeatherCondition::Thunderstorm
-        );
-        assert_eq!(
-            WeatherCondition::from_wmo_code(99),
-            WeatherCondition::Thunderstorm
-        );
+        assert_eq!(WeatherCondition::from_wmo_code(95), WeatherCondition::Thunderstorm);
+        assert_eq!(WeatherCondition::from_wmo_code(96), WeatherCondition::Thunderstorm);
+        assert_eq!(WeatherCondition::from_wmo_code(99), WeatherCondition::Thunderstorm);
     }
 
     #[test]
     fn test_wmo_code_unknown_defaults_to_clear() {
-        assert_eq!(
-            WeatherCondition::from_wmo_code(999),
-            WeatherCondition::Clear
-        );
+        assert_eq!(WeatherCondition::from_wmo_code(999), WeatherCondition::Clear);
         assert_eq!(WeatherCondition::from_wmo_code(-1), WeatherCondition::Clear);
     }
 

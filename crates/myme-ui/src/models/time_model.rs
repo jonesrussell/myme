@@ -111,8 +111,7 @@ impl qobject::TimeModel {
         let timestamp: i64 = match input.trim().parse() {
             Ok(ts) => ts,
             Err(_) => {
-                self.as_mut()
-                    .set_error_message(QString::from("Invalid timestamp format"));
+                self.as_mut().set_error_message(QString::from("Invalid timestamp format"));
                 return;
             }
         };
@@ -123,8 +122,7 @@ impl qobject::TimeModel {
             match DateTime::from_timestamp_millis(timestamp) {
                 Some(dt) => dt,
                 None => {
-                    self.as_mut()
-                        .set_error_message(QString::from("Invalid timestamp value"));
+                    self.as_mut().set_error_message(QString::from("Invalid timestamp value"));
                     return;
                 }
             }
@@ -133,8 +131,7 @@ impl qobject::TimeModel {
             match DateTime::from_timestamp(timestamp, 0) {
                 Some(dt) => dt,
                 None => {
-                    self.as_mut()
-                        .set_error_message(QString::from("Invalid timestamp value"));
+                    self.as_mut().set_error_message(QString::from("Invalid timestamp value"));
                     return;
                 }
             }
@@ -175,7 +172,9 @@ impl qobject::TimeModel {
         // Also try date-only formats
         if parsed.is_none() {
             if let Ok(date) = chrono::NaiveDate::parse_from_str(input.trim(), "%Y-%m-%d") {
-                parsed = Some(date.and_hms_opt(0, 0, 0).unwrap());
+                if let Some(t) = date.and_hms_opt(0, 0, 0) {
+                    parsed = Some(t);
+                }
             }
         }
 
@@ -196,8 +195,7 @@ impl qobject::TimeModel {
             match Local.from_local_datetime(&naive_dt).single() {
                 Some(dt) => dt.with_timezone(&Utc),
                 None => {
-                    self.as_mut()
-                        .set_error_message(QString::from("Ambiguous local time"));
+                    self.as_mut().set_error_message(QString::from("Ambiguous local time"));
                     return;
                 }
             }
@@ -212,8 +210,7 @@ impl qobject::TimeModel {
                     }
                 },
                 Err(_) => {
-                    self.as_mut()
-                        .set_error_message(QString::from("Invalid timezone"));
+                    self.as_mut().set_error_message(QString::from("Invalid timezone"));
                     return;
                 }
             }
@@ -250,8 +247,7 @@ impl qobject::TimeModel {
         let timestamp: i64 = match timestamp_str.parse() {
             Ok(ts) => ts,
             Err(_) => {
-                self.as_mut()
-                    .set_error_message(QString::from("No timestamp to convert"));
+                self.as_mut().set_error_message(QString::from("No timestamp to convert"));
                 return;
             }
         };
@@ -259,26 +255,18 @@ impl qobject::TimeModel {
         let datetime = match DateTime::from_timestamp(timestamp, 0) {
             Some(dt) => dt,
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Invalid timestamp"));
+                self.as_mut().set_error_message(QString::from("Invalid timestamp"));
                 return;
             }
         };
 
         let converted = if target_tz == "Local" {
-            datetime
-                .with_timezone(&Local)
-                .format("%Y-%m-%d %H:%M:%S %Z")
-                .to_string()
+            datetime.with_timezone(&Local).format("%Y-%m-%d %H:%M:%S %Z").to_string()
         } else {
             match target_tz.parse::<Tz>() {
-                Ok(tz) => datetime
-                    .with_timezone(&tz)
-                    .format("%Y-%m-%d %H:%M:%S %Z")
-                    .to_string(),
+                Ok(tz) => datetime.with_timezone(&tz).format("%Y-%m-%d %H:%M:%S %Z").to_string(),
                 Err(_) => {
-                    self.as_mut()
-                        .set_error_message(QString::from("Invalid target timezone"));
+                    self.as_mut().set_error_message(QString::from("Invalid target timezone"));
                     return;
                 }
             }
@@ -299,8 +287,7 @@ impl qobject::TimeModel {
         let timestamp: i64 = match timestamp_str.parse() {
             Ok(ts) => ts,
             Err(_) => {
-                self.as_mut()
-                    .set_error_message(QString::from("No timestamp for arithmetic"));
+                self.as_mut().set_error_message(QString::from("No timestamp for arithmetic"));
                 return;
             }
         };
@@ -308,8 +295,7 @@ impl qobject::TimeModel {
         let datetime = match DateTime::from_timestamp(timestamp, 0) {
             Some(dt) => dt,
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Invalid timestamp"));
+                self.as_mut().set_error_message(QString::from("Invalid timestamp"));
                 return;
             }
         };
@@ -327,9 +313,7 @@ impl qobject::TimeModel {
             "New timestamp: {}\nISO 8601: {}\nLocal: {}",
             new_datetime.timestamp(),
             new_datetime.to_rfc3339(),
-            new_datetime
-                .with_timezone(&Local)
-                .format("%Y-%m-%d %H:%M:%S %Z")
+            new_datetime.with_timezone(&Local).format("%Y-%m-%d %H:%M:%S %Z")
         );
 
         self.as_mut().set_arithmetic_result(QString::from(&result));
@@ -339,18 +323,14 @@ impl qobject::TimeModel {
         let timestamp = datetime.timestamp();
         let iso8601 = datetime.to_rfc3339();
         let rfc2822 = datetime.to_rfc2822();
-        let local = datetime
-            .with_timezone(&Local)
-            .format("%Y-%m-%d %H:%M:%S %Z")
-            .to_string();
+        let local = datetime.with_timezone(&Local).format("%Y-%m-%d %H:%M:%S %Z").to_string();
 
         // Calculate relative time
         let now = Utc::now();
         let diff = now.signed_duration_since(datetime);
         let relative = Self::format_relative_time(diff);
 
-        self.as_mut()
-            .set_output_timestamp(QString::from(&timestamp.to_string()));
+        self.as_mut().set_output_timestamp(QString::from(&timestamp.to_string()));
         self.as_mut().set_output_iso8601(QString::from(&iso8601));
         self.as_mut().set_output_rfc2822(QString::from(&rfc2822));
         self.as_mut().set_output_relative(QString::from(&relative));
@@ -366,44 +346,19 @@ impl qobject::TimeModel {
             format!("{} seconds {}", seconds, suffix)
         } else if seconds < 3600 {
             let minutes = seconds / 60;
-            format!(
-                "{} minute{} {}",
-                minutes,
-                if minutes == 1 { "" } else { "s" },
-                suffix
-            )
+            format!("{} minute{} {}", minutes, if minutes == 1 { "" } else { "s" }, suffix)
         } else if seconds < 86400 {
             let hours = seconds / 3600;
-            format!(
-                "{} hour{} {}",
-                hours,
-                if hours == 1 { "" } else { "s" },
-                suffix
-            )
+            format!("{} hour{} {}", hours, if hours == 1 { "" } else { "s" }, suffix)
         } else if seconds < 2592000 {
             let days = seconds / 86400;
-            format!(
-                "{} day{} {}",
-                days,
-                if days == 1 { "" } else { "s" },
-                suffix
-            )
+            format!("{} day{} {}", days, if days == 1 { "" } else { "s" }, suffix)
         } else if seconds < 31536000 {
             let months = seconds / 2592000;
-            format!(
-                "{} month{} {}",
-                months,
-                if months == 1 { "" } else { "s" },
-                suffix
-            )
+            format!("{} month{} {}", months, if months == 1 { "" } else { "s" }, suffix)
         } else {
             let years = seconds / 31536000;
-            format!(
-                "{} year{} {}",
-                years,
-                if years == 1 { "" } else { "s" },
-                suffix
-            )
+            format!("{} year{} {}", years, if years == 1 { "" } else { "s" }, suffix)
         }
     }
 

@@ -126,8 +126,7 @@ impl qobject::WorkflowModel {
         let store = match &self.as_ref().rust().project_store {
             Some(s) => s.clone(),
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Project store not initialized"));
+                self.as_mut().set_error_message(QString::from("Project store not initialized"));
                 return;
             }
         };
@@ -135,9 +134,7 @@ impl qobject::WorkflowModel {
         let repo_ids = match store.lock().list_all_linked_repo_ids() {
             Ok(ids) => ids,
             Err(e) => {
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                self.as_mut().rust_mut().set_error(myme_core::AppError::from(e).user_message());
                 return;
             }
         };
@@ -145,8 +142,7 @@ impl qobject::WorkflowModel {
         let (client, _runtime) = match bridge::get_github_client_and_runtime() {
             Some(pair) => pair,
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("GitHub not authenticated"));
+                self.as_mut().set_error_message(QString::from("GitHub not authenticated"));
                 return;
             }
         };
@@ -216,10 +212,7 @@ impl qobject::WorkflowModel {
     }
 
     pub fn get_workflow_count(&self, repo_index: i32) -> i32 {
-        self.rust()
-            .get_repo_workflows(repo_index)
-            .map(|rw| rw.workflows.len() as i32)
-            .unwrap_or(0)
+        self.rust().get_repo_workflows(repo_index).map(|rw| rw.workflows.len() as i32).unwrap_or(0)
     }
 
     pub fn get_workflow_name(&self, repo_index: i32, workflow_index: i32) -> QString {

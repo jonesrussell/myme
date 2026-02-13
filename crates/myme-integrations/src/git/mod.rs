@@ -49,11 +49,7 @@ impl GitOperations {
 
         Self::walk_directory(base_path, &mut repos, 0, max_depth)?;
 
-        tracing::info!(
-            "Discovered {} git repositories in {:?}",
-            repos.len(),
-            base_path
-        );
+        tracing::info!("Discovered {} git repositories in {:?}", repos.len(), base_path);
         Ok(repos)
     }
 
@@ -108,32 +104,23 @@ impl GitOperations {
     pub fn get_repository_info(path: &Path) -> Result<LocalRepo> {
         let repo = Git2Repository::open(path).context("Failed to open git repository")?;
 
-        let name = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("unknown")
-            .to_string();
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown").to_string();
 
         // Get current branch
-        let current_branch = repo
-            .head()
-            .ok()
-            .and_then(|head| head.shorthand().map(|s| s.to_string()));
+        let current_branch =
+            repo.head().ok().and_then(|head| head.shorthand().map(|s| s.to_string()));
 
         // Get remote URL
-        let remote_url = repo
-            .find_remote("origin")
-            .ok()
-            .and_then(|remote| remote.url().map(|s| s.to_string()));
+        let remote_url =
+            repo.find_remote("origin").ok().and_then(|remote| remote.url().map(|s| s.to_string()));
 
         // Check working directory status
         let mut status_opts = StatusOptions::new();
         status_opts.include_untracked(true);
         status_opts.recurse_untracked_dirs(true);
 
-        let statuses = repo
-            .statuses(Some(&mut status_opts))
-            .context("Failed to get repository status")?;
+        let statuses =
+            repo.statuses(Some(&mut status_opts)).context("Failed to get repository status")?;
 
         let uncommitted_changes = statuses.len();
         let is_clean = uncommitted_changes == 0;
@@ -198,13 +185,9 @@ impl GitOperations {
         let head = repo.head().context("Failed to get HEAD reference")?;
         let branch_name = head.shorthand().context("Failed to get branch name")?;
 
-        let mut remote = repo
-            .find_remote("origin")
-            .context("Failed to find remote 'origin'")?;
+        let mut remote = repo.find_remote("origin").context("Failed to find remote 'origin'")?;
 
-        remote
-            .fetch(&[branch_name], None, None)
-            .context("Failed to fetch from remote")?;
+        remote.fetch(&[branch_name], None, None).context("Failed to fetch from remote")?;
 
         tracing::info!("Fetched latest for {:?}", path);
         Ok(())
@@ -220,16 +203,13 @@ impl GitOperations {
 
         let repo = Git2Repository::open(path).context("Failed to open git repository")?;
 
-        let fetch_head = repo
-            .find_reference("FETCH_HEAD")
-            .context("Failed to find FETCH_HEAD")?;
+        let fetch_head = repo.find_reference("FETCH_HEAD").context("Failed to find FETCH_HEAD")?;
         let fetch_commit = repo
             .reference_to_annotated_commit(&fetch_head)
             .context("Failed to resolve FETCH_HEAD")?;
 
-        let (analysis, _) = repo
-            .merge_analysis(&[&fetch_commit])
-            .context("Failed to analyze merge")?;
+        let (analysis, _) =
+            repo.merge_analysis(&[&fetch_commit]).context("Failed to analyze merge")?;
 
         if analysis.is_up_to_date() {
             tracing::info!("Already up to date: {:?}", path);
@@ -241,9 +221,8 @@ impl GitOperations {
                 "refs/heads/{}",
                 repo.head().context("HEAD")?.shorthand().context("branch")?
             );
-            let mut reference = repo
-                .find_reference(&refname)
-                .context("Failed to find branch ref")?;
+            let mut reference =
+                repo.find_reference(&refname).context("Failed to find branch ref")?;
             reference
                 .set_target(fetch_commit.id(), "fast-forward")
                 .context("Failed to update ref")?;
@@ -255,8 +234,7 @@ impl GitOperations {
         }
 
         if analysis.is_normal() {
-            repo.merge(&[&fetch_commit], None, None)
-                .context("Failed to merge")?;
+            repo.merge(&[&fetch_commit], None, None).context("Failed to merge")?;
             let mut index = repo.index().context("Failed to get index")?;
             if index.has_conflicts() {
                 anyhow::bail!("Merge conflicts; resolve manually");
@@ -268,19 +246,11 @@ impl GitOperations {
             let head_commit = repo
                 .find_commit(head_ref.target().context("HEAD target")?)
                 .context("Failed to find HEAD commit")?;
-            let their_commit = repo
-                .find_commit(fetch_commit.id())
-                .context("Failed to find fetch commit")?;
+            let their_commit =
+                repo.find_commit(fetch_commit.id()).context("Failed to find fetch commit")?;
             let sig = repo.signature().context("Failed to get signature")?;
-            repo.commit(
-                Some("HEAD"),
-                &sig,
-                &sig,
-                "Merge",
-                &tree,
-                &[&head_commit, &their_commit],
-            )
-            .context("Failed to create merge commit")?;
+            repo.commit(Some("HEAD"), &sig, &sig, "Merge", &tree, &[&head_commit, &their_commit])
+                .context("Failed to create merge commit")?;
             tracing::info!("Merged for {:?}", path);
             return Ok(());
         }
@@ -302,9 +272,7 @@ impl GitOperations {
         let branch_name = head.shorthand().context("Failed to get branch name")?;
 
         // Push to origin
-        let mut remote = repo
-            .find_remote("origin")
-            .context("Failed to find remote 'origin'")?;
+        let mut remote = repo.find_remote("origin").context("Failed to find remote 'origin'")?;
 
         remote
             .push(&[format!("refs/heads/{}", branch_name)], None)
@@ -325,9 +293,8 @@ impl GitOperations {
         status_opts.include_untracked(true);
         status_opts.recurse_untracked_dirs(true);
 
-        let statuses = repo
-            .statuses(Some(&mut status_opts))
-            .context("Failed to get repository status")?;
+        let statuses =
+            repo.statuses(Some(&mut status_opts)).context("Failed to get repository status")?;
 
         let mut files = Vec::new();
 
@@ -376,9 +343,7 @@ mod tests {
         let mut index = repo1.index().unwrap();
         let tree_id = index.write_tree().unwrap();
         let tree = repo1.find_tree(tree_id).unwrap();
-        repo1
-            .commit(Some("HEAD"), &_sig, &_sig, "init", &tree, &[])
-            .unwrap();
+        repo1.commit(Some("HEAD"), &_sig, &_sig, "init", &tree, &[]).unwrap();
 
         // Create repo2
         let repo2_path = base.join("repo2");
@@ -394,11 +359,7 @@ mod tests {
         git2::Repository::init(&nested).unwrap();
 
         let repos = GitOperations::discover_repositories(base, Some(5)).unwrap();
-        assert!(
-            repos.len() >= 3,
-            "expected at least 3 repos, got {}",
-            repos.len()
-        );
+        assert!(repos.len() >= 3, "expected at least 3 repos, got {}", repos.len());
         let names: Vec<_> = repos.iter().map(|r| r.name.as_str()).collect();
         assert!(names.contains(&"repo1"));
         assert!(names.contains(&"repo2"));
@@ -415,17 +376,13 @@ mod tests {
 
         // Add and commit a file
         let readme = remote_path.join("README");
-        fs::File::create(&readme)
-            .unwrap()
-            .write_all(b"hello")
-            .unwrap();
+        fs::File::create(&readme).unwrap().write_all(b"hello").unwrap();
         let mut index = repo.index().unwrap();
         index.add_path(std::path::Path::new("README")).unwrap();
         index.write().unwrap();
         let tree_id = index.write_tree().unwrap();
         let tree = repo.find_tree(tree_id).unwrap();
-        repo.commit(Some("HEAD"), &sig, &sig, "initial", &tree, &[])
-            .unwrap();
+        repo.commit(Some("HEAD"), &sig, &sig, "initial", &tree, &[]).unwrap();
 
         // Clone to target using path directly (git2 accepts local paths)
         let target_dir = tempfile::tempdir().expect("target temp dir");
@@ -452,9 +409,7 @@ mod tests {
         index.write().unwrap();
         let tree_id = index.write_tree().unwrap();
         let tree = remote_repo.find_tree(tree_id).unwrap();
-        remote_repo
-            .commit(Some("HEAD"), &sig, &sig, "v1", &tree, &[])
-            .unwrap();
+        remote_repo.commit(Some("HEAD"), &sig, &sig, "v1", &tree, &[]).unwrap();
 
         // Clone it using path directly (git2 accepts local paths)
         let target_dir = tempfile::tempdir().expect("target");
@@ -471,9 +426,7 @@ mod tests {
         let tree = remote_repo.find_tree(tree_id).unwrap();
         let head = remote_repo.head().unwrap().target().unwrap();
         let parent = remote_repo.find_commit(head).unwrap();
-        remote_repo
-            .commit(Some("HEAD"), &sig, &sig, "v2", &tree, &[&parent])
-            .unwrap();
+        remote_repo.commit(Some("HEAD"), &sig, &sig, "v2", &tree, &[&parent]).unwrap();
 
         // Fetch and pull in clone
         let pull_result = GitOperations::pull(&target_path);

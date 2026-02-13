@@ -44,9 +44,7 @@ pub fn request_fetch(
     let runtime = match bridge::get_runtime() {
         Some(r) => r,
         None => {
-            let _ = tx.send(WeatherServiceMessage::FetchDone(Err(
-                WeatherError::NotInitialized,
-            )));
+            let _ = tx.send(WeatherServiceMessage::FetchDone(Err(WeatherError::NotInitialized)));
             return;
         }
     };
@@ -59,9 +57,9 @@ pub fn request_fetch(
                 loc
             }
             Err(e) => {
-                let _ = tx.send(WeatherServiceMessage::FetchDone(Err(
-                    WeatherError::Location(e.to_string()),
-                )));
+                let _ = tx.send(WeatherServiceMessage::FetchDone(Err(WeatherError::Location(
+                    e.to_string(),
+                ))));
                 return;
             }
         };
@@ -74,10 +72,8 @@ pub fn request_fetch(
         }
 
         // Then fetch weather
-        let result = provider
-            .fetch(&location)
-            .await
-            .map_err(|e| WeatherError::Network(e.to_string()));
+        let result =
+            provider.fetch(&location).await.map_err(|e| WeatherError::Network(e.to_string()));
         let _ = tx.send(WeatherServiceMessage::FetchDone(result));
     });
 }

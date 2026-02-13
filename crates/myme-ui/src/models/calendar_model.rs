@@ -114,8 +114,7 @@ impl qobject::CalendarModel {
         let access_token = match CalendarModelRust::get_access_token() {
             Some(t) => t,
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Not authenticated"));
+                self.as_mut().set_error_message(QString::from("Not authenticated"));
                 self.as_mut().set_authenticated(false);
                 return;
             }
@@ -125,8 +124,7 @@ impl qobject::CalendarModel {
         let tx = match bridge::get_calendar_service_tx() {
             Some(t) => t,
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Service channel not ready"));
+                self.as_mut().set_error_message(QString::from("Service channel not ready"));
                 return;
             }
         };
@@ -143,8 +141,7 @@ impl qobject::CalendarModel {
         let access_token = match CalendarModelRust::get_access_token() {
             Some(t) => t,
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Not authenticated"));
+                self.as_mut().set_error_message(QString::from("Not authenticated"));
                 self.as_mut().set_authenticated(false);
                 return;
             }
@@ -154,8 +151,7 @@ impl qobject::CalendarModel {
         let tx = match bridge::get_calendar_service_tx() {
             Some(t) => t,
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Service channel not ready"));
+                self.as_mut().set_error_message(QString::from("Service channel not ready"));
                 return;
             }
         };
@@ -243,8 +239,7 @@ impl qobject::CalendarModel {
                             };
                             self.as_mut().set_next_event_summary(QString::from(summary));
                             let time_str = event.start.as_datetime().format("%H:%M").to_string();
-                            self.as_mut()
-                                .set_next_event_time(QString::from(time_str.as_str()));
+                            self.as_mut().set_next_event_time(QString::from(time_str.as_str()));
                         } else {
                             self.as_mut().set_next_event_summary(QString::from(""));
                             self.as_mut().set_next_event_time(QString::from(""));

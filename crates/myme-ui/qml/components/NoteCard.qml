@@ -387,18 +387,6 @@ Rectangle {
                                     from: 0
                                     to: 23
                                     value: 9
-
-                                    contentItem: TextInput {
-                                        text: reminderHour.textFromValue(reminderHour.value,
-                                            Locale.standardLocale)
-                                        font.pixelSize: Theme.fontSizeNormal
-                                        color: Theme.text
-                                        horizontalAlignment: Qt.AlignHCenter
-                                        verticalAlignment: Qt.AlignVCenter
-                                        readOnly: !reminderHour.editable
-                                        validator: reminderHour.validator
-                                        inputMethodHints: Qt.ImhFormattedNumbersOnly
-                                    }
                                 }
                                 Label { text: ":"; color: Theme.text }
                                 SpinBox {
@@ -406,18 +394,6 @@ Rectangle {
                                     from: 0
                                     to: 59
                                     value: 0
-
-                                    contentItem: TextInput {
-                                        text: reminderMinute.textFromValue(reminderMinute.value,
-                                            Locale.standardLocale)
-                                        font.pixelSize: Theme.fontSizeNormal
-                                        color: Theme.text
-                                        horizontalAlignment: Qt.AlignHCenter
-                                        verticalAlignment: Qt.AlignVCenter
-                                        readOnly: !reminderMinute.editable
-                                        validator: reminderMinute.validator
-                                        inputMethodHints: Qt.ImhFormattedNumbersOnly
-                                    }
                                 }
                             }
                             RowLayout {

@@ -35,10 +35,7 @@ pub struct GoogleOAuth2Provider {
 
 impl GoogleOAuth2Provider {
     pub fn new(client_id: String, client_secret: String) -> Self {
-        Self {
-            client_id,
-            client_secret,
-        }
+        Self { client_id, client_secret }
     }
 
     /// Generate authorization URL for OAuth flow.
@@ -84,10 +81,7 @@ impl GoogleOAuth2Provider {
             anyhow::bail!("Token exchange failed: {}", error_text);
         }
 
-        response
-            .json::<GoogleTokenResponse>()
-            .await
-            .context("Failed to parse token response")
+        response.json::<GoogleTokenResponse>().await.context("Failed to parse token response")
     }
 
     /// Refresh an expired access token.
@@ -112,10 +106,7 @@ impl GoogleOAuth2Provider {
             anyhow::bail!("Token refresh failed: {}", error_text);
         }
 
-        response
-            .json::<GoogleTokenResponse>()
-            .await
-            .context("Failed to parse refresh response")
+        response.json::<GoogleTokenResponse>().await.context("Failed to parse refresh response")
     }
 
     /// Get user info (email) from access token.
@@ -135,10 +126,7 @@ impl GoogleOAuth2Provider {
             anyhow::bail!("User info request failed: {}", error_text);
         }
 
-        response
-            .json::<GoogleUserInfo>()
-            .await
-            .context("Failed to parse user info")
+        response.json::<GoogleUserInfo>().await.context("Failed to parse user info")
     }
 }
 

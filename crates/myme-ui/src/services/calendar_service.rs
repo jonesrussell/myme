@@ -47,9 +47,8 @@ pub fn request_fetch_events(
     let runtime = match bridge::get_runtime() {
         Some(r) => r,
         None => {
-            let _ = tx.send(CalendarServiceMessage::FetchEventsDone(Err(
-                CalendarError::NotInitialized,
-            )));
+            let _ = tx
+                .send(CalendarServiceMessage::FetchEventsDone(Err(CalendarError::NotInitialized)));
             return;
         }
     };
@@ -92,9 +91,8 @@ pub fn request_fetch_today_events(
     let runtime = match bridge::get_runtime() {
         Some(r) => r,
         None => {
-            let _ = tx.send(CalendarServiceMessage::FetchEventsDone(Err(
-                CalendarError::NotInitialized,
-            )));
+            let _ = tx
+                .send(CalendarServiceMessage::FetchEventsDone(Err(CalendarError::NotInitialized)));
             return;
         }
     };

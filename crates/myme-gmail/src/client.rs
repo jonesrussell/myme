@@ -58,12 +58,8 @@ impl GmailClient {
             url = format!("{}?{}", url, params.join("&"));
         }
 
-        let response = self
-            .client
-            .get(&url)
-            .header("Authorization", self.auth_header())
-            .send()
-            .await?;
+        let response =
+            self.client.get(&url).header("Authorization", self.auth_header()).send().await?;
 
         self.handle_response(response).await
     }
@@ -71,17 +67,11 @@ impl GmailClient {
     /// Get a single message with full details.
     #[instrument(skip(self), level = "info")]
     pub async fn get_message(&self, message_id: &str) -> Result<Message, GmailError> {
-        let url = format!(
-            "{}/gmail/v1/users/me/messages/{}?format=full",
-            self.base_url, message_id
-        );
+        let url =
+            format!("{}/gmail/v1/users/me/messages/{}?format=full", self.base_url, message_id);
 
-        let response = self
-            .client
-            .get(&url)
-            .header("Authorization", self.auth_header())
-            .send()
-            .await?;
+        let response =
+            self.client.get(&url).header("Authorization", self.auth_header()).send().await?;
 
         let api_msg: ApiMessage = self.handle_response(response).await?;
         Ok(Message::from_api(api_msg))
@@ -92,12 +82,8 @@ impl GmailClient {
     pub async fn list_labels(&self) -> Result<Vec<Label>, GmailError> {
         let url = format!("{}/gmail/v1/users/me/labels", self.base_url);
 
-        let response = self
-            .client
-            .get(&url)
-            .header("Authorization", self.auth_header())
-            .send()
-            .await?;
+        let response =
+            self.client.get(&url).header("Authorization", self.auth_header()).send().await?;
 
         let resp: LabelListResponse = self.handle_response(response).await?;
         Ok(resp.labels.into_iter().map(Label::from).collect())
@@ -111,10 +97,7 @@ impl GmailClient {
         add_labels: &[&str],
         remove_labels: &[&str],
     ) -> Result<(), GmailError> {
-        let url = format!(
-            "{}/gmail/v1/users/me/messages/{}/modify",
-            self.base_url, message_id
-        );
+        let url = format!("{}/gmail/v1/users/me/messages/{}/modify", self.base_url, message_id);
 
         let body = serde_json::json!({
             "addLabelIds": add_labels,
@@ -141,17 +124,10 @@ impl GmailClient {
     /// Move message to trash.
     #[instrument(skip(self), level = "info")]
     pub async fn trash_message(&self, message_id: &str) -> Result<(), GmailError> {
-        let url = format!(
-            "{}/gmail/v1/users/me/messages/{}/trash",
-            self.base_url, message_id
-        );
+        let url = format!("{}/gmail/v1/users/me/messages/{}/trash", self.base_url, message_id);
 
-        let response = self
-            .client
-            .post(&url)
-            .header("Authorization", self.auth_header())
-            .send()
-            .await?;
+        let response =
+            self.client.post(&url).header("Authorization", self.auth_header()).send().await?;
 
         if response.status().is_success() {
             Ok(())
@@ -180,10 +156,7 @@ impl GmailClient {
         );
 
         if let Some(reply_id) = reply_to_id {
-            headers.push_str(&format!(
-                "In-Reply-To: {}\r\nReferences: {}\r\n",
-                reply_id, reply_id
-            ));
+            headers.push_str(&format!("In-Reply-To: {}\r\nReferences: {}\r\n", reply_id, reply_id));
         }
 
         let raw_message = format!("{}\r\n{}", headers, body);
@@ -396,9 +369,7 @@ mod tests {
             .await;
 
         let client = GmailClient::new_with_base_url("test_token", &mock_server.uri());
-        let result = client
-            .modify_labels("msg123", &["STARRED"], &["UNREAD"])
-            .await;
+        let result = client.modify_labels("msg123", &["STARRED"], &["UNREAD"]).await;
 
         assert!(result.is_ok());
     }
@@ -437,10 +408,7 @@ mod tests {
             .await;
 
         let client = GmailClient::new_with_base_url("test_token", &mock_server.uri());
-        let result = client
-            .list_message_ids(Some("is:unread"), None)
-            .await
-            .unwrap();
+        let result = client.list_message_ids(Some("is:unread"), None).await.unwrap();
 
         assert_eq!(result.messages.len(), 1);
     }

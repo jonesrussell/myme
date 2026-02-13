@@ -35,15 +35,9 @@ pub enum NoteServiceMessage {
     /// Result of creating a new note
     CreateDone(Result<Note, NoteError>),
     /// Result of updating a note (toggle done, edit content)
-    UpdateDone {
-        index: usize,
-        result: Result<Note, NoteError>,
-    },
+    UpdateDone { index: usize, result: Result<Note, NoteError> },
     /// Result of deleting a note
-    DeleteDone {
-        index: usize,
-        result: Result<(), NoteError>,
-    },
+    DeleteDone { index: usize, result: Result<(), NoteError> },
 }
 
 /// Filter mode for note listing.
@@ -72,9 +66,7 @@ pub fn request_fetch_with_filter(
     let runtime = match bridge::get_runtime() {
         Some(r) => r,
         None => {
-            let _ = tx.send(NoteServiceMessage::FetchDone(Err(
-                NoteError::NotInitialized,
-            )));
+            let _ = tx.send(NoteServiceMessage::FetchDone(Err(NoteError::NotInitialized)));
             return;
         }
     };
@@ -103,22 +95,15 @@ pub fn request_create(
     let runtime = match bridge::get_runtime() {
         Some(r) => r,
         None => {
-            let _ = tx.send(NoteServiceMessage::CreateDone(Err(
-                NoteError::NotInitialized,
-            )));
+            let _ = tx.send(NoteServiceMessage::CreateDone(Err(NoteError::NotInitialized)));
             return;
         }
     };
 
     runtime.spawn(async move {
-        let request = TodoCreateRequest {
-            content,
-            is_checklist,
-        };
-        let result = client
-            .create_todo(request)
-            .await
-            .map_err(|e| NoteError::Network(e.to_string()));
+        let request = TodoCreateRequest { content, is_checklist };
+        let result =
+            client.create_todo(request).await.map_err(|e| NoteError::Network(e.to_string()));
         let _ = tx.send(NoteServiceMessage::CreateDone(result));
     });
 }
@@ -217,13 +202,9 @@ mod tests {
             NoteServiceMessage::FetchDone(Err(NoteError::NotInitialized));
         let _create: NoteServiceMessage =
             NoteServiceMessage::CreateDone(Err(NoteError::Network("x".into())));
-        let _update: NoteServiceMessage = NoteServiceMessage::UpdateDone {
-            index: 0,
-            result: Err(NoteError::InvalidIndex),
-        };
-        let _delete: NoteServiceMessage = NoteServiceMessage::DeleteDone {
-            index: 1,
-            result: Ok(()),
-        };
+        let _update: NoteServiceMessage =
+            NoteServiceMessage::UpdateDone { index: 0, result: Err(NoteError::InvalidIndex) };
+        let _delete: NoteServiceMessage =
+            NoteServiceMessage::DeleteDone { index: 1, result: Ok(()) };
     }
 }

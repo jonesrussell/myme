@@ -221,8 +221,7 @@ impl qobject::ProjectModel {
         let store = match &self.as_ref().rust().project_store {
             Some(s) => s.clone(),
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Project store not initialized"));
+                self.as_mut().set_error_message(QString::from("Project store not initialized"));
                 return;
             }
         };
@@ -245,9 +244,7 @@ impl qobject::ProjectModel {
             Err(e) => {
                 tracing::error!("Failed to load projects: {}", e);
                 drop(store_guard);
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                self.as_mut().rust_mut().set_error(myme_core::AppError::from(e).user_message());
                 self.as_mut().set_loading(false);
             }
         }
@@ -318,16 +315,14 @@ impl qobject::ProjectModel {
 
         let name = name.to_string().trim().to_string();
         if name.is_empty() {
-            self.as_mut()
-                .set_error_message(QString::from("Project name cannot be empty"));
+            self.as_mut().set_error_message(QString::from("Project name cannot be empty"));
             return;
         }
 
         let store = match &self.as_ref().rust().project_store {
             Some(s) => s.clone(),
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Project store not initialized"));
+                self.as_mut().set_error_message(QString::from("Project store not initialized"));
                 return;
             }
         };
@@ -361,9 +356,7 @@ impl qobject::ProjectModel {
             }
             Err(e) => {
                 drop(store_guard);
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                self.as_mut().rust_mut().set_error(myme_core::AppError::from(e).user_message());
             }
         }
     }
@@ -380,8 +373,7 @@ impl qobject::ProjectModel {
         let project = match self.as_ref().rust().get_project(project_index) {
             Some(p) => p.clone(),
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Invalid project index"));
+                self.as_mut().set_error_message(QString::from("Invalid project index"));
                 return;
             }
         };
@@ -389,16 +381,14 @@ impl qobject::ProjectModel {
         let repo_id_str = repo_id.to_string();
         let parts: Vec<&str> = repo_id_str.split('/').collect();
         if parts.len() != 2 {
-            self.as_mut()
-                .set_error_message(QString::from("Invalid repo format. Use 'owner/repo'"));
+            self.as_mut().set_error_message(QString::from("Invalid repo format. Use 'owner/repo'"));
             return;
         }
 
         let github_client = match &self.as_ref().rust().github_client {
             Some(c) => c.clone(),
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("GitHub not authenticated"));
+                self.as_mut().set_error_message(QString::from("GitHub not authenticated"));
                 return;
             }
         };
@@ -410,8 +400,7 @@ impl qobject::ProjectModel {
         let tx = match bridge::get_project_service_tx() {
             Some(t) => t,
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Service channel not ready"));
+                self.as_mut().set_error_message(QString::from("Service channel not ready"));
                 return;
             }
         };
@@ -443,16 +432,14 @@ impl qobject::ProjectModel {
         let repo_id_str = repo_id.to_string();
         let parts: Vec<&str> = repo_id_str.split('/').collect();
         if parts.len() != 2 {
-            self.as_mut()
-                .set_error_message(QString::from("Invalid repo format. Use 'owner/repo'"));
+            self.as_mut().set_error_message(QString::from("Invalid repo format. Use 'owner/repo'"));
             return;
         }
 
         let github_client = match &self.as_ref().rust().github_client {
             Some(c) => c.clone(),
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("GitHub not authenticated"));
+                self.as_mut().set_error_message(QString::from("GitHub not authenticated"));
                 return;
             }
         };
@@ -464,8 +451,7 @@ impl qobject::ProjectModel {
         let tx = match bridge::get_project_service_tx() {
             Some(t) => t,
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Service channel not ready"));
+                self.as_mut().set_error_message(QString::from("Service channel not ready"));
                 return;
             }
         };
@@ -508,9 +494,7 @@ impl qobject::ProjectModel {
             }
             Err(e) => {
                 drop(store_guard);
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                self.as_mut().rust_mut().set_error(myme_core::AppError::from(e).user_message());
             }
         }
     }
@@ -540,9 +524,7 @@ impl qobject::ProjectModel {
             Err(e) => {
                 tracing::error!("Failed to delete project: {}", e);
                 drop(store_guard);
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                self.as_mut().rust_mut().set_error(myme_core::AppError::from(e).user_message());
             }
         }
     }
@@ -563,10 +545,9 @@ impl qobject::ProjectModel {
         match msg {
             ProjectServiceMessage::FetchRepoDone(result) => {
                 let (project_id, repo_id) = match &self.as_ref().rust().op_state {
-                    OpState::AddingRepoToProject {
-                        project_id,
-                        repo_id,
-                    } => (project_id.clone(), repo_id.clone()),
+                    OpState::AddingRepoToProject { project_id, repo_id } => {
+                        (project_id.clone(), repo_id.clone())
+                    }
                     _ => {
                         tracing::warn!(
                             "FetchRepoDone received but not in AddingRepoToProject state"
@@ -598,9 +579,7 @@ impl qobject::ProjectModel {
         let store = match &self.as_ref().rust().project_store {
             Some(s) => s.clone(),
             None => {
-                self.as_mut()
-                    .rust_mut()
-                    .set_error("Project store not initialized");
+                self.as_mut().rust_mut().set_error("Project store not initialized");
                 self.as_mut().set_loading(false);
                 return;
             }
@@ -618,9 +597,7 @@ impl qobject::ProjectModel {
             }
             Err(e) => {
                 drop(store_guard);
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                self.as_mut().rust_mut().set_error(myme_core::AppError::from(e).user_message());
                 self.as_mut().set_loading(false);
             }
         }
@@ -636,10 +613,7 @@ impl qobject::ProjectModel {
         self.as_mut().rust_mut().ensure_initialized();
 
         let is_authenticated = crate::bridge::is_github_authenticated();
-        tracing::info!(
-            "check_auth: is_github_authenticated() = {}",
-            is_authenticated
-        );
+        tracing::info!("check_auth: is_github_authenticated() = {}", is_authenticated);
 
         self.as_mut().set_authenticated(is_authenticated);
         tracing::info!("check_auth: set_authenticated({}) called", is_authenticated);

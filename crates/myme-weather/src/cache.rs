@@ -16,10 +16,7 @@ impl WeatherCache {
     /// Create a new cache instance
     pub fn new(config_dir: &std::path::Path) -> Self {
         let cache_path = config_dir.join("weather_cache.json");
-        Self {
-            cache_path,
-            data: None,
-        }
+        Self { cache_path, data: None }
     }
 
     /// Load cache from disk

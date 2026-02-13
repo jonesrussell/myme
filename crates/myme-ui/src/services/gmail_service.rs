@@ -46,9 +46,7 @@ pub fn request_fetch(
     let runtime = match bridge::get_runtime() {
         Some(r) => r,
         None => {
-            let _ = tx.send(GmailServiceMessage::FetchDone(Err(
-                GmailError::NotInitialized,
-            )));
+            let _ = tx.send(GmailServiceMessage::FetchDone(Err(GmailError::NotInitialized)));
             return;
         }
     };
@@ -94,9 +92,7 @@ pub fn request_mark_as_read(
     let runtime = match bridge::get_runtime() {
         Some(r) => r,
         None => {
-            let _ = tx.send(GmailServiceMessage::ActionDone(Err(
-                GmailError::NotInitialized,
-            )));
+            let _ = tx.send(GmailServiceMessage::ActionDone(Err(GmailError::NotInitialized)));
             return;
         }
     };
@@ -122,9 +118,7 @@ pub fn request_archive(
     let runtime = match bridge::get_runtime() {
         Some(r) => r,
         None => {
-            let _ = tx.send(GmailServiceMessage::ActionDone(Err(
-                GmailError::NotInitialized,
-            )));
+            let _ = tx.send(GmailServiceMessage::ActionDone(Err(GmailError::NotInitialized)));
             return;
         }
     };
@@ -150,9 +144,7 @@ pub fn request_trash(
     let runtime = match bridge::get_runtime() {
         Some(r) => r,
         None => {
-            let _ = tx.send(GmailServiceMessage::ActionDone(Err(
-                GmailError::NotInitialized,
-            )));
+            let _ = tx.send(GmailServiceMessage::ActionDone(Err(GmailError::NotInitialized)));
             return;
         }
     };

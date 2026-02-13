@@ -138,17 +138,14 @@ impl qobject::RepoModel {
         self.as_mut().set_authenticated(auth);
         if let Some((path, invalid)) = bridge::get_repos_local_search_path() {
             self.as_mut().set_config_path_invalid(invalid);
-            self.as_mut()
-                .set_effective_path(QString::from(path.to_string_lossy().as_ref()));
+            self.as_mut().set_effective_path(QString::from(path.to_string_lossy().as_ref()));
         }
         self.as_mut().auth_changed();
     }
 
     pub fn fetch_repos(mut self: Pin<&mut Self>) {
         if !matches!(self.as_ref().rust().op_state, OpState::Idle) {
-            self.as_mut()
-                .rust_mut()
-                .set_error("Operation in progress".into());
+            self.as_mut().rust_mut().set_error("Operation in progress".into());
             self.as_mut().error_occurred();
             return;
         }
@@ -157,9 +154,7 @@ impl qobject::RepoModel {
         let tx = match bridge::get_repo_service_tx() {
             Some(t) => t,
             None => {
-                self.as_mut()
-                    .rust_mut()
-                    .set_error("Repo service not initialized".into());
+                self.as_mut().rust_mut().set_error("Repo service not initialized".into());
                 self.as_mut().error_occurred();
                 return;
             }
@@ -167,8 +162,7 @@ impl qobject::RepoModel {
 
         if let Some((path, invalid)) = bridge::get_repos_local_search_path() {
             self.as_mut().set_config_path_invalid(invalid);
-            self.as_mut()
-                .set_effective_path(QString::from(path.to_string_lossy().as_ref()));
+            self.as_mut().set_effective_path(QString::from(path.to_string_lossy().as_ref()));
         }
         self.as_mut().set_loading(true);
         self.as_mut().rust_mut().op_state = OpState::BusyRefresh;
@@ -201,9 +195,7 @@ impl qobject::RepoModel {
         let clone_url = match clone_url {
             Some(u) => u,
             None => {
-                self.as_mut()
-                    .rust_mut()
-                    .set_error("No clone URL for this repo".into());
+                self.as_mut().rust_mut().set_error("No clone URL for this repo".into());
                 self.as_mut().error_occurred();
                 return;
             }
@@ -339,9 +331,7 @@ impl qobject::RepoModel {
                     }
                     Err(e) => {
                         self.as_mut().rust_mut().set_error(
-                            myme_core::AppError::from(e.clone())
-                                .user_message()
-                                .to_string(),
+                            myme_core::AppError::from(e.clone()).user_message().to_string(),
                         );
                         self.as_mut().error_occurred();
                     }
@@ -372,9 +362,7 @@ impl qobject::RepoModel {
                     }
                     Err(e) => {
                         self.as_mut().rust_mut().set_error(
-                            myme_core::AppError::from(e.clone())
-                                .user_message()
-                                .to_string(),
+                            myme_core::AppError::from(e.clone()).user_message().to_string(),
                         );
                         self.as_mut().error_occurred();
                     }
@@ -425,17 +413,11 @@ impl qobject::RepoModel {
     }
 
     pub fn get_has_local(&self, index: i32) -> bool {
-        self.rust()
-            .get_entry(index)
-            .map(|e| e.local.is_some())
-            .unwrap_or(false)
+        self.rust().get_entry(index).map(|e| e.local.is_some()).unwrap_or(false)
     }
 
     pub fn get_has_github(&self, index: i32) -> bool {
-        self.rust()
-            .get_entry(index)
-            .map(|e| e.github.is_some())
-            .unwrap_or(false)
+        self.rust().get_entry(index).map(|e| e.github.is_some()).unwrap_or(false)
     }
 
     pub fn get_clone_url(&self, index: i32) -> QString {
@@ -448,17 +430,11 @@ impl qobject::RepoModel {
     }
 
     pub fn get_state(&self, index: i32) -> i32 {
-        self.rust()
-            .get_entry(index)
-            .map(|e| e.state as i32)
-            .unwrap_or(0)
+        self.rust().get_entry(index).map(|e| e.state as i32).unwrap_or(0)
     }
 
     pub fn get_busy(&self, index: i32) -> bool {
-        self.rust()
-            .get_entry(index)
-            .map(|e| e.busy)
-            .unwrap_or(false)
+        self.rust().get_entry(index).map(|e| e.busy).unwrap_or(false)
     }
 
     pub fn get_html_url(&self, index: i32) -> QString {

@@ -100,15 +100,12 @@ impl qobject::JsonModel {
                 let formatted = serde_json::to_string_pretty(&value).unwrap_or_default();
                 self.as_mut().set_output(QString::from(&formatted));
                 self.as_mut().set_is_valid(true);
-                self.as_mut()
-                    .set_validation_message(QString::from("Valid JSON"));
+                self.as_mut().set_validation_message(QString::from("Valid JSON"));
             }
             Err(e) => {
-                self.as_mut()
-                    .set_error_message(QString::from(&format!("Invalid JSON: {}", e)));
+                self.as_mut().set_error_message(QString::from(&format!("Invalid JSON: {}", e)));
                 self.as_mut().set_is_valid(false);
-                self.as_mut()
-                    .set_validation_message(QString::from(&format!("Invalid: {}", e)));
+                self.as_mut().set_validation_message(QString::from(&format!("Invalid: {}", e)));
             }
         }
     }
@@ -129,8 +126,7 @@ impl qobject::JsonModel {
                 self.as_mut().set_is_valid(true);
             }
             Err(e) => {
-                self.as_mut()
-                    .set_error_message(QString::from(&format!("Invalid JSON: {}", e)));
+                self.as_mut().set_error_message(QString::from(&format!("Invalid JSON: {}", e)));
                 self.as_mut().set_is_valid(false);
             }
         }
@@ -142,8 +138,7 @@ impl qobject::JsonModel {
 
         if input.is_empty() {
             self.as_mut().set_is_valid(false);
-            self.as_mut()
-                .set_validation_message(QString::from("No input"));
+            self.as_mut().set_validation_message(QString::from("No input"));
             return;
         }
 
@@ -161,8 +156,7 @@ impl qobject::JsonModel {
             }
             Err(e) => {
                 self.as_mut().set_is_valid(false);
-                self.as_mut()
-                    .set_validation_message(QString::from(&format!("Invalid: {}", e)));
+                self.as_mut().set_validation_message(QString::from(&format!("Invalid: {}", e)));
             }
         }
     }
@@ -204,15 +198,7 @@ impl qobject::JsonModel {
             }
         }
 
-        count(
-            value,
-            &mut objects,
-            &mut arrays,
-            &mut strings,
-            &mut numbers,
-            &mut bools,
-            &mut nulls,
-        );
+        count(value, &mut objects, &mut arrays, &mut strings, &mut numbers, &mut bools, &mut nulls);
         (objects, arrays, strings, numbers, bools, nulls)
     }
 
@@ -229,8 +215,7 @@ impl qobject::JsonModel {
         let value: Value = match serde_json::from_str(&input) {
             Ok(v) => v,
             Err(e) => {
-                self.as_mut()
-                    .set_error_message(QString::from(&format!("Invalid JSON: {}", e)));
+                self.as_mut().set_error_message(QString::from(&format!("Invalid JSON: {}", e)));
                 return;
             }
         };
@@ -238,16 +223,14 @@ impl qobject::JsonModel {
         let path = match JsonPath::try_from(query.as_str()) {
             Ok(p) => p,
             Err(e) => {
-                self.as_mut()
-                    .set_error_message(QString::from(&format!("Invalid JSONPath: {}", e)));
+                self.as_mut().set_error_message(QString::from(&format!("Invalid JSONPath: {}", e)));
                 return;
             }
         };
 
         let results = path.find(&value);
         let result_str = serde_json::to_string_pretty(&results).unwrap_or_default();
-        self.as_mut()
-            .set_jsonpath_result(QString::from(&result_str));
+        self.as_mut().set_jsonpath_result(QString::from(&result_str));
     }
 
     pub fn convert_to_format(mut self: Pin<&mut Self>) {
@@ -263,8 +246,7 @@ impl qobject::JsonModel {
         let value: Value = match serde_json::from_str(&input) {
             Ok(v) => v,
             Err(e) => {
-                self.as_mut()
-                    .set_error_message(QString::from(&format!("Invalid JSON: {}", e)));
+                self.as_mut().set_error_message(QString::from(&format!("Invalid JSON: {}", e)));
                 return;
             }
         };
@@ -298,14 +280,12 @@ impl qobject::JsonModel {
                 }
             }
             _ => {
-                self.as_mut()
-                    .set_error_message(QString::from("Unknown format"));
+                self.as_mut().set_error_message(QString::from("Unknown format"));
                 return;
             }
         };
 
-        self.as_mut()
-            .set_converted_output(QString::from(&converted));
+        self.as_mut().set_converted_output(QString::from(&converted));
     }
 
     pub fn compare_json(mut self: Pin<&mut Self>) {
@@ -321,8 +301,7 @@ impl qobject::JsonModel {
         let value_a: Value = match serde_json::from_str(&input_a) {
             Ok(v) => v,
             Err(e) => {
-                self.as_mut()
-                    .set_error_message(QString::from(&format!("JSON A invalid: {}", e)));
+                self.as_mut().set_error_message(QString::from(&format!("JSON A invalid: {}", e)));
                 return;
             }
         };
@@ -330,8 +309,7 @@ impl qobject::JsonModel {
         let value_b: Value = match serde_json::from_str(&input_b) {
             Ok(v) => v,
             Err(e) => {
-                self.as_mut()
-                    .set_error_message(QString::from(&format!("JSON B invalid: {}", e)));
+                self.as_mut().set_error_message(QString::from(&format!("JSON B invalid: {}", e)));
                 return;
             }
         };
@@ -344,11 +322,7 @@ impl qobject::JsonModel {
             let diff = Self::generate_diff(&value_a, &value_b, "");
             self.as_mut().set_diff_result(QString::from(&format!(
                 "different:{}",
-                if diff.is_empty() {
-                    "Documents differ (structural differences)"
-                } else {
-                    &diff
-                }
+                if diff.is_empty() { "Documents differ (structural differences)" } else { &diff }
             )));
         }
     }
@@ -360,11 +334,8 @@ impl qobject::JsonModel {
             (Value::Object(map_a), Value::Object(map_b)) => {
                 // Check for keys in A but not in B
                 for key in map_a.keys() {
-                    let new_path = if path.is_empty() {
-                        key.clone()
-                    } else {
-                        format!("{}.{}", path, key)
-                    };
+                    let new_path =
+                        if path.is_empty() { key.clone() } else { format!("{}.{}", path, key) };
 
                     if !map_b.contains_key(key) {
                         diffs.push(format!("- {}: removed", new_path));
@@ -379,11 +350,8 @@ impl qobject::JsonModel {
                 // Check for keys in B but not in A
                 for key in map_b.keys() {
                     if !map_a.contains_key(key) {
-                        let new_path = if path.is_empty() {
-                            key.clone()
-                        } else {
-                            format!("{}.{}", path, key)
-                        };
+                        let new_path =
+                            if path.is_empty() { key.clone() } else { format!("{}.{}", path, key) };
                         diffs.push(format!("+ {}: added", new_path));
                     }
                 }

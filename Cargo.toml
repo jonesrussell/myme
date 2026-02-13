@@ -49,18 +49,18 @@ missing_docs = "allow"
 
 [workspace.lints.clippy]
 # Correctness
-clippy::unwrap_used = "deny"
-clippy::expect_used = "deny"
-clippy::panic = "deny"
-clippy::todo = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
 # Style
-clippy::needless_borrow = "deny"
-clippy::needless_lifetimes = "deny"
-clippy::clone_on_copy = "deny"
+needless_borrow = "deny"
+needless_lifetimes = "deny"
+clone_on_copy = "deny"
 # Ergonomics
-clippy::must_use_candidate = "warn"
-clippy::missing_errors_doc = "warn"
+must_use_candidate = "warn"
+missing_errors_doc = "warn"
 # Noise
-clippy::module_name_repetitions = "allow"
-clippy::too_many_arguments = "allow"
-clippy::large_enum_variant = "allow"
+module_name_repetitions = "allow"
+too_many_arguments = "allow"
+large_enum_variant = "allow"

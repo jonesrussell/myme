@@ -78,10 +78,7 @@ mod tests {
 
     #[test]
     fn test_create_request_serialization() {
-        let req = TodoCreateRequest {
-            content: "New note".to_string(),
-            is_checklist: false,
-        };
+        let req = TodoCreateRequest { content: "New note".to_string(), is_checklist: false };
 
         let json = serde_json::to_string(&req).unwrap();
         assert!(json.contains("New note"));

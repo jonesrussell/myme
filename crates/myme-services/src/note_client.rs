@@ -44,10 +44,7 @@ impl NoteClient {
         let store = self.0.clone();
         let label = label.to_string();
         tokio::task::spawn_blocking(move || {
-            store
-                .lock()
-                .list_by_label(&label)
-                .map_err(|e| anyhow::anyhow!("{}", e))
+            store.lock().list_by_label(&label).map_err(|e| anyhow::anyhow!("{}", e))
         })
         .await?
     }
@@ -56,10 +53,7 @@ impl NoteClient {
     pub async fn list_with_reminders(&self) -> Result<Vec<Todo>> {
         let store = self.0.clone();
         tokio::task::spawn_blocking(move || {
-            store
-                .lock()
-                .list_with_reminders()
-                .map_err(|e| anyhow::anyhow!("{}", e))
+            store.lock().list_with_reminders().map_err(|e| anyhow::anyhow!("{}", e))
         })
         .await?
     }
@@ -93,10 +87,7 @@ impl NoteClient {
     pub async fn update_todo(&self, id: i64, request: TodoUpdateRequest) -> Result<Todo> {
         let store = self.0.clone();
         tokio::task::spawn_blocking(move || {
-            store
-                .lock()
-                .update(id, request)
-                .map_err(|e| anyhow::anyhow!("{}", e))
+            store.lock().update(id, request).map_err(|e| anyhow::anyhow!("{}", e))
         })
         .await?
     }
@@ -105,10 +96,7 @@ impl NoteClient {
     pub async fn delete_todo(&self, id: i64) -> Result<()> {
         let store = self.0.clone();
         tokio::task::spawn_blocking(move || {
-            store
-                .lock()
-                .delete(id)
-                .map_err(|e| anyhow::anyhow!("{}", e))
+            store.lock().delete(id).map_err(|e| anyhow::anyhow!("{}", e))
         })
         .await?
     }
@@ -131,10 +119,7 @@ impl NoteClient {
     pub async fn toggle_done(&self, id: i64) -> Result<Todo> {
         let store = self.0.clone();
         tokio::task::spawn_blocking(move || {
-            store
-                .lock()
-                .toggle_done(id)
-                .map_err(|e| anyhow::anyhow!("{}", e))
+            store.lock().toggle_done(id).map_err(|e| anyhow::anyhow!("{}", e))
         })
         .await?
     }
@@ -191,10 +176,7 @@ mod tests {
         let client = create_client();
 
         let note = client
-            .create_todo(TodoCreateRequest {
-                content: "Original".to_string(),
-                is_checklist: false,
-            })
+            .create_todo(TodoCreateRequest { content: "Original".to_string(), is_checklist: false })
             .await
             .unwrap();
 
@@ -231,10 +213,7 @@ mod tests {
         let client = create_client();
 
         let note = client
-            .create_todo(TodoCreateRequest {
-                content: "Test".to_string(),
-                is_checklist: false,
-            })
+            .create_todo(TodoCreateRequest { content: "Test".to_string(), is_checklist: false })
             .await
             .unwrap();
 

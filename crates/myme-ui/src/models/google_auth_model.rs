@@ -141,6 +141,8 @@ impl qobject::GoogleAuthModel {
 
         // Spawn async operation
         std::thread::spawn(move || {
+            // Runtime creation in worker thread; failure is fatal.
+            #[allow(clippy::unwrap_used)]
             let rt = tokio::runtime::Runtime::new().unwrap();
             let result = rt.block_on(async {
                 let provider = GoogleOAuth2Provider::new(client_id, client_secret);
@@ -179,11 +181,7 @@ impl qobject::GoogleAuthModel {
                     access_token: token_response.access_token.clone(),
                     refresh_token: token_response.refresh_token,
                     expires_at,
-                    scopes: token_response
-                        .scope
-                        .split(' ')
-                        .map(|s| s.to_string())
-                        .collect(),
+                    scopes: token_response.scope.split(' ').map(|s| s.to_string()).collect(),
                 };
 
                 SecureStorage::store_token("google", &token_set)
@@ -199,13 +197,7 @@ impl qobject::GoogleAuthModel {
 
     /// Poll for async operation results
     pub fn poll_channel(mut self: Pin<&mut Self>) {
-        let msg = match self
-            .as_ref()
-            .rust()
-            .rx
-            .as_ref()
-            .and_then(|rx| rx.try_recv().ok())
-        {
+        let msg = match self.as_ref().rust().rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
             Some(m) => m,
             None => return,
         };
@@ -254,9 +246,8 @@ impl qobject::GoogleAuthModel {
 
     /// Open the application config directory in the system file manager.
     pub fn open_config_folder(self: Pin<&mut Self>) -> bool {
-        let config_dir = dirs::config_dir()
-            .map(|d| d.join("myme"))
-            .unwrap_or_else(|| PathBuf::from("."));
+        let config_dir =
+            dirs::config_dir().map(|d| d.join("myme")).unwrap_or_else(|| PathBuf::from("."));
         if !config_dir.exists() {
             if let Err(e) = std::fs::create_dir_all(&config_dir) {
                 tracing::warn!("Failed to create config dir: {}", e);
@@ -291,9 +282,7 @@ impl qobject::GoogleAuthModel {
             }
             Err(e) => {
                 tracing::error!("Sign out failed: {}", e);
-                self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                self.as_mut().rust_mut().set_error(myme_core::AppError::from(e).user_message());
             }
         }
     }
@@ -320,17 +309,11 @@ async fn wait_for_callback(port: u16, expected_state: &str) -> Result<String, St
 
     tracing::info!("Waiting for OAuth callback on port {}", port);
 
-    let (mut stream, _) = listener
-        .accept()
-        .await
-        .map_err(|e| format!("Accept failed: {}", e))?;
+    let (mut stream, _) = listener.accept().await.map_err(|e| format!("Accept failed: {}", e))?;
 
     let mut reader = BufReader::new(&mut stream);
     let mut request_line = String::new();
-    reader
-        .read_line(&mut request_line)
-        .await
-        .map_err(|e| format!("Read failed: {}", e))?;
+    reader.read_line(&mut request_line).await.map_err(|e| format!("Read failed: {}", e))?;
 
     // Parse the callback URL
     // GET /callback?code=xxx&state=yyy HTTP/1.1

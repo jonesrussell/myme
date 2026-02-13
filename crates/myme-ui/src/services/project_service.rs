@@ -51,9 +51,8 @@ pub fn request_fetch_repo(
     let runtime = match bridge::get_runtime() {
         Some(r) => r,
         None => {
-            let _ = tx.send(ProjectServiceMessage::FetchRepoDone(Err(
-                ProjectError::NotInitialized,
-            )));
+            let _ =
+                tx.send(ProjectServiceMessage::FetchRepoDone(Err(ProjectError::NotInitialized)));
             return;
         }
     };
@@ -62,10 +61,7 @@ pub fn request_fetch_repo(
         let result = client
             .get_repo(&owner, &repo)
             .await
-            .map(|repo| RepoInfo {
-                full_name: repo.full_name,
-                description: repo.description,
-            })
+            .map(|repo| RepoInfo { full_name: repo.full_name, description: repo.description })
             .map_err(|e| ProjectError::Network(e.to_string()));
         let _ = tx.send(ProjectServiceMessage::FetchRepoDone(result));
     });

@@ -144,8 +144,7 @@ impl GmailCache {
 
     /// Delete a message from the cache.
     pub fn delete_message(&self, id: &str) -> Result<()> {
-        self.conn
-            .execute("DELETE FROM messages WHERE id = ?1", params![id])?;
+        self.conn.execute("DELETE FROM messages WHERE id = ?1", params![id])?;
         Ok(())
     }
 
@@ -307,15 +306,9 @@ mod tests {
     fn test_list_messages() {
         let cache = GmailCache::in_memory().unwrap();
 
-        cache
-            .store_message(&create_test_message("msg1", true))
-            .unwrap();
-        cache
-            .store_message(&create_test_message("msg2", false))
-            .unwrap();
-        cache
-            .store_message(&create_test_message("msg3", true))
-            .unwrap();
+        cache.store_message(&create_test_message("msg1", true)).unwrap();
+        cache.store_message(&create_test_message("msg2", false)).unwrap();
+        cache.store_message(&create_test_message("msg3", true)).unwrap();
 
         let messages = cache.list_messages(None, 10).unwrap();
         assert_eq!(messages.len(), 3);
@@ -337,15 +330,9 @@ mod tests {
     fn test_unread_count() {
         let cache = GmailCache::in_memory().unwrap();
 
-        cache
-            .store_message(&create_test_message("msg1", true))
-            .unwrap();
-        cache
-            .store_message(&create_test_message("msg2", false))
-            .unwrap();
-        cache
-            .store_message(&create_test_message("msg3", true))
-            .unwrap();
+        cache.store_message(&create_test_message("msg1", true)).unwrap();
+        cache.store_message(&create_test_message("msg2", false)).unwrap();
+        cache.store_message(&create_test_message("msg3", true)).unwrap();
 
         assert_eq!(cache.unread_count().unwrap(), 2);
     }
@@ -392,9 +379,7 @@ mod tests {
     fn test_clear_cache() {
         let cache = GmailCache::in_memory().unwrap();
 
-        cache
-            .store_message(&create_test_message("msg1", true))
-            .unwrap();
+        cache.store_message(&create_test_message("msg1", true)).unwrap();
         cache.set_last_sync(12345).unwrap();
 
         cache.clear().unwrap();

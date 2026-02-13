@@ -45,9 +45,7 @@ pub fn get_google_access_token() -> Option<String> {
 
 /// Config directory for MyMe (e.g. ~/.config/myme on Linux).
 fn myme_config_dir() -> PathBuf {
-    dirs::config_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("myme")
+    dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("myme")
 }
 
 /// Path to a Google-related cache file under the config directory.

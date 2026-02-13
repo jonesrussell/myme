@@ -27,16 +27,12 @@ impl ProjectStore {
     /// Initialize database schema and run migrations if needed
     fn init_schema(&self) -> Result<()> {
         // Create schema version table
-        self.conn.execute(
-            "CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)",
-            [],
-        )?;
+        self.conn
+            .execute("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)", [])?;
 
         let version: i32 = self
             .conn
-            .query_row("SELECT version FROM schema_version LIMIT 1", [], |row| {
-                row.get(0)
-            })
+            .query_row("SELECT version FROM schema_version LIMIT 1", [], |row| row.get(0))
             .optional()?
             .unwrap_or(0);
 
@@ -183,10 +179,8 @@ impl ProjectStore {
             COMMIT;")?;
 
         self.conn.execute("DELETE FROM schema_version", [])?;
-        self.conn.execute(
-            "INSERT INTO schema_version (version) VALUES (?1)",
-            params![SCHEMA_VERSION],
-        )?;
+        self.conn
+            .execute("INSERT INTO schema_version (version) VALUES (?1)", params![SCHEMA_VERSION])?;
 
         Ok(())
     }
@@ -195,9 +189,7 @@ impl ProjectStore {
     fn migrate_to_v3(&self) -> Result<()> {
         let version: i32 = self
             .conn
-            .query_row("SELECT version FROM schema_version LIMIT 1", [], |row| {
-                row.get(0)
-            })
+            .query_row("SELECT version FROM schema_version LIMIT 1", [], |row| row.get(0))
             .optional()?
             .unwrap_or(2);
 
@@ -272,10 +264,8 @@ impl ProjectStore {
         )?;
 
         self.conn.execute("DELETE FROM schema_version", [])?;
-        self.conn.execute(
-            "INSERT INTO schema_version (version) VALUES (?1)",
-            params![SCHEMA_VERSION],
-        )?;
+        self.conn
+            .execute("INSERT INTO schema_version (version) VALUES (?1)", params![SCHEMA_VERSION])?;
 
         Ok(())
     }
@@ -288,12 +278,7 @@ impl ProjectStore {
              ON CONFLICT(id) DO UPDATE SET
                 name = excluded.name,
                 description = excluded.description",
-            params![
-                project.id,
-                project.name,
-                project.description,
-                project.created_at,
-            ],
+            params![project.id, project.name, project.description, project.created_at,],
         )?;
         Ok(())
     }
@@ -342,12 +327,9 @@ impl ProjectStore {
 
     /// Delete a project, its project_repos links, and its tasks
     pub fn delete_project(&self, id: &str) -> Result<()> {
-        self.conn
-            .execute("DELETE FROM tasks WHERE project_id = ?1", [id])?;
-        self.conn
-            .execute("DELETE FROM project_repos WHERE project_id = ?1", [id])?;
-        self.conn
-            .execute("DELETE FROM projects WHERE id = ?1", [id])?;
+        self.conn.execute("DELETE FROM tasks WHERE project_id = ?1", [id])?;
+        self.conn.execute("DELETE FROM project_repos WHERE project_id = ?1", [id])?;
+        self.conn.execute("DELETE FROM projects WHERE id = ?1", [id])?;
         Ok(())
     }
 
@@ -375,21 +357,17 @@ impl ProjectStore {
             .conn
             .prepare("SELECT repo_id FROM project_repos WHERE project_id = ?1 ORDER BY repo_id")?;
 
-        let repos = stmt
-            .query_map([project_id], |row| row.get(0))?
-            .collect::<Result<Vec<_>, _>>()?;
+        let repos =
+            stmt.query_map([project_id], |row| row.get(0))?.collect::<Result<Vec<_>, _>>()?;
         Ok(repos)
     }
 
     /// List all distinct repo_ids linked to any project (owner/repo format)
     pub fn list_all_linked_repo_ids(&self) -> Result<Vec<String>> {
-        let mut stmt = self
-            .conn
-            .prepare("SELECT DISTINCT repo_id FROM project_repos ORDER BY repo_id")?;
+        let mut stmt =
+            self.conn.prepare("SELECT DISTINCT repo_id FROM project_repos ORDER BY repo_id")?;
 
-        let repos = stmt
-            .query_map([], |row| row.get(0))?
-            .collect::<Result<Vec<_>, _>>()?;
+        let repos = stmt.query_map([], |row| row.get(0))?.collect::<Result<Vec<_>, _>>()?;
         Ok(repos)
     }
 
@@ -469,8 +447,7 @@ impl ProjectStore {
 
     /// Delete a task by id
     pub fn delete_task(&self, task_id: &str) -> Result<()> {
-        self.conn
-            .execute("DELETE FROM tasks WHERE id = ?1", [task_id])?;
+        self.conn.execute("DELETE FROM tasks WHERE id = ?1", [task_id])?;
         Ok(())
     }
 

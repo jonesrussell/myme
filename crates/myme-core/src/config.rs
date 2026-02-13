@@ -31,18 +31,12 @@ impl ValidationResult {
 
     /// Add an error
     pub fn add_error(&mut self, field: impl Into<String>, message: impl Into<String>) {
-        self.errors.push(ConfigValidationError {
-            field: field.into(),
-            message: message.into(),
-        });
+        self.errors.push(ConfigValidationError { field: field.into(), message: message.into() });
     }
 
     /// Add a warning
     pub fn add_warning(&mut self, field: impl Into<String>, message: impl Into<String>) {
-        self.warnings.push(ConfigValidationError {
-            field: field.into(),
-            message: message.into(),
-        });
+        self.warnings.push(ConfigValidationError { field: field.into(), message: message.into() });
     }
 
     /// Get a user-friendly message summarizing all errors
@@ -50,11 +44,7 @@ impl ValidationResult {
         if self.errors.is_empty() {
             return String::new();
         }
-        self.errors
-            .iter()
-            .map(|e| e.to_string())
-            .collect::<Vec<_>>()
-            .join("; ")
+        self.errors.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("; ")
     }
 }
 
@@ -131,10 +121,7 @@ pub struct WeatherConfig {
 
 impl Default for WeatherConfig {
     fn default() -> Self {
-        Self {
-            temperature_unit: TemperatureUnit::Auto,
-            refresh_minutes: 15,
-        }
+        Self { temperature_unit: TemperatureUnit::Auto, refresh_minutes: 15 }
     }
 }
 
@@ -173,22 +160,16 @@ pub struct ReposConfig {
 }
 
 fn default_repos_local_search_path_str() -> String {
-    default_repos_local_search_path()
-        .to_string_lossy()
-        .into_owned()
+    default_repos_local_search_path().to_string_lossy().into_owned()
 }
 
 fn default_repos_local_search_path() -> PathBuf {
-    dirs::home_dir()
-        .map(|h| h.join("dev"))
-        .unwrap_or_else(|| PathBuf::from("."))
+    dirs::home_dir().map(|h| h.join("dev")).unwrap_or_else(|| PathBuf::from("."))
 }
 
 impl Default for ReposConfig {
     fn default() -> Self {
-        Self {
-            local_search_path: default_repos_local_search_path_str(),
-        }
+        Self { local_search_path: default_repos_local_search_path_str() }
     }
 }
 
@@ -202,11 +183,7 @@ impl ReposConfig {
         if invalid {
             let fallback = default_repos_local_search_path();
             let fallback_valid = fallback.exists() && fallback.is_dir();
-            let effective = if fallback_valid {
-                fallback
-            } else {
-                PathBuf::from(".")
-            };
+            let effective = if fallback_valid { fallback } else { PathBuf::from(".") };
             (effective, true)
         } else {
             (configured, false)
@@ -256,15 +233,8 @@ pub struct GoogleConfig {
 impl GoogleConfig {
     /// Check if credentials are configured
     pub fn is_configured(&self) -> bool {
-        self.client_id
-            .as_ref()
-            .map(|s| !s.is_empty())
-            .unwrap_or(false)
-            && self
-                .client_secret
-                .as_ref()
-                .map(|s| !s.is_empty())
-                .unwrap_or(false)
+        self.client_id.as_ref().map(|s| !s.is_empty()).unwrap_or(false)
+            && self.client_secret.as_ref().map(|s| !s.is_empty()).unwrap_or(false)
     }
 }
 
@@ -287,9 +257,7 @@ fn default_notes_sqlite_path() -> String {
 
 impl Default for NotesConfig {
     fn default() -> Self {
-        Self {
-            sqlite_path: default_notes_sqlite_path(),
-        }
+        Self { sqlite_path: default_notes_sqlite_path() }
     }
 }
 
@@ -312,18 +280,12 @@ fn expand_path(path: &str) -> PathBuf {
 
 impl Default for Config {
     fn default() -> Self {
-        let config_dir = dirs::config_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("myme");
+        let config_dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("myme");
 
         Self {
             config_dir,
             services: ServiceConfig::default(),
-            ui: UiConfig {
-                window_width: 1200,
-                window_height: 800,
-                dark_mode: false,
-            },
+            ui: UiConfig { window_width: 1200, window_height: 800, dark_mode: false },
             weather: WeatherConfig::default(),
             projects: ProjectsConfig::default(),
             repos: ReposConfig::default(),
@@ -378,10 +340,7 @@ impl Config {
         let validation = config.validate();
 
         if !validation.is_valid() {
-            anyhow::bail!(
-                "Configuration validation failed: {}",
-                validation.error_summary()
-            );
+            anyhow::bail!("Configuration validation failed: {}", validation.error_summary());
         }
 
         if !validation.warnings.is_empty() {
@@ -403,27 +362,18 @@ impl Config {
         if self.ui.window_width == 0 {
             result.add_error("ui.window_width", "Window width must be greater than 0");
         } else if self.ui.window_width > 10000 {
-            result.add_warning(
-                "ui.window_width",
-                "Window width is unusually large (>10000)",
-            );
+            result.add_warning("ui.window_width", "Window width is unusually large (>10000)");
         }
 
         if self.ui.window_height == 0 {
             result.add_error("ui.window_height", "Window height must be greater than 0");
         } else if self.ui.window_height > 10000 {
-            result.add_warning(
-                "ui.window_height",
-                "Window height is unusually large (>10000)",
-            );
+            result.add_warning("ui.window_height", "Window height is unusually large (>10000)");
         }
 
         // Validate weather refresh interval
         if self.weather.refresh_minutes == 0 {
-            result.add_warning(
-                "weather.refresh_minutes",
-                "Weather refresh disabled (0 minutes)",
-            );
+            result.add_warning("weather.refresh_minutes", "Weather refresh disabled (0 minutes)");
         } else if self.weather.refresh_minutes > 1440 {
             result.add_warning(
                 "weather.refresh_minutes",
@@ -433,10 +383,8 @@ impl Config {
 
         // Validate projects sync interval
         if self.projects.sync_interval_minutes == 0 {
-            result.add_warning(
-                "projects.sync_interval_minutes",
-                "Project sync disabled (0 minutes)",
-            );
+            result
+                .add_warning("projects.sync_interval_minutes", "Project sync disabled (0 minutes)");
         }
 
         // Validate repos path
@@ -482,9 +430,7 @@ impl Config {
 
     /// Get the path to the configuration file
     fn config_path() -> Result<PathBuf> {
-        let config_dir = dirs::config_dir()
-            .context("Failed to get config directory")?
-            .join("myme");
+        let config_dir = dirs::config_dir().context("Failed to get config directory")?.join("myme");
 
         Ok(config_dir.join("config.toml"))
     }
@@ -500,11 +446,7 @@ mod tests {
         let config = Config::default();
         let result = config.validate();
         // Default config should be valid (only warnings, no errors)
-        assert!(
-            result.is_valid(),
-            "Default config should be valid: {:?}",
-            result.errors
-        );
+        assert!(result.is_valid(), "Default config should be valid: {:?}", result.errors);
     }
 
     #[test]

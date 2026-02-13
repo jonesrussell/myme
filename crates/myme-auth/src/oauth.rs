@@ -30,11 +30,7 @@ fn find_available_port() -> Option<u16> {
             return Some(port);
         }
     }
-    tracing::error!(
-        "No available port in range {}-{}",
-        OAUTH_PORT_START,
-        OAUTH_PORT_END - 1
-    );
+    tracing::error!("No available port in range {}-{}", OAUTH_PORT_START, OAUTH_PORT_END - 1);
     None
 }
 
@@ -131,10 +127,8 @@ pub trait OAuth2Provider: Send + Sync {
 
         // Calculate expiration
         // GitHub OAuth tokens don't expire, so default to 1 year if no expiration provided
-        let expires_in = token_result
-            .expires_in()
-            .map(|d| d.as_secs() as i64)
-            .unwrap_or(365 * 24 * 3600); // Default 1 year for non-expiring tokens
+        let expires_in =
+            token_result.expires_in().map(|d| d.as_secs() as i64).unwrap_or(365 * 24 * 3600); // Default 1 year for non-expiring tokens
         let expires_at = chrono::Utc::now().timestamp() + expires_in;
 
         // Extract scopes
@@ -354,10 +348,8 @@ pub trait OAuth2Provider: Send + Sync {
             .context("Failed to exchange authorization code")?;
 
         // Calculate expiration
-        let expires_in = token_result
-            .expires_in()
-            .map(|d| d.as_secs() as i64)
-            .unwrap_or(365 * 24 * 3600); // Default 1 year for non-expiring tokens
+        let expires_in =
+            token_result.expires_in().map(|d| d.as_secs() as i64).unwrap_or(365 * 24 * 3600); // Default 1 year for non-expiring tokens
         let expires_at = chrono::Utc::now().timestamp() + expires_in;
 
         // Extract scopes
@@ -387,9 +379,7 @@ pub trait OAuth2Provider: Send + Sync {
 
     /// Check if authenticated and token is valid
     fn is_authenticated(&self) -> bool {
-        self.get_token()
-            .map(|token| !token.is_expired())
-            .unwrap_or(false)
+        self.get_token().map(|token| !token.is_expired()).unwrap_or(false)
     }
 
     /// Sign out (delete stored token)

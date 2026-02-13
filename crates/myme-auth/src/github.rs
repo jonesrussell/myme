@@ -54,10 +54,7 @@ mod tests {
 
     #[test]
     fn test_github_auth_creation() {
-        let auth = GitHubAuth::new(
-            "test_client_id".to_string(),
-            "test_client_secret".to_string(),
-        );
+        let auth = GitHubAuth::new("test_client_id".to_string(), "test_client_secret".to_string());
 
         assert_eq!(auth.service_id(), "github");
         assert_eq!(auth.config().scopes.len(), 3);

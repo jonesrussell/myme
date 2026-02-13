@@ -41,12 +41,8 @@ impl CalendarClient {
     pub async fn list_calendars(&self) -> Result<Vec<Calendar>, CalendarError> {
         let url = format!("{}/users/me/calendarList", self.base_url);
 
-        let response = self
-            .client
-            .get(&url)
-            .header("Authorization", self.auth_header())
-            .send()
-            .await?;
+        let response =
+            self.client.get(&url).header("Authorization", self.auth_header()).send().await?;
 
         let resp: CalendarListResponse = self.handle_response(response).await?;
         Ok(resp.items.into_iter().map(Calendar::from).collect())
@@ -73,12 +69,8 @@ impl CalendarClient {
             url.push_str(&format!("&pageToken={}", pt));
         }
 
-        let response = self
-            .client
-            .get(&url)
-            .header("Authorization", self.auth_header())
-            .send()
-            .await?;
+        let response =
+            self.client.get(&url).header("Authorization", self.auth_header()).send().await?;
 
         self.handle_response(response).await
     }
@@ -97,12 +89,8 @@ impl CalendarClient {
             urlencoding::encode(event_id),
         );
 
-        let response = self
-            .client
-            .get(&url)
-            .header("Authorization", self.auth_header())
-            .send()
-            .await?;
+        let response =
+            self.client.get(&url).header("Authorization", self.auth_header()).send().await?;
 
         let api_event: ApiEvent = self.handle_response(response).await?;
         Ok(Event::from_api(api_event, calendar_id))
@@ -119,11 +107,8 @@ impl CalendarClient {
         description: Option<&str>,
         location: Option<&str>,
     ) -> Result<Event, CalendarError> {
-        let url = format!(
-            "{}/calendars/{}/events",
-            self.base_url,
-            urlencoding::encode(calendar_id),
-        );
+        let url =
+            format!("{}/calendars/{}/events", self.base_url, urlencoding::encode(calendar_id),);
 
         let mut body = serde_json::json!({
             "summary": summary,
@@ -173,34 +158,19 @@ impl CalendarClient {
         let mut body = serde_json::Map::new();
 
         if let Some(s) = summary {
-            body.insert(
-                "summary".to_string(),
-                serde_json::Value::String(s.to_string()),
-            );
+            body.insert("summary".to_string(), serde_json::Value::String(s.to_string()));
         }
         if let Some(s) = start {
-            body.insert(
-                "start".to_string(),
-                serde_json::json!({ "dateTime": s.to_rfc3339() }),
-            );
+            body.insert("start".to_string(), serde_json::json!({ "dateTime": s.to_rfc3339() }));
         }
         if let Some(e) = end {
-            body.insert(
-                "end".to_string(),
-                serde_json::json!({ "dateTime": e.to_rfc3339() }),
-            );
+            body.insert("end".to_string(), serde_json::json!({ "dateTime": e.to_rfc3339() }));
         }
         if let Some(d) = description {
-            body.insert(
-                "description".to_string(),
-                serde_json::Value::String(d.to_string()),
-            );
+            body.insert("description".to_string(), serde_json::Value::String(d.to_string()));
         }
         if let Some(l) = location {
-            body.insert(
-                "location".to_string(),
-                serde_json::Value::String(l.to_string()),
-            );
+            body.insert("location".to_string(), serde_json::Value::String(l.to_string()));
         }
 
         let response = self
@@ -229,12 +199,8 @@ impl CalendarClient {
             urlencoding::encode(event_id),
         );
 
-        let response = self
-            .client
-            .delete(&url)
-            .header("Authorization", self.auth_header())
-            .send()
-            .await?;
+        let response =
+            self.client.delete(&url).header("Authorization", self.auth_header()).send().await?;
 
         // Delete returns 204 No Content on success
         if response.status().is_success() {
@@ -256,12 +222,8 @@ impl CalendarClient {
             urlencoding::encode(text),
         );
 
-        let response = self
-            .client
-            .post(&url)
-            .header("Authorization", self.auth_header())
-            .send()
-            .await?;
+        let response =
+            self.client.post(&url).header("Authorization", self.auth_header()).send().await?;
 
         let api_event: ApiEvent = self.handle_response(response).await?;
         Ok(Event::from_api(api_event, calendar_id))
@@ -353,17 +315,12 @@ mod tests {
             .await;
 
         let client = CalendarClient::new_with_base_url("test_token", &mock_server.uri());
-        let time_min = DateTime::parse_from_rfc3339("2024-02-01T00:00:00Z")
-            .unwrap()
-            .with_timezone(&Utc);
-        let time_max = DateTime::parse_from_rfc3339("2024-02-28T23:59:59Z")
-            .unwrap()
-            .with_timezone(&Utc);
+        let time_min =
+            DateTime::parse_from_rfc3339("2024-02-01T00:00:00Z").unwrap().with_timezone(&Utc);
+        let time_max =
+            DateTime::parse_from_rfc3339("2024-02-28T23:59:59Z").unwrap().with_timezone(&Utc);
 
-        let response = client
-            .list_events("primary", time_min, time_max, None)
-            .await
-            .unwrap();
+        let response = client.list_events("primary", time_min, time_max, None).await.unwrap();
 
         assert_eq!(response.items.len(), 1);
         assert_eq!(response.items[0].summary, Some("Meeting".to_string()));

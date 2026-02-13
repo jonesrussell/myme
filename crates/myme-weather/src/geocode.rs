@@ -98,10 +98,7 @@ pub async fn reverse_geocode(location: &Location) -> Option<String> {
         .filter(|s| !s.is_empty() && s.as_str() != place)
         .map(String::as_str)
         .or_else(|| {
-            country
-                .as_ref()
-                .filter(|c| !c.is_empty() && c.as_str() != place)
-                .map(String::as_str)
+            country.as_ref().filter(|c| !c.is_empty() && c.as_str() != place).map(String::as_str)
         });
 
     let result = match suffix {

@@ -168,11 +168,10 @@ impl GitHubClient {
     where
         F: Fn() -> reqwest::RequestBuilder,
     {
-        let response = with_retry(self.retry_config.clone(), || async {
-            build_request().send().await
-        })
-        .await
-        .context("Failed to send request after retries")?;
+        let response =
+            with_retry(self.retry_config.clone(), || async { build_request().send().await })
+                .await
+                .context("Failed to send request after retries")?;
 
         let status = response.status();
 
@@ -194,9 +193,7 @@ impl GitHubClient {
         let response = self
             .send_with_retry(|| {
                 self.build_request(
-                    self.client
-                        .get(url.clone())
-                        .query(&[("sort", "updated"), ("per_page", "100")]),
+                    self.client.get(url.clone()).query(&[("sort", "updated"), ("per_page", "100")]),
                 )
             })
             .await?;
@@ -213,9 +210,8 @@ impl GitHubClient {
         tracing::debug!("Fetching repository {}/{}", owner, repo);
 
         let url = self.base_url.join(&format!("repos/{}/{}", owner, repo))?;
-        let response = self
-            .send_with_retry(|| self.build_request(self.client.get(url.clone())))
-            .await?;
+        let response =
+            self.send_with_retry(|| self.build_request(self.client.get(url.clone()))).await?;
 
         let repo: GitHubRepo = response.json().await?;
         Ok(repo)
@@ -246,15 +242,11 @@ impl GitHubClient {
     pub async fn list_issues(&self, owner: &str, repo: &str) -> Result<Vec<GitHubIssue>> {
         tracing::debug!("Fetching issues for {}/{}", owner, repo);
 
-        let url = self
-            .base_url
-            .join(&format!("repos/{}/{}/issues", owner, repo))?;
+        let url = self.base_url.join(&format!("repos/{}/{}/issues", owner, repo))?;
         let response = self
             .send_with_retry(|| {
                 self.build_request(
-                    self.client
-                        .get(url.clone())
-                        .query(&[("state", "all"), ("per_page", "100")]),
+                    self.client.get(url.clone()).query(&[("state", "all"), ("per_page", "100")]),
                 )
             })
             .await?;
@@ -274,9 +266,7 @@ impl GitHubClient {
     ) -> Result<Vec<GitHubIssue>> {
         tracing::debug!("Fetching issues for {}/{} since {}", owner, repo, since);
 
-        let url = self
-            .base_url
-            .join(&format!("repos/{}/{}/issues", owner, repo))?;
+        let url = self.base_url.join(&format!("repos/{}/{}/issues", owner, repo))?;
         let since_owned = since.to_string();
         let response = self
             .send_with_retry(|| {
@@ -303,9 +293,7 @@ impl GitHubClient {
     ) -> Result<GitHubIssue> {
         tracing::debug!("Creating issue in {}/{}: {}", owner, repo, req.title);
 
-        let url = self
-            .base_url
-            .join(&format!("repos/{}/{}/issues", owner, repo))?;
+        let url = self.base_url.join(&format!("repos/{}/{}/issues", owner, repo))?;
         let request_json = serde_json::to_value(&req).context("Failed to serialize request")?;
 
         let response = self
@@ -331,9 +319,8 @@ impl GitHubClient {
     ) -> Result<GitHubIssue> {
         tracing::debug!("Updating issue #{} in {}/{}", issue_number, owner, repo);
 
-        let url = self
-            .base_url
-            .join(&format!("repos/{}/{}/issues/{}", owner, repo, issue_number))?;
+        let url =
+            self.base_url.join(&format!("repos/{}/{}/issues/{}", owner, repo, issue_number))?;
         let request_json = serde_json::to_value(&req).context("Failed to serialize request")?;
 
         let response = self
@@ -393,12 +380,9 @@ impl GitHubClient {
     pub async fn list_labels(&self, owner: &str, repo: &str) -> Result<Vec<GitHubLabel>> {
         tracing::debug!("Fetching labels for {}/{}", owner, repo);
 
-        let url = self
-            .base_url
-            .join(&format!("repos/{}/{}/labels", owner, repo))?;
-        let response = self
-            .send_with_retry(|| self.build_request(self.client.get(url.clone())))
-            .await?;
+        let url = self.base_url.join(&format!("repos/{}/{}/labels", owner, repo))?;
+        let response =
+            self.send_with_retry(|| self.build_request(self.client.get(url.clone()))).await?;
 
         let labels: Vec<GitHubLabel> = response.json().await?;
 
@@ -414,9 +398,7 @@ impl GitHubClient {
     ) -> Result<GitHubLabel> {
         tracing::debug!("Creating label {} in {}/{}", req.name, owner, repo);
 
-        let url = self
-            .base_url
-            .join(&format!("repos/{}/{}/labels", owner, repo))?;
+        let url = self.base_url.join(&format!("repos/{}/{}/labels", owner, repo))?;
         let request_json = serde_json::to_value(&req).context("Failed to serialize request")?;
 
         let response = self
@@ -438,17 +420,11 @@ impl GitHubClient {
         issue_number: i32,
         labels: Vec<String>,
     ) -> Result<Vec<GitHubLabel>> {
-        tracing::debug!(
-            "Setting labels on issue #{} in {}/{}",
-            issue_number,
-            owner,
-            repo
-        );
+        tracing::debug!("Setting labels on issue #{} in {}/{}", issue_number, owner, repo);
 
-        let url = self.base_url.join(&format!(
-            "repos/{}/{}/issues/{}/labels",
-            owner, repo, issue_number
-        ))?;
+        let url = self
+            .base_url
+            .join(&format!("repos/{}/{}/issues/{}/labels", owner, repo, issue_number))?;
 
         #[derive(Serialize)]
         struct SetLabelsRequest {
@@ -474,9 +450,7 @@ impl GitHubClient {
     pub async fn list_workflows(&self, owner: &str, repo: &str) -> Result<Vec<GitHubWorkflow>> {
         tracing::debug!("Fetching workflows for {}/{}", owner, repo);
 
-        let url = self
-            .base_url
-            .join(&format!("repos/{}/{}/actions/workflows", owner, repo))?;
+        let url = self.base_url.join(&format!("repos/{}/{}/actions/workflows", owner, repo))?;
         let response = self
             .send_with_retry(|| {
                 self.build_request(self.client.get(url.clone()).query(&[("per_page", "100")]))
@@ -484,12 +458,7 @@ impl GitHubClient {
             .await?;
 
         let body: ListWorkflowsResponse = response.json().await?;
-        tracing::info!(
-            "Fetched {} workflows for {}/{}",
-            body.workflows.len(),
-            owner,
-            repo
-        );
+        tracing::info!("Fetched {} workflows for {}/{}", body.workflows.len(), owner, repo);
         Ok(body.workflows)
     }
 }
