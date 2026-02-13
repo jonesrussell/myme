@@ -123,6 +123,27 @@ Page {
                         verticalAlignment: Text.AlignVCenter
                     }
                 }
+
+                TextField {
+                    id: labelFilterField
+                    placeholderText: "Filter by label"
+                    Layout.preferredWidth: 120
+                    font.pixelSize: Theme.fontSizeSmall
+                    onAccepted: {
+                        if (text.trim().length > 0) {
+                            noteModel.set_filter("label:" + text.trim());
+                        } else {
+                            noteModel.set_filter("all");
+                        }
+                    }
+
+                    background: Rectangle {
+                        color: Theme.inputBg
+                        border.color: Theme.inputBorder
+                        border.width: 1
+                        radius: Theme.inputRadius
+                    }
+                }
             }
         }
     }

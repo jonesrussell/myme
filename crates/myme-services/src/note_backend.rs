@@ -62,6 +62,9 @@ pub trait NoteBackend: Send {
     /// List archived notes.
     fn list_archived(&self) -> NoteBackendResult<Vec<Todo>>;
 
+    /// List notes filtered by label (non-archived only).
+    fn list_by_label(&self, label: &str) -> NoteBackendResult<Vec<Todo>>;
+
     /// Get a note by ID.
     ///
     /// Returns `None` if the note doesn't exist.

@@ -122,6 +122,36 @@ Rectangle {
                     }
                 }
 
+                Flow {
+                    Layout.fillWidth: true
+                    spacing: Theme.spacingXs
+                    visible: noteModel && noteModel.get_labels(noteIndex).length > 0
+
+                    Repeater {
+                        model: noteModel ? noteModel.get_labels(noteIndex) : []
+
+                        delegate: Rectangle {
+                            width: labelText.implicitWidth + Theme.spacingSm * 2
+                            height: labelText.implicitHeight + Theme.spacingXs
+                            radius: 4
+                            color: Theme.primary + "20"
+
+                            Label {
+                                id: labelText
+                                anchors.centerIn: parent
+                                text: modelData
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.primary
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: noteModel.remove_label(noteIndex, modelData)
+                            }
+                        }
+                    }
+                }
+
                 Label {
                     text: noteModel ? noteModel.get_created_at(noteIndex) : ""
                     font.pixelSize: Theme.fontSizeSmall
@@ -267,6 +297,10 @@ Rectangle {
                                 text: "Promote to Project"
                                 onTriggered: noteCard.promoteRequested(noteIndex, noteModel.get_content(noteIndex))
                             }
+                            MenuItem {
+                                text: "Add label"
+                                onTriggered: addLabelPopup.open()
+                            }
                         }
                     }
                 }
@@ -277,6 +311,53 @@ Rectangle {
     ColorPicker {
         id: colorPicker
         onColorPicked: (hex) => noteModel.set_color(noteIndex, hex)
+    }
+
+    Popup {
+        id: addLabelPopup
+        width: 220
+        padding: Theme.spacingMd
+
+        background: Rectangle {
+            color: Theme.surface
+            border.color: Theme.border
+            border.width: 1
+            radius: Theme.cardRadius
+        }
+
+        ColumnLayout {
+            width: parent.width - Theme.spacingMd * 2
+            spacing: Theme.spacingSm
+
+            Label {
+                text: "Add label"
+                font.pixelSize: Theme.fontSizeMedium
+                font.bold: true
+                color: Theme.text
+            }
+            TextField {
+                id: labelField
+                placeholderText: "Label name"
+                Layout.fillWidth: true
+                onAccepted: {
+                    if (text.trim().length > 0) {
+                        noteModel.add_label(noteIndex, text.trim());
+                    }
+                    text = "";
+                    addLabelPopup.close();
+                }
+            }
+            Button {
+                text: "Add"
+                onClicked: {
+                    if (labelField.text.trim().length > 0) {
+                        noteModel.add_label(noteIndex, labelField.text.trim());
+                    }
+                    labelField.text = "";
+                    addLabelPopup.close();
+                }
+            }
+        }
     }
 
     signal promoteRequested(int index, string title)

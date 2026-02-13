@@ -65,6 +65,12 @@ pub mod qobject {
         #[qinvokable]
         fn set_filter(self: Pin<&mut NoteModel>, filter: &QString);
 
+        #[qinvokable]
+        fn add_label(self: Pin<&mut NoteModel>, index: i32, label: &QString);
+
+        #[qinvokable]
+        fn remove_label(self: Pin<&mut NoteModel>, index: i32, label: &QString);
+
         /// Poll for async operation results. Call this from a QML Timer.
         #[qinvokable]
         fn poll_channel(self: Pin<&mut NoteModel>);
@@ -121,11 +127,17 @@ enum OpState {
     Deleting(usize),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Clone, PartialEq, Eq)]
 enum NoteFilter {
-    #[default]
     All,
     Archived,
+    Label(String),
+}
+
+impl Default for NoteFilter {
+    fn default() -> Self {
+        NoteFilter::All
+    }
 }
 
 #[derive(Default)]
@@ -216,9 +228,10 @@ impl qobject::NoteModel {
         self.as_mut().rust_mut().clear_error();
         self.as_mut().rust_mut().op_state = OpState::Fetching;
 
-        let service_filter = match self.as_ref().rust().filter {
+        let service_filter = match &self.as_ref().rust().filter {
             NoteFilter::All => ServiceFilter::All,
             NoteFilter::Archived => ServiceFilter::Archived,
+            NoteFilter::Label(label) => ServiceFilter::Label(label.clone()),
         };
         request_note_fetch_with_filter(&tx, client, service_filter);
     }
@@ -447,13 +460,50 @@ impl qobject::NoteModel {
     }
 
     /// Set filter and refetch
+    /// Add a label to a note
+    pub fn add_label(mut self: Pin<&mut Self>, index: i32, label: &QString) {
+        let label_str = label.to_string().trim().to_string();
+        if label_str.is_empty() {
+            return;
+        }
+        let note = match self.rust().get_note(index) {
+            Some(n) => n.clone(),
+            None => return,
+        };
+        if note.labels.contains(&label_str) {
+            return;
+        }
+        let mut labels = note.labels.clone();
+        labels.push(label_str);
+        let mut req = TodoUpdateRequest::default();
+        req.labels = Some(labels);
+        self.as_mut().send_update(index, req);
+    }
+
+    /// Remove a label from a note
+    pub fn remove_label(mut self: Pin<&mut Self>, index: i32, label: &QString) {
+        let label_str = label.to_string();
+        let note = match self.rust().get_note(index) {
+            Some(n) => n.clone(),
+            None => return,
+        };
+        let labels: Vec<String> = note.labels.into_iter().filter(|l| l != &label_str).collect();
+        let mut req = TodoUpdateRequest::default();
+        req.labels = Some(labels);
+        self.as_mut().send_update(index, req);
+    }
+
     pub fn set_filter(mut self: Pin<&mut Self>, filter: &QString) {
         let f = filter.to_string();
-        let new_filter = match f.as_str() {
-            "archived" => NoteFilter::Archived,
-            _ => NoteFilter::All,
+        let new_filter = if f.starts_with("label:") {
+            NoteFilter::Label(f.strip_prefix("label:").unwrap_or("").to_string())
+        } else {
+            match f.as_str() {
+                "archived" => NoteFilter::Archived,
+                _ => NoteFilter::All,
+            }
         };
-        self.as_mut().rust_mut().filter = new_filter;
+        self.as_mut().rust_mut().filter = new_filter.clone();
 
         let client = match &self.as_ref().rust().client {
             Some(c) => c.clone(),
@@ -466,9 +516,10 @@ impl qobject::NoteModel {
         };
         self.as_mut().set_loading(true);
         self.as_mut().rust_mut().op_state = OpState::Fetching;
-        let service_filter = match new_filter {
+        let service_filter = match &new_filter {
             NoteFilter::All => ServiceFilter::All,
             NoteFilter::Archived => ServiceFilter::Archived,
+            NoteFilter::Label(label) => ServiceFilter::Label(label.clone()),
         };
         request_note_fetch_with_filter(&tx, client, service_filter);
     }
@@ -526,9 +577,9 @@ impl qobject::NoteModel {
                         tracing::info!("Updated note at index {}", index);
                         self.as_mut().rust_mut().clear_error();
                         if index < self.as_ref().rust().notes.len() {
-                            let filter = self.as_ref().rust().filter;
-                            let should_remove = (filter == NoteFilter::All && updated_note.archived)
-                                || (filter == NoteFilter::Archived && !updated_note.archived);
+                            let filter = &self.as_ref().rust().filter;
+                            let should_remove = (matches!(filter, NoteFilter::All) && updated_note.archived)
+                                || (matches!(filter, NoteFilter::Archived) && !updated_note.archived);
                             if should_remove {
                                 self.as_mut().rust_mut().notes.remove(index);
                             } else {

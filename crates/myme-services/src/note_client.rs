@@ -39,6 +39,19 @@ impl NoteClient {
         .await?
     }
 
+    /// List notes filtered by label.
+    pub async fn list_by_label(&self, label: &str) -> Result<Vec<Todo>> {
+        let store = self.0.clone();
+        let label = label.to_string();
+        tokio::task::spawn_blocking(move || {
+            store
+                .lock()
+                .list_by_label(&label)
+                .map_err(|e| anyhow::anyhow!("{}", e))
+        })
+        .await?
+    }
+
     /// Get a note by ID.
     pub async fn get_todo(&self, id: i64) -> Result<Todo> {
         let store = self.0.clone();

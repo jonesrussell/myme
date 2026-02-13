@@ -81,11 +81,11 @@ pub fn request_fetch_with_filter(
 
     runtime.spawn(async move {
         let result = match filter {
-            NoteFilter::All | NoteFilter::Pinned | NoteFilter::Reminders | NoteFilter::Label(_) => {
-                // For now, list_todos returns all non-archived; Pinned/Reminders/Label filters can be applied in-memory later
+            NoteFilter::All | NoteFilter::Pinned | NoteFilter::Reminders => {
                 client.list_todos().await
             }
             NoteFilter::Archived => client.list_archived().await,
+            NoteFilter::Label(ref label) => client.list_by_label(label).await,
         };
         let result = result.map_err(|e| NoteError::Network(e.to_string()));
         let _ = tx.send(NoteServiceMessage::FetchDone(result));

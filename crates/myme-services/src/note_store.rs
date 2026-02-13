@@ -200,6 +200,14 @@ impl NoteBackend for SqliteNoteStore {
             .map_err(|e| NoteBackendError::storage(e.to_string()))
     }
 
+    fn list_by_label(&self, label: &str) -> NoteBackendResult<Vec<Todo>> {
+        let notes = self.list()?;
+        Ok(notes
+            .into_iter()
+            .filter(|n| n.labels.iter().any(|l| l == label))
+            .collect())
+    }
+
     fn get(&self, id: i64) -> NoteBackendResult<Option<Todo>> {
         let mut stmt = self
             .conn
