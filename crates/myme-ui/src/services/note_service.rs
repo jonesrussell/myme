@@ -46,9 +46,28 @@ pub enum NoteServiceMessage {
     },
 }
 
-/// Request to fetch all notes asynchronously.
+/// Filter mode for note listing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NoteFilter {
+    All,
+    Archived,
+    Pinned,
+    Reminders,
+    Label(String),
+}
+
+/// Request to fetch notes asynchronously.
 /// Sends `FetchDone` on the channel when complete.
 pub fn request_fetch(tx: &std::sync::mpsc::Sender<NoteServiceMessage>, client: Arc<NoteClient>) {
+    request_fetch_with_filter(tx, client, NoteFilter::All);
+}
+
+/// Request to fetch notes with filter.
+pub fn request_fetch_with_filter(
+    tx: &std::sync::mpsc::Sender<NoteServiceMessage>,
+    client: Arc<NoteClient>,
+    filter: NoteFilter,
+) {
     let tx = tx.clone();
     let runtime = match bridge::get_runtime() {
         Some(r) => r,
@@ -61,10 +80,14 @@ pub fn request_fetch(tx: &std::sync::mpsc::Sender<NoteServiceMessage>, client: A
     };
 
     runtime.spawn(async move {
-        let result = client
-            .list_todos()
-            .await
-            .map_err(|e| NoteError::Network(e.to_string()));
+        let result = match filter {
+            NoteFilter::All | NoteFilter::Pinned | NoteFilter::Reminders | NoteFilter::Label(_) => {
+                // For now, list_todos returns all non-archived; Pinned/Reminders/Label filters can be applied in-memory later
+                client.list_todos().await
+            }
+            NoteFilter::Archived => client.list_archived().await,
+        };
+        let result = result.map_err(|e| NoteError::Network(e.to_string()));
         let _ = tx.send(NoteServiceMessage::FetchDone(result));
     });
 }
@@ -75,6 +98,7 @@ pub fn request_create(
     tx: &std::sync::mpsc::Sender<NoteServiceMessage>,
     client: Arc<NoteClient>,
     content: String,
+    is_checklist: bool,
 ) {
     let tx = tx.clone();
     let runtime = match bridge::get_runtime() {
@@ -88,7 +112,10 @@ pub fn request_create(
     };
 
     runtime.spawn(async move {
-        let request = TodoCreateRequest { content };
+        let request = TodoCreateRequest {
+            content,
+            is_checklist,
+        };
         let result = client
             .create_todo(request)
             .await
@@ -103,7 +130,7 @@ pub fn request_update(
     tx: &std::sync::mpsc::Sender<NoteServiceMessage>,
     client: Arc<NoteClient>,
     index: usize,
-    note_id: String,
+    note_id: i64,
     request: TodoUpdateRequest,
 ) {
     let tx = tx.clone();
@@ -120,7 +147,7 @@ pub fn request_update(
 
     runtime.spawn(async move {
         let result = client
-            .update_todo(&note_id, request)
+            .update_todo(note_id, request)
             .await
             .map_err(|e| NoteError::Network(e.to_string()));
         let _ = tx.send(NoteServiceMessage::UpdateDone { index, result });
@@ -133,19 +160,12 @@ pub fn request_toggle_done(
     tx: &std::sync::mpsc::Sender<NoteServiceMessage>,
     client: Arc<NoteClient>,
     index: usize,
-    note_id: String,
+    note_id: i64,
     current_done: bool,
 ) {
-    request_update(
-        tx,
-        client,
-        index,
-        note_id,
-        TodoUpdateRequest {
-            content: None,
-            done: Some(!current_done),
-        },
-    );
+    let mut req = TodoUpdateRequest::default();
+    req.done = Some(!current_done);
+    request_update(tx, client, index, note_id, req);
 }
 
 /// Request to delete a note asynchronously.
@@ -154,7 +174,7 @@ pub fn request_delete(
     tx: &std::sync::mpsc::Sender<NoteServiceMessage>,
     client: Arc<NoteClient>,
     index: usize,
-    note_id: String,
+    note_id: i64,
 ) {
     let tx = tx.clone();
     let runtime = match bridge::get_runtime() {
@@ -170,7 +190,7 @@ pub fn request_delete(
 
     runtime.spawn(async move {
         let result = client
-            .delete_todo(&note_id)
+            .delete_todo(note_id)
             .await
             .map(|_| ())
             .map_err(|e| NoteError::Network(e.to_string()));

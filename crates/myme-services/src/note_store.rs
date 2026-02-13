@@ -1,19 +1,16 @@
 //! SQLite-based note storage implementation.
 //!
 //! This module provides `SqliteNoteStore`, a local SQLite implementation of
-//! the `NoteBackend` trait. The schema matches Godo's database for easy migration.
+//! the `NoteBackend` trait. Schema supports Keep-style notes with color, pin, archive, labels, checklists, reminders.
 
 use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection};
 use std::path::Path;
-use uuid::Uuid;
 
 use crate::note_backend::{validate_content, NoteBackend, NoteBackendError, NoteBackendResult};
-use crate::todo::Todo;
+use crate::todo::{Todo, TodoUpdateRequest};
 
 /// SQLite-based note storage.
-///
-/// Stores notes in a local SQLite database with a schema compatible with Godo.
 pub struct SqliteNoteStore {
     conn: Connection,
 }
@@ -40,38 +37,81 @@ impl SqliteNoteStore {
 
     /// Initialize the database schema.
     ///
-    /// Schema matches Godo for easy migration:
-    /// - id: UUID v4 primary key
-    /// - content: Note text (max 1000 chars)
-    /// - done: Completion status (0/1)
-    /// - created_at: RFC3339 timestamp
-    /// - updated_at: RFC3339 timestamp
+    /// Detects old schema (TEXT id or missing pinned column) and migrates by
+    /// dropping the table and recreating. Data loss is acceptable (single test note).
     fn init_schema(&self) -> anyhow::Result<()> {
+        let needs_migration = self.detect_old_schema()?;
+
+        if needs_migration {
+            self.conn
+                .execute_batch("DROP TABLE IF EXISTS notes;")
+                .map_err(|e| anyhow::anyhow!("Failed to drop notes table: {}", e))?;
+        }
+
         self.conn.execute_batch(
             r#"
             CREATE TABLE IF NOT EXISTS notes (
-                id TEXT PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 content TEXT NOT NULL,
                 done INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
+                updated_at TEXT NOT NULL,
+                color TEXT,
+                pinned INTEGER NOT NULL DEFAULT 0,
+                archived INTEGER NOT NULL DEFAULT 0,
+                labels TEXT NOT NULL DEFAULT '[]',
+                is_checklist INTEGER NOT NULL DEFAULT 0,
+                reminder TEXT NULL
             );
 
-            CREATE INDEX IF NOT EXISTS idx_notes_created_at ON notes(created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_notes_archived ON notes(archived);
+            CREATE INDEX IF NOT EXISTS idx_notes_pinned_updated ON notes(pinned DESC, updated_at DESC);
             "#,
         )?;
         Ok(())
     }
 
+    /// Detect if we have the old schema (TEXT id or missing pinned column).
+    fn detect_old_schema(&self) -> anyhow::Result<bool> {
+        let table_exists: i32 = self.conn.query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='notes'",
+            [],
+            |row| row.get(0),
+        )?;
+        if table_exists == 0 {
+            return Ok(false);
+        }
+
+        let table_info: Vec<(String, String)> = self
+            .conn
+            .prepare("PRAGMA table_info(notes)")?
+            .query_map([], |row| Ok((row.get::<_, String>(1)?, row.get::<_, String>(2)?)))?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let has_pinned = table_info.iter().any(|(name, _)| name == "pinned");
+        let id_type = table_info
+            .iter()
+            .find(|(name, _)| name == "id")
+            .map(|(_, t)| t.as_str())
+            .unwrap_or("");
+
+        Ok(!has_pinned || id_type == "TEXT")
+    }
+
     /// Convert a database row to a Todo.
     fn row_to_todo(row: &rusqlite::Row) -> rusqlite::Result<Todo> {
-        let id: String = row.get(0)?;
+        let id: i64 = row.get(0)?;
         let content: String = row.get(1)?;
         let done: i32 = row.get(2)?;
         let created_at_str: String = row.get(3)?;
         let updated_at_str: String = row.get(4)?;
+        let color: Option<String> = row.get(5)?;
+        let pinned: i32 = row.get(6)?;
+        let archived: i32 = row.get(7)?;
+        let labels_str: String = row.get(8)?;
+        let is_checklist: i32 = row.get(9)?;
+        let reminder_str: Option<String> = row.get(10)?;
 
-        // Parse timestamps, falling back to now if invalid
         let created_at = DateTime::parse_from_rfc3339(&created_at_str)
             .map(|dt| dt.with_timezone(&Utc))
             .unwrap_or_else(|_| Utc::now());
@@ -79,41 +119,31 @@ impl SqliteNoteStore {
             .map(|dt| dt.with_timezone(&Utc))
             .unwrap_or_else(|_| Utc::now());
 
+        let labels: Vec<String> = serde_json::from_str(&labels_str).unwrap_or_default();
+
+        let reminder = reminder_str.and_then(|s| {
+            DateTime::parse_from_rfc3339(&s)
+                .ok()
+                .map(|dt| dt.with_timezone(&Utc))
+        });
+
         Ok(Todo {
             id,
             content,
             done: done != 0,
             created_at,
             updated_at,
+            color,
+            pinned: pinned != 0,
+            archived: archived != 0,
+            labels,
+            is_checklist: is_checklist != 0,
+            reminder,
         })
     }
 
-    /// Insert a note into the database.
-    ///
-    /// This is used by both create and migration operations.
-    pub fn insert_note(&self, note: &Todo) -> anyhow::Result<()> {
-        let created_at_str = note.created_at.to_rfc3339();
-        let updated_at_str = note.updated_at.to_rfc3339();
-
-        self.conn.execute(
-            r#"
-            INSERT OR REPLACE INTO notes (id, content, done, created_at, updated_at)
-            VALUES (?1, ?2, ?3, ?4, ?5)
-            "#,
-            params![
-                note.id,
-                note.content,
-                note.done as i32,
-                created_at_str,
-                updated_at_str,
-            ],
-        )?;
-
-        Ok(())
-    }
-
     /// Check if a note exists by ID.
-    pub fn exists(&self, id: &str) -> anyhow::Result<bool> {
+    pub fn exists(&self, id: i64) -> anyhow::Result<bool> {
         let count: i32 = self.conn.query_row(
             "SELECT COUNT(*) FROM notes WHERE id = ?1",
             params![id],
@@ -136,7 +166,10 @@ impl NoteBackend for SqliteNoteStore {
         let mut stmt = self
             .conn
             .prepare(
-                "SELECT id, content, done, created_at, updated_at FROM notes ORDER BY created_at DESC",
+                "SELECT id, content, done, created_at, updated_at, color, pinned, archived, labels, is_checklist, reminder
+                 FROM notes
+                 WHERE archived = 0
+                 ORDER BY pinned DESC, updated_at DESC",
             )
             .map_err(|e| NoteBackendError::storage(e.to_string()))?;
 
@@ -148,10 +181,32 @@ impl NoteBackend for SqliteNoteStore {
             .map_err(|e| NoteBackendError::storage(e.to_string()))
     }
 
-    fn get(&self, id: &str) -> NoteBackendResult<Option<Todo>> {
+    fn list_archived(&self) -> NoteBackendResult<Vec<Todo>> {
         let mut stmt = self
             .conn
-            .prepare("SELECT id, content, done, created_at, updated_at FROM notes WHERE id = ?1")
+            .prepare(
+                "SELECT id, content, done, created_at, updated_at, color, pinned, archived, labels, is_checklist, reminder
+                 FROM notes
+                 WHERE archived = 1
+                 ORDER BY updated_at DESC",
+            )
+            .map_err(|e| NoteBackendError::storage(e.to_string()))?;
+
+        let rows = stmt
+            .query_map([], Self::row_to_todo)
+            .map_err(|e| NoteBackendError::storage(e.to_string()))?;
+
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|e| NoteBackendError::storage(e.to_string()))
+    }
+
+    fn get(&self, id: i64) -> NoteBackendResult<Option<Todo>> {
+        let mut stmt = self
+            .conn
+            .prepare(
+                "SELECT id, content, done, created_at, updated_at, color, pinned, archived, labels, is_checklist, reminder
+                 FROM notes WHERE id = ?1",
+            )
             .map_err(|e| NoteBackendError::storage(e.to_string()))?;
 
         let mut rows = stmt
@@ -163,63 +218,102 @@ impl NoteBackend for SqliteNoteStore {
             .map_err(|e| NoteBackendError::storage(e.to_string()))?
         {
             Some(row) => Ok(Some(
-                Self::row_to_todo(row).map_err(|e| NoteBackendError::storage(e.to_string()))?,
+                Self::row_to_todo(&row).map_err(|e| NoteBackendError::storage(e.to_string()))?,
             )),
             None => Ok(None),
         }
     }
 
-    fn create(&self, content: &str) -> NoteBackendResult<Todo> {
-        // Validate content
+    fn create(&self, content: &str, is_checklist: bool) -> NoteBackendResult<Todo> {
         validate_content(content)?;
 
         let now = Utc::now();
-        let note = Todo {
-            id: Uuid::new_v4().to_string(),
+        let created_at_str = now.to_rfc3339();
+        let updated_at_str = now.to_rfc3339();
+
+        self.conn
+            .execute(
+                r#"
+                INSERT INTO notes (content, done, created_at, updated_at, color, pinned, archived, labels, is_checklist, reminder)
+                VALUES (?1, 0, ?2, ?3, NULL, 0, 0, '[]', ?4, NULL)
+                "#,
+                params![content, created_at_str, updated_at_str, is_checklist as i32],
+            )
+            .map_err(|e| NoteBackendError::storage(e.to_string()))?;
+
+        let id = self.conn.last_insert_rowid();
+        tracing::debug!("Created note with ID: {}", id);
+
+        Ok(Todo {
+            id,
             content: content.to_string(),
             done: false,
             created_at: now,
             updated_at: now,
-        };
-
-        self.insert_note(&note)
-            .map_err(|e| NoteBackendError::storage(e.to_string()))?;
-
-        tracing::debug!("Created note with ID: {}", note.id);
-        Ok(note)
+            color: None,
+            pinned: false,
+            archived: false,
+            labels: vec![],
+            is_checklist,
+            reminder: None,
+        })
     }
 
-    fn update(
-        &self,
-        id: &str,
-        content: Option<String>,
-        done: Option<bool>,
-    ) -> NoteBackendResult<Todo> {
-        // Get existing note
+    fn update(&self, id: i64, request: TodoUpdateRequest) -> NoteBackendResult<Todo> {
         let mut note = self
             .get(id)?
-            .ok_or_else(|| NoteBackendError::not_found(id))?;
+            .ok_or_else(|| NoteBackendError::not_found(id.to_string()))?;
 
-        // Update fields
-        if let Some(new_content) = content {
-            validate_content(&new_content)?;
-            note.content = new_content;
+        if let Some(ref new_content) = request.content {
+            validate_content(new_content)?;
+            note.content = new_content.clone();
+        }
+        if let Some(color_opt) = request.color {
+            note.color = color_opt;
+        }
+        if let Some(pinned) = request.pinned {
+            note.pinned = pinned;
+        }
+        if let Some(archived) = request.archived {
+            note.archived = archived;
+        }
+        if let Some(labels) = request.labels {
+            note.labels = labels;
+        }
+        if let Some(is_checklist) = request.is_checklist {
+            note.is_checklist = is_checklist;
+        }
+        if let Some(reminder_opt) = request.reminder {
+            note.reminder = reminder_opt;
+        }
+        if let Some(done) = request.done {
+            note.done = done;
         }
 
-        if let Some(new_done) = done {
-            note.done = new_done;
-        }
-
-        // Update timestamp
         note.updated_at = Utc::now();
-
-        // Save to database
         let updated_at_str = note.updated_at.to_rfc3339();
+        let labels_str = serde_json::to_string(&note.labels).unwrap_or_else(|_| "[]".to_string());
+        let reminder_str = note.reminder.map(|dt| dt.to_rfc3339());
 
         self.conn
             .execute(
-                "UPDATE notes SET content = ?1, done = ?2, updated_at = ?3 WHERE id = ?4",
-                params![note.content, note.done as i32, updated_at_str, id],
+                r#"
+                UPDATE notes
+                SET content = ?1, done = ?2, updated_at = ?3, color = ?4, pinned = ?5, archived = ?6, labels = ?7, is_checklist = ?8, reminder = ?9
+                WHERE id = ?10
+                "#,
+                params![
+                    note.content,
+                    note.done as i32,
+                    updated_at_str,
+                    note.color,
+                    note.pinned as i32,
+                    note.archived as i32,
+                    labels_str,
+                    note.is_checklist as i32,
+                    reminder_str,
+                    id,
+                ],
             )
             .map_err(|e| NoteBackendError::storage(e.to_string()))?;
 
@@ -227,13 +321,12 @@ impl NoteBackend for SqliteNoteStore {
         Ok(note)
     }
 
-    fn delete(&self, id: &str) -> NoteBackendResult<()> {
-        // Check if note exists
+    fn delete(&self, id: i64) -> NoteBackendResult<()> {
         if !self
             .exists(id)
             .map_err(|e| NoteBackendError::storage(e.to_string()))?
         {
-            return Err(NoteBackendError::not_found(id));
+            return Err(NoteBackendError::not_found(id.to_string()));
         }
 
         self.conn
@@ -257,12 +350,12 @@ mod tests {
     fn test_create_and_get_note() {
         let store = create_test_store();
 
-        let note = store.create("Test note content").unwrap();
-        assert!(!note.id.is_empty());
+        let note = store.create("Test note content", false).unwrap();
+        assert!(note.id > 0);
         assert_eq!(note.content, "Test note content");
         assert!(!note.done);
 
-        let retrieved = store.get(&note.id).unwrap().unwrap();
+        let retrieved = store.get(note.id).unwrap().unwrap();
         assert_eq!(retrieved.id, note.id);
         assert_eq!(retrieved.content, note.content);
     }
@@ -271,14 +364,13 @@ mod tests {
     fn test_list_notes() {
         let store = create_test_store();
 
-        store.create("Note 1").unwrap();
-        store.create("Note 2").unwrap();
-        store.create("Note 3").unwrap();
+        store.create("Note 1", false).unwrap();
+        store.create("Note 2", false).unwrap();
+        store.create("Note 3", false).unwrap();
 
         let notes = store.list().unwrap();
         assert_eq!(notes.len(), 3);
 
-        // Newest first
         assert_eq!(notes[0].content, "Note 3");
         assert_eq!(notes[1].content, "Note 2");
         assert_eq!(notes[2].content, "Note 1");
@@ -288,10 +380,10 @@ mod tests {
     fn test_update_content() {
         let store = create_test_store();
 
-        let note = store.create("Original content").unwrap();
-        let updated = store
-            .update(&note.id, Some("Updated content".to_string()), None)
-            .unwrap();
+        let note = store.create("Original content", false).unwrap();
+        let mut req = TodoUpdateRequest::default();
+        req.content = Some("Updated content".to_string());
+        let updated = store.update(note.id, req).unwrap();
 
         assert_eq!(updated.content, "Updated content");
         assert!(!updated.done);
@@ -302,13 +394,15 @@ mod tests {
     fn test_update_done_status() {
         let store = create_test_store();
 
-        let note = store.create("Test note").unwrap();
+        let note = store.create("Test note", false).unwrap();
         assert!(!note.done);
 
-        let updated = store.update(&note.id, None, Some(true)).unwrap();
+        let mut req = TodoUpdateRequest::default();
+        req.done = Some(true);
+        let updated = store.update(note.id, req).unwrap();
         assert!(updated.done);
 
-        let toggled = store.toggle_done(&note.id).unwrap();
+        let toggled = store.toggle_done(note.id).unwrap();
         assert!(!toggled.done);
     }
 
@@ -316,18 +410,18 @@ mod tests {
     fn test_delete_note() {
         let store = create_test_store();
 
-        let note = store.create("To be deleted").unwrap();
-        assert!(store.get(&note.id).unwrap().is_some());
+        let note = store.create("To be deleted", false).unwrap();
+        assert!(store.get(note.id).unwrap().is_some());
 
-        store.delete(&note.id).unwrap();
-        assert!(store.get(&note.id).unwrap().is_none());
+        store.delete(note.id).unwrap();
+        assert!(store.get(note.id).unwrap().is_none());
     }
 
     #[test]
     fn test_delete_nonexistent() {
         let store = create_test_store();
 
-        let result = store.delete("nonexistent-id");
+        let result = store.delete(99999);
         assert!(matches!(result, Err(NoteBackendError::NotFound(_))));
     }
 
@@ -335,7 +429,7 @@ mod tests {
     fn test_get_nonexistent() {
         let store = create_test_store();
 
-        let result = store.get("nonexistent-id").unwrap();
+        let result = store.get(99999).unwrap();
         assert!(result.is_none());
     }
 
@@ -343,7 +437,9 @@ mod tests {
     fn test_update_nonexistent() {
         let store = create_test_store();
 
-        let result = store.update("nonexistent-id", Some("content".to_string()), None);
+        let mut req = TodoUpdateRequest::default();
+        req.content = Some("content".to_string());
+        let result = store.update(99999, req);
         assert!(matches!(result, Err(NoteBackendError::NotFound(_))));
     }
 
@@ -351,10 +447,10 @@ mod tests {
     fn test_create_empty_content() {
         let store = create_test_store();
 
-        let result = store.create("");
+        let result = store.create("", false);
         assert!(matches!(result, Err(NoteBackendError::Validation(_))));
 
-        let result = store.create("   ");
+        let result = store.create("   ", false);
         assert!(matches!(result, Err(NoteBackendError::Validation(_))));
     }
 
@@ -363,7 +459,7 @@ mod tests {
         let store = create_test_store();
 
         let long_content = "a".repeat(1001);
-        let result = store.create(&long_content);
+        let result = store.create(&long_content, false);
         assert!(matches!(result, Err(NoteBackendError::Validation(_))));
     }
 
@@ -371,15 +467,17 @@ mod tests {
     fn test_update_invalid_content() {
         let store = create_test_store();
 
-        let note = store.create("Valid content").unwrap();
+        let note = store.create("Valid content", false).unwrap();
 
-        // Empty content
-        let result = store.update(&note.id, Some("".to_string()), None);
+        let mut req = TodoUpdateRequest::default();
+        req.content = Some("".to_string());
+        let result = store.update(note.id, req);
         assert!(matches!(result, Err(NoteBackendError::Validation(_))));
 
-        // Too long content
         let long_content = "a".repeat(1001);
-        let result = store.update(&note.id, Some(long_content), None);
+        let mut req2 = TodoUpdateRequest::default();
+        req2.content = Some(long_content);
+        let result = store.update(note.id, req2);
         assert!(matches!(result, Err(NoteBackendError::Validation(_))));
     }
 
@@ -389,10 +487,10 @@ mod tests {
 
         assert_eq!(store.count().unwrap(), 0);
 
-        store.create("Note 1").unwrap();
+        store.create("Note 1", false).unwrap();
         assert_eq!(store.count().unwrap(), 1);
 
-        store.create("Note 2").unwrap();
+        store.create("Note 2", false).unwrap();
         assert_eq!(store.count().unwrap(), 2);
     }
 
@@ -400,39 +498,21 @@ mod tests {
     fn test_mark_done_undone() {
         let store = create_test_store();
 
-        let note = store.create("Test note").unwrap();
+        let note = store.create("Test note", false).unwrap();
         assert!(!note.done);
 
-        let done = store.mark_done(&note.id).unwrap();
+        let done = store.mark_done(note.id).unwrap();
         assert!(done.done);
 
-        let undone = store.mark_undone(&note.id).unwrap();
+        let undone = store.mark_undone(note.id).unwrap();
         assert!(!undone.done);
     }
 
     #[test]
-    fn test_insert_preserves_id_and_timestamps() {
+    fn test_create_checklist_note() {
         let store = create_test_store();
 
-        let custom_id = "custom-uuid-123";
-        let custom_time = DateTime::parse_from_rfc3339("2024-01-15T10:30:00Z")
-            .unwrap()
-            .with_timezone(&Utc);
-
-        let note = Todo {
-            id: custom_id.to_string(),
-            content: "Imported note".to_string(),
-            done: true,
-            created_at: custom_time,
-            updated_at: custom_time,
-        };
-
-        store.insert_note(&note).unwrap();
-
-        let retrieved = store.get(custom_id).unwrap().unwrap();
-        assert_eq!(retrieved.id, custom_id);
-        assert_eq!(retrieved.content, "Imported note");
-        assert!(retrieved.done);
-        assert_eq!(retrieved.created_at, custom_time);
+        let note = store.create("- [ ] item", true).unwrap();
+        assert!(note.is_checklist);
     }
 }

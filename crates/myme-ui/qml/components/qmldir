@@ -4,3 +4,5 @@ WeatherWidget 1.0 WeatherWidget.qml
 RepoCard 1.0 RepoCard.qml
 EmailWidget 1.0 EmailWidget.qml
 CalendarWidget 1.0 CalendarWidget.qml
+QuickAddBar 1.0 QuickAddBar.qml
+NoteCard 1.0 NoteCard.qml

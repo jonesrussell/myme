@@ -28,5 +28,7 @@
         <file>crates/myme-ui/qml/components/RepoCard.qml</file>
         <file>crates/myme-ui/qml/components/EmailWidget.qml</file>
         <file>crates/myme-ui/qml/components/CalendarWidget.qml</file>
+        <file>crates/myme-ui/qml/components/QuickAddBar.qml</file>
+        <file>crates/myme-ui/qml/components/NoteCard.qml</file>
     </qresource>
 </RCC>

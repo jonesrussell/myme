@@ -21,7 +21,7 @@ impl NoteClient {
         Self(Arc::new(Mutex::new(store)))
     }
 
-    /// List all notes (newest first).
+    /// List all non-archived notes (pinned first, then by updated_at DESC).
     pub async fn list_todos(&self) -> Result<Vec<Todo>> {
         let store = self.0.clone();
         tokio::task::spawn_blocking(move || {
@@ -30,14 +30,22 @@ impl NoteClient {
         .await?
     }
 
-    /// Get a note by ID.
-    pub async fn get_todo(&self, id: &str) -> Result<Todo> {
+    /// List archived notes.
+    pub async fn list_archived(&self) -> Result<Vec<Todo>> {
         let store = self.0.clone();
-        let id = id.to_string();
+        tokio::task::spawn_blocking(move || {
+            store.lock().list_archived().map_err(|e| anyhow::anyhow!("{}", e))
+        })
+        .await?
+    }
+
+    /// Get a note by ID.
+    pub async fn get_todo(&self, id: i64) -> Result<Todo> {
+        let store = self.0.clone();
         tokio::task::spawn_blocking(move || {
             store
                 .lock()
-                .get(&id)
+                .get(id)
                 .map_err(|e| anyhow::anyhow!("{}", e))?
                 .ok_or_else(|| anyhow::anyhow!("Note not found: {}", id))
         })
@@ -50,70 +58,57 @@ impl NoteClient {
         tokio::task::spawn_blocking(move || {
             store
                 .lock()
-                .create(&request.content)
+                .create(&request.content, request.is_checklist)
                 .map_err(|e| anyhow::anyhow!("{}", e))
         })
         .await?
     }
 
     /// Update an existing note.
-    pub async fn update_todo(&self, id: &str, request: TodoUpdateRequest) -> Result<Todo> {
+    pub async fn update_todo(&self, id: i64, request: TodoUpdateRequest) -> Result<Todo> {
         let store = self.0.clone();
-        let id = id.to_string();
         tokio::task::spawn_blocking(move || {
             store
                 .lock()
-                .update(&id, request.content, request.done)
+                .update(id, request)
                 .map_err(|e| anyhow::anyhow!("{}", e))
         })
         .await?
     }
 
     /// Delete a note.
-    pub async fn delete_todo(&self, id: &str) -> Result<()> {
+    pub async fn delete_todo(&self, id: i64) -> Result<()> {
         let store = self.0.clone();
-        let id = id.to_string();
         tokio::task::spawn_blocking(move || {
             store
                 .lock()
-                .delete(&id)
+                .delete(id)
                 .map_err(|e| anyhow::anyhow!("{}", e))
         })
         .await?
     }
 
     /// Mark a note as done.
-    pub async fn mark_done(&self, id: &str) -> Result<Todo> {
-        self.update_todo(
-            id,
-            TodoUpdateRequest {
-                content: None,
-                done: Some(true),
-            },
-        )
-        .await
+    pub async fn mark_done(&self, id: i64) -> Result<Todo> {
+        let mut req = TodoUpdateRequest::default();
+        req.done = Some(true);
+        self.update_todo(id, req).await
     }
 
     /// Mark a note as not done.
-    pub async fn mark_undone(&self, id: &str) -> Result<Todo> {
-        self.update_todo(
-            id,
-            TodoUpdateRequest {
-                content: None,
-                done: Some(false),
-            },
-        )
-        .await
+    pub async fn mark_undone(&self, id: i64) -> Result<Todo> {
+        let mut req = TodoUpdateRequest::default();
+        req.done = Some(false);
+        self.update_todo(id, req).await
     }
 
     /// Toggle the done status of a note.
-    pub async fn toggle_done(&self, id: &str) -> Result<Todo> {
+    pub async fn toggle_done(&self, id: i64) -> Result<Todo> {
         let store = self.0.clone();
-        let id = id.to_string();
         tokio::task::spawn_blocking(move || {
             store
                 .lock()
-                .toggle_done(&id)
+                .toggle_done(id)
                 .map_err(|e| anyhow::anyhow!("{}", e))
         })
         .await?
@@ -152,6 +147,7 @@ mod tests {
         let note = client
             .create_todo(TodoCreateRequest {
                 content: "Test note".to_string(),
+                is_checklist: false,
             })
             .await
             .unwrap();
@@ -171,20 +167,16 @@ mod tests {
         let note = client
             .create_todo(TodoCreateRequest {
                 content: "Original".to_string(),
+                is_checklist: false,
             })
             .await
             .unwrap();
 
-        let updated = client
-            .update_todo(
-                &note.id,
-                TodoUpdateRequest {
-                    content: Some("Updated".to_string()),
-                    done: Some(true),
-                },
-            )
-            .await
-            .unwrap();
+        let mut req = TodoUpdateRequest::default();
+        req.content = Some("Updated".to_string());
+        req.done = Some(true);
+
+        let updated = client.update_todo(note.id, req).await.unwrap();
 
         assert_eq!(updated.content, "Updated");
         assert!(updated.done);
@@ -197,11 +189,12 @@ mod tests {
         let note = client
             .create_todo(TodoCreateRequest {
                 content: "To delete".to_string(),
+                is_checklist: false,
             })
             .await
             .unwrap();
 
-        client.delete_todo(&note.id).await.unwrap();
+        client.delete_todo(note.id).await.unwrap();
 
         let notes = client.list_todos().await.unwrap();
         assert!(notes.is_empty());
@@ -214,16 +207,17 @@ mod tests {
         let note = client
             .create_todo(TodoCreateRequest {
                 content: "Test".to_string(),
+                is_checklist: false,
             })
             .await
             .unwrap();
 
         assert!(!note.done);
 
-        let toggled = client.toggle_done(&note.id).await.unwrap();
+        let toggled = client.toggle_done(note.id).await.unwrap();
         assert!(toggled.done);
 
-        let toggled_back = client.toggle_done(&note.id).await.unwrap();
+        let toggled_back = client.toggle_done(note.id).await.unwrap();
         assert!(!toggled_back.done);
     }
 

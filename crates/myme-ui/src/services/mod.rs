@@ -27,8 +27,9 @@ pub use kanban_service::{
 };
 pub use note_service::{
     request_create as request_note_create, request_delete as request_note_delete,
-    request_fetch as request_note_fetch, request_toggle_done as request_note_toggle, NoteError,
-    NoteServiceMessage,
+    request_fetch as request_note_fetch, request_fetch_with_filter as request_note_fetch_with_filter,
+    request_toggle_done as request_note_toggle, request_update as request_note_update, NoteError,
+    NoteFilter as NoteServiceFilter, NoteServiceMessage,
 };
 pub use project_service::{
     request_fetch_repo as request_project_fetch_repo, ProjectError, ProjectServiceMessage, RepoInfo,

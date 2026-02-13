@@ -3,7 +3,7 @@
 //! This module defines the `NoteBackend` trait that abstracts over different
 //! storage implementations (SQLite, HTTP API).
 
-use crate::todo::Todo;
+use crate::todo::{Todo, TodoUpdateRequest};
 use thiserror::Error;
 
 /// Errors that can occur during note backend operations.
@@ -54,66 +54,70 @@ pub type NoteBackendResult<T> = Result<T, NoteBackendError>;
 /// Note: Implementations don't need to be Sync - the NoteClient wrapper handles
 /// thread-safe access via Mutex.
 pub trait NoteBackend: Send {
-    /// List all notes.
+    /// List all non-archived notes.
     ///
-    /// Returns notes ordered by creation time (newest first).
+    /// Returns notes ordered by pinned DESC, updated_at DESC.
     fn list(&self) -> NoteBackendResult<Vec<Todo>>;
+
+    /// List archived notes.
+    fn list_archived(&self) -> NoteBackendResult<Vec<Todo>>;
 
     /// Get a note by ID.
     ///
     /// Returns `None` if the note doesn't exist.
-    fn get(&self, id: &str) -> NoteBackendResult<Option<Todo>>;
+    fn get(&self, id: i64) -> NoteBackendResult<Option<Todo>>;
 
     /// Create a new note.
     ///
     /// # Arguments
     /// * `content` - The note content (1-1000 characters).
+    /// * `is_checklist` - Whether the note is a checklist.
     ///
     /// # Errors
     /// Returns `NoteBackendError::Validation` if content is empty or too long.
-    fn create(&self, content: &str) -> NoteBackendResult<Todo>;
+    fn create(&self, content: &str, is_checklist: bool) -> NoteBackendResult<Todo>;
 
     /// Update an existing note.
     ///
     /// # Arguments
     /// * `id` - The note ID.
-    /// * `content` - New content (if Some, must be 1-1000 characters).
-    /// * `done` - New done status (if Some).
+    /// * `request` - Partial update request; only Some fields are applied.
     ///
     /// # Errors
     /// Returns `NoteBackendError::NotFound` if the note doesn't exist.
     /// Returns `NoteBackendError::Validation` if content is invalid.
-    fn update(
-        &self,
-        id: &str,
-        content: Option<String>,
-        done: Option<bool>,
-    ) -> NoteBackendResult<Todo>;
+    fn update(&self, id: i64, request: TodoUpdateRequest) -> NoteBackendResult<Todo>;
 
     /// Delete a note.
     ///
     /// # Errors
     /// Returns `NoteBackendError::NotFound` if the note doesn't exist.
-    fn delete(&self, id: &str) -> NoteBackendResult<()>;
+    fn delete(&self, id: i64) -> NoteBackendResult<()>;
 
     /// Toggle the done status of a note.
     ///
     /// Default implementation fetches the note and updates with inverted done status.
-    fn toggle_done(&self, id: &str) -> NoteBackendResult<Todo> {
+    fn toggle_done(&self, id: i64) -> NoteBackendResult<Todo> {
         let note = self
             .get(id)?
-            .ok_or_else(|| NoteBackendError::not_found(id))?;
-        self.update(id, None, Some(!note.done))
+            .ok_or_else(|| NoteBackendError::not_found(id.to_string()))?;
+        let mut req = TodoUpdateRequest::default();
+        req.done = Some(!note.done);
+        self.update(id, req)
     }
 
     /// Mark a note as done.
-    fn mark_done(&self, id: &str) -> NoteBackendResult<Todo> {
-        self.update(id, None, Some(true))
+    fn mark_done(&self, id: i64) -> NoteBackendResult<Todo> {
+        let mut req = TodoUpdateRequest::default();
+        req.done = Some(true);
+        self.update(id, req)
     }
 
     /// Mark a note as not done.
-    fn mark_undone(&self, id: &str) -> NoteBackendResult<Todo> {
-        self.update(id, None, Some(false))
+    fn mark_undone(&self, id: i64) -> NoteBackendResult<Todo> {
+        let mut req = TodoUpdateRequest::default();
+        req.done = Some(false);
+        self.update(id, req)
     }
 }
 
