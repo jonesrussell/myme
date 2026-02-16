@@ -14,15 +14,24 @@ MyMe is a modular Rust desktop application using Qt/QML via cxx-qt that serves a
 - Rust 2021 edition or later
 - Qt 6.10.1 (or 6.x)
 - CMake 3.16+
-- C++ compiler (Visual Studio 2019+ on Windows)
+- C++ compiler (Visual Studio 2019+ on Windows; GCC on Linux)
 
 ### Building
 
-**Windows (Recommended):**
+**Windows:**
 ```powershell
 # All-in-one build script (builds Rust + Qt)
 .\scripts\build.ps1
 ```
+
+**Linux / WSL2:**
+```bash
+# Prerequisites (Ubuntu/Debian):
+#   sudo apt install qt6-base-dev qt6-declarative-dev libxcb-cursor0 libsecret-1-dev cmake build-essential
+# Or use aqtinstall for Qt 6.10.1 and set QT_PATH to the Qt root.
+./scripts/build.sh
+```
+WSL2 with WSLg supports GUI apps natively; no extra display configuration needed.
 
 **Manual Build:**
 ```bash
@@ -43,7 +52,11 @@ cmake --build . --config Release
 cargo run
 
 # Run Qt application (full UI)
+# Windows:
 .\build\Release\myme-qt.exe
+
+# Linux / WSL2:
+./build/myme-qt
 ```
 
 ### Testing
@@ -479,7 +492,7 @@ $env:RUST_LOG="debug" # Adds detailed operation internals
 
 ## CI/CD & Build Scripts
 
-- `.github/workflows/release.yml` - Automated Windows releases on version tags (`v*`)
+- `.github/workflows/release.yml` - Automated releases on version tags (`v*`): Windows (ZIP + Inno Setup), Linux (tarball with bundled Qt)
 - `scripts\build.ps1` - Full build (Rust + CMake + windeployqt) → myme-qt.exe
 - `scripts\build-rust.ps1` - Rust-only build with VS Developer environment auto-detection → myme.exe
 - `installer/myme.iss` - Inno Setup 6 installer script for Windows

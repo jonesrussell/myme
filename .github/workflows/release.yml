@@ -118,8 +118,117 @@ jobs:
             dist/myme-v${{ steps.version.outputs.VERSION }}-windows.zip
             dist/myme-${{ steps.version.outputs.VERSION }}-windows-setup.exe
 
+  build-linux:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.10.1'
+          host: 'linux'
+          target: 'desktop'
+          arch: 'gcc_64'
+          dir: ${{ github.workspace }}/qt-install
+          cache: true
+          install-deps: true
+
+      - name: Set Qt path
+        run: echo "QT_ROOT=${QT_ROOT_DIR:-$GITHUB_WORKSPACE/qt-install/6.10.1/gcc_64}" >> $GITHUB_ENV
+
+      - name: Build Rust
+        run: cargo build -p myme-ui --release
+        env:
+          CMAKE_PREFIX_PATH: ${{ env.QT_ROOT }}
+          Qt6_DIR: ${{ env.QT_ROOT }}/lib/cmake/Qt6
+          QMAKE: ${{ env.QT_ROOT }}/bin/qmake
+
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="${{ env.QT_ROOT }}" \
+            -DQt6_DIR="${{ env.QT_ROOT }}/lib/cmake/Qt6"
+
+      - name: Build Qt Application
+        run: cmake --build build
+
+      - name: Create AppDir
+        run: |
+          mkdir -p appdir/usr/bin appdir/usr/share/applications
+          cp build/myme-qt appdir/usr/bin/
+          printf '%s\n' \
+            '[Desktop Entry]' \
+            'Type=Application' \
+            'Name=MyMe' \
+            'Exec=myme-qt' \
+            'Icon=myme' \
+            'Categories=Office;Utility;' \
+            > appdir/usr/share/applications/myme-qt.desktop
+
+      - name: Install linuxdeployqt
+        run: |
+          wget -q -c "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage" -O linuxdeployqt.AppImage
+          chmod +x linuxdeployqt.AppImage
+
+      - name: Bundle Qt dependencies
+        run: |
+          ./linuxdeployqt.AppImage --appimage-extract-and-run appdir/usr/share/applications/myme-qt.desktop \
+            -qmldir=crates/myme-ui/qml \
+            -bundle-non-qt-libs \
+            -no-translations
+
+      - name: Create AppRun
+        run: |
+          cat > appdir/AppRun << 'APPRUN'
+          #!/bin/bash
+          SELF=$(readlink -f "$0")
+          HERE=${SELF%/*}
+          export PATH="$HERE/usr/bin:$PATH"
+          exec "$HERE/usr/bin/myme-qt" "$@"
+          APPRUN
+          chmod +x appdir/AppRun
+
+      - name: Create tarball
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          mkdir -p dist
+          tar czf "dist/myme-v${VERSION}-linux-x86_64.tar.gz" -C appdir .
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        with:
+          name: linux-release
+          path: dist/myme-v${{ steps.version.outputs.VERSION }}-linux-x86_64.tar.gz
+
   release:
-    needs: build-windows
+    needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -132,10 +241,16 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Download artifacts
+      - name: Download Windows artifacts
         uses: actions/download-artifact@v4
         with:
           name: windows-release
+          path: dist
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-release
           path: dist
 
       - name: Create GitHub Release
@@ -146,6 +261,7 @@ jobs:
           files: |
             dist/myme-v${{ steps.version.outputs.VERSION }}-windows.zip
             dist/myme-${{ steps.version.outputs.VERSION }}-windows-setup.exe
+            dist/myme-v${{ steps.version.outputs.VERSION }}-linux-x86_64.tar.gz
           draft: false
           fail_on_unmatched_files: true
           prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc') }}

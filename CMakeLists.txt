@@ -146,10 +146,14 @@ if(CXX_QT_GEN_LIB)
             runtimeobject
         )
     else()
+        # Linux: Rust deps need zlib (flate2, reqwest) and OpenSSL (reqwest native-tls)
         target_link_libraries(myme-qt PRIVATE
             "${RUST_SEARCH_DIR}/${RUST_LIB_NAME}"
             "${CXX_QT_OUT_DIR}/${CXX_QT_GEN_PATTERN}"
             "${CXX_QT_OUT_DIR}/${CXX_QT_INIT_PATTERN}"
+            z
+            ssl
+            crypto
         )
     endif()
 else()
@@ -160,11 +164,13 @@ endif()
 set(QML_IMPORT_PATH "${CMAKE_SOURCE_DIR}/crates/myme-ui/qml" CACHE STRING "" FORCE)
 set(QML2_IMPORT_PATH "${CMAKE_SOURCE_DIR}/crates/myme-ui/qml" CACHE STRING "" FORCE)
 
-# Qt properties
-set_target_properties(myme-qt PROPERTIES
-    WIN32_EXECUTABLE TRUE
-    MACOSX_BUNDLE TRUE
-)
+# Qt properties (platform-specific)
+if(WIN32)
+    set_target_properties(myme-qt PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()
+if(APPLE)
+    set_target_properties(myme-qt PROPERTIES MACOSX_BUNDLE TRUE)
+endif()
 
 # Install
 install(TARGETS myme-qt
