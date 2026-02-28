@@ -1,3 +1,7 @@
+// Workspace lints deny unsafe_code; this crate needs an exemption because
+// cxx-qt macros generate unsafe FFI code for #[qinvokable], #[qsignal], etc.
+#![allow(unsafe_code)]
+
 pub mod app_services;
 pub mod bridge;
 pub mod error_mapping;
