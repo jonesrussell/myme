@@ -43,8 +43,8 @@ Write-Host "`nStep 3: Configuring CMake..." -ForegroundColor Yellow
 # Set Qt path - use QT_PATH env var, or auto-detect under C:\Qt
 $qtPath = if ($env:QT_PATH) {
     $env:QT_PATH
-} elseif (Test-Path "C:\Qt\6.10.1\msvc2022_64") {
-    "C:\Qt\6.10.1\msvc2022_64"
+} elseif (Test-Path "C:\Qt\6.10.2\msvc2022_64") {
+    "C:\Qt\6.10.2\msvc2022_64"
 } else {
     # Auto-detect: find latest Qt version with msvc2022_64
     $qtBase = "C:\Qt"
@@ -55,7 +55,7 @@ $qtPath = if ($env:QT_PATH) {
             $kit = Join-Path $_.FullName "msvc2022_64"
             if ((Test-Path (Join-Path $kit "bin\qmake.exe"))) { $kit; break }
         } | Select-Object -First 1
-    if ($found) { $found } else { "C:\Qt\6.10.1\msvc2022_64" }
+    if ($found) { $found } else { "C:\Qt\6.10.2\msvc2022_64" }
 }
 Write-Host "Using Qt: $qtPath" -ForegroundColor Green
 $env:CMAKE_PREFIX_PATH = $qtPath

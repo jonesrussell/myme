@@ -41,7 +41,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.10.1'
+          version: '6.10.2'
           host: 'windows'
           target: 'desktop'
           arch: 'win64_msvc2022_64'
@@ -55,7 +55,7 @@ jobs:
           $qtRoot = if ($env:QT_ROOT_DIR) {
             $env:QT_ROOT_DIR -replace '/', '\'
           } else {
-            Join-Path $env:GITHUB_WORKSPACE "qt-install\6.10.1\win64_msvc2022_64"
+            Join-Path $env:GITHUB_WORKSPACE "qt-install\6.10.2\win64_msvc2022_64"
           }
           if (-not (Test-Path $qtRoot)) {
             Write-Error "Qt root not found: $qtRoot"

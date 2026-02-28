@@ -1,7 +1,7 @@
 import { getConfig } from "../config.js";
 import { runCommand } from "../utils/exec.js";
 import { resolveInWorkspace } from "../utils/paths.js";
-const DEFAULT_QMLFORMAT_WIN = "C:\\Qt\\6.10.1\\msvc2022_64\\bin\\qmlformat.exe";
+const DEFAULT_QMLFORMAT_WIN = "C:\\Qt\\6.10.2\\msvc2022_64\\bin\\qmlformat.exe";
 export async function qmlFormat(args) {
     const config = getConfig();
     const qmlformatPath = config.qmlformatPath ??

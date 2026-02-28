@@ -88,7 +88,7 @@ if (Test-Path $vsWhere) {
 # Check Qt
 Write-Host "`nChecking Qt installation..." -ForegroundColor Yellow
 $qtPaths = @(
-    "C:\Qt\6.10.1\msvc2022_64",
+    "C:\Qt\6.10.2\msvc2022_64",
     "C:\Qt\6.7",
     "C:\Qt\6.6",
     "$env:USERPROFILE\Qt\6.7",
@@ -117,7 +117,7 @@ foreach ($path in $qtPaths) {
 
 if (-not $qtFound) {
     Write-Host "[X] Qt not found. Please install Qt 6.x from https://www.qt.io/download" -ForegroundColor Red
-    Write-Host "  Install to C:\Qt\6.10.1\msvc2022_64 or run . .\scripts\setup-qt-env.ps1 -QtPath 'C:\Qt'" -ForegroundColor Yellow
+    Write-Host "  Install to C:\Qt\6.10.2\msvc2022_64 or run . .\scripts\setup-qt-env.ps1 -QtPath 'C:\Qt'" -ForegroundColor Yellow
 }
 
 # scripts\build.ps1 creates build-qt when run; no need to pre-create

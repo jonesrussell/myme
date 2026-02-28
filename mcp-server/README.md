@@ -18,7 +18,7 @@ npm run build
 ## Configuration
 
 - **Workspace root**: Resolved once at startup. The server uses `MYME_REPO` (env) if set, otherwise `process.cwd()`. It then searches upward for a directory containing both `Cargo.toml` and `qml.qrc`. When using Cursor, set the MCP server’s working directory to the **MyMe repo root** so the correct workspace is found.
-- **QML format**: Optional. Set `QMLFORMAT_PATH` to the full path to `qmlformat` (e.g. `C:\Qt\6.10.1\msvc2022_64\bin\qmlformat.exe`). If unset, the server uses a default path on Windows or `qmlformat` on PATH elsewhere.
+- **QML format**: Optional. Set `QMLFORMAT_PATH` to the full path to `qmlformat` (e.g. `C:\Qt\6.10.2\msvc2022_64\bin\qmlformat.exe`). If unset, the server uses a default path on Windows or `qmlformat` on PATH elsewhere.
 - **App binary**: Optional. Set `MYME_APP_PATH` to the full path to `myme-qt.exe` (or the Qt app binary). If unset, the server uses `workspace-root/build-qt/Release/myme-qt.exe` (or Debug when run in debug mode).
 
 ## Cursor setup

@@ -12,7 +12,7 @@ MyMe is a modular Rust desktop application using Qt/QML via cxx-qt that serves a
 
 ### Prerequisites
 - Rust 2021 edition or later
-- Qt 6.10.1 (or 6.x)
+- Qt 6.10.2 (or 6.x)
 - CMake 3.16+
 - C++ compiler (Visual Studio 2019+ on Windows; GCC on Linux)
 
@@ -116,7 +116,7 @@ myme/
 ### Key Technologies
 
 - **Language**: Rust 2021 edition
-- **UI**: Qt 6.10.1 / QML (QtQuick Controls 2 with custom Theme.qml)
+- **UI**: Qt 6.10.2 / QML (QtQuick Controls 2 with custom Theme.qml)
 - **Bridge**: cxx-qt 0.8 (Rust ↔ Qt FFI with automatic codegen)
 - **Build**: CMake + Cargo
 - **Async**: tokio 1.42 with full features
@@ -323,7 +323,7 @@ Default config is created automatically on first run. Configuration is loaded us
 - Use modern syntax for cleaner, more readable code
 
 ### QML Formatting
-- qmlformat location: `/mnt/c/Qt/6.10.1/msvc2022_64/bin/qmlformat.exe -i <file>`
+- qmlformat location: `/mnt/c/Qt/6.10.2/msvc2022_64/bin/qmlformat.exe -i <file>`
 
 ### QML Singletons
 - Theme/Icons/AppContext defined in `crates/myme-ui/qml/Theme.qml`, `Icons.qml`, `AppContext.qml`

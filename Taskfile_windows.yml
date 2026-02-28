@@ -1,0 +1,30 @@
+# Windows-specific tasks for MyMe.
+# Included by Taskfile.yml via {{OS}} — do not run directly.
+
+version: '3'
+
+tasks:
+  build:
+    desc: Build Rust crates via VS Developer env + Qt (Windows).
+    cmds:
+      - powershell -ExecutionPolicy Bypass -File ./scripts/build-rust.ps1
+
+  build:qt:
+    desc: Full Qt app build (Rust + CMake + windeployqt).
+    cmds:
+      - powershell -ExecutionPolicy Bypass -File ./scripts/build.ps1
+
+  run:
+    desc: Run Rust binary (no UI).
+    cmds:
+      - cargo run --release
+
+  run:qt:
+    desc: Run Qt application. Requires build:qt first.
+    cmds:
+      - ./build-qt/Release/myme-qt.exe
+
+  clean:qt:
+    desc: Remove Qt build directory (build-qt).
+    cmds:
+      - powershell -Command "if (Test-Path build-qt) { Remove-Item -Recurse -Force build-qt }"

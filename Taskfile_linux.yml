@@ -1,0 +1,22 @@
+# Linux/WSL2-specific tasks for MyMe.
+# Included by Taskfile.yml via {{OS}} — do not run directly.
+
+version: '3'
+
+tasks:
+  build:
+    desc: Build all Rust crates (release) with system Qt.
+    env:
+      QMAKE: /usr/bin/qmake6
+    cmds:
+      - cargo build --release
+
+  build:rust:
+    desc: Build non-Qt crates only (no Qt headers required).
+    cmds:
+      - cargo build --release -p myme-core -p myme-services -p myme-auth -p myme-integrations -p myme-weather -p myme-gmail -p myme-calendar
+
+  run:
+    desc: Run Rust binary (no UI).
+    cmds:
+      - cargo run --release
