@@ -5,11 +5,13 @@ version: '3'
 
 tasks:
   build:
-    desc: Build all Rust crates (release) with system Qt.
+    desc: Build Rust crates and Qt application (release).
     env:
       QMAKE: /usr/bin/qmake6
     cmds:
       - cargo build --release
+      - cmake -B build-qt -DCMAKE_BUILD_TYPE=Release
+      - cmake --build build-qt
 
   build:rust:
     desc: Build non-Qt crates only (no Qt headers required).
@@ -17,6 +19,11 @@ tasks:
       - cargo build --release -p myme-core -p myme-services -p myme-auth -p myme-integrations -p myme-weather -p myme-gmail -p myme-calendar
 
   run:
-    desc: Run Qt application. Requires build first + CMake.
+    desc: Run Qt application. Requires build first.
     cmds:
       - ./build-qt/myme-qt
+
+  clean:qt:
+    desc: Remove Qt build directory (build-qt).
+    cmds:
+      - rm -rf build-qt
