@@ -17,6 +17,6 @@ tasks:
       - cargo build --release -p myme-core -p myme-services -p myme-auth -p myme-integrations -p myme-weather -p myme-gmail -p myme-calendar
 
   run:
-    desc: Run Rust binary (no UI).
+    desc: Run Qt application. Requires build first + CMake.
     cmds:
-      - cargo run --release
+      - ./build-qt/myme-qt

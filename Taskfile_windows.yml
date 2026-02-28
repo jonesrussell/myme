@@ -15,11 +15,6 @@ tasks:
       - powershell -ExecutionPolicy Bypass -File ./scripts/build.ps1
 
   run:
-    desc: Run Rust binary (no UI).
-    cmds:
-      - cargo run --release
-
-  run:qt:
     desc: Run Qt application. Requires build:qt first.
     cmds:
       - ./build-qt/Release/myme-qt.exe

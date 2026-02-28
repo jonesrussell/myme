@@ -29,7 +29,7 @@ tasks:
       - task: os:build
 
   run:
-    desc: Run Rust binary (no UI). Delegates to OS-specific run.
+    desc: Run Qt application. Delegates to OS-specific run.
     cmds:
       - task: os:run
 
