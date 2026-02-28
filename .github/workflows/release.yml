@@ -156,8 +156,18 @@ jobs:
           cache: true
           install-deps: true
 
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev libssl-dev pkg-config
+
       - name: Set Qt path
-        run: echo "QT_ROOT=${QT_ROOT_DIR:-$GITHUB_WORKSPACE/qt-install/6.10.1/gcc_64}" >> $GITHUB_ENV
+        run: |
+          QT_ROOT="${QT_ROOT_DIR:-$GITHUB_WORKSPACE/qt-install/6.10.1/gcc_64}"
+          if [ ! -d "$QT_ROOT" ]; then
+            echo "::error::Qt root directory not found: $QT_ROOT"
+            echo "QT_ROOT_DIR was: '${QT_ROOT_DIR:-<not set>}'"
+            exit 1
+          fi
+          echo "QT_ROOT=$QT_ROOT" >> $GITHUB_ENV
 
       - name: Build Rust
         run: cargo build -p myme-ui --release
@@ -191,7 +201,11 @@ jobs:
 
       - name: Install linuxdeployqt
         run: |
-          wget -q -c "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage" -O linuxdeployqt.AppImage
+          wget -q "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage" -O linuxdeployqt.AppImage
+          if ! file linuxdeployqt.AppImage | grep -q "ELF"; then
+            echo "::error::Downloaded linuxdeployqt is not a valid ELF binary"
+            exit 1
+          fi
           chmod +x linuxdeployqt.AppImage
 
       - name: Bundle Qt dependencies

@@ -146,7 +146,7 @@ if(CXX_QT_GEN_LIB)
             runtimeobject
         )
     else()
-        # Linux: Rust deps need zlib (flate2, reqwest) and OpenSSL (reqwest native-tls)
+        # Linux: Rust deps need zlib (libgit2-sys via git2) and OpenSSL (reqwest native-tls)
         target_link_libraries(myme-qt PRIVATE
             "${RUST_SEARCH_DIR}/${RUST_LIB_NAME}"
             "${CXX_QT_OUT_DIR}/${CXX_QT_GEN_PATTERN}"

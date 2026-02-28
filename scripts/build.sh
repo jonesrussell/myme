@@ -3,16 +3,16 @@
 # Run from repo root: ./scripts/build.sh
 #
 # Prerequisites:
-#   - Rust, CMake, Qt 6.x (apt: qt6-base-dev qt6-declarative-dev, or aqtinstall)
+#   - Rust, CMake, Qt 6.x (apt: qt6-base-dev qt6-declarative-dev libxcb-cursor0 build-essential, or aqtinstall)
 #   - libsecret (for OAuth keyring): libsecret-1-dev
 #   - WSL2 GUI: requires WSLg (default in recent WSL2)
 
 set -e
+trap 'echo ""; echo "BUILD FAILED at the step above." >&2' ERR
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BUILD_DIR="$PROJECT_ROOT/build"
-QML_DIR="$PROJECT_ROOT/crates/myme-ui/qml"
 
 echo "MyMe - Qt Application Build Script (Linux/WSL2)"
 echo "==============================================="
@@ -57,9 +57,17 @@ fi
 if [ -x "$QT_ROOT/bin/qmake" ]; then
     export QMAKE="$QT_ROOT/bin/qmake"
 elif command -v qmake6 &>/dev/null; then
-    export QMAKE="qmake6"
+    QMAKE="$(command -v qmake6)"
+    export QMAKE
+elif command -v qmake &>/dev/null; then
+    QMAKE_PATH="$(command -v qmake)"
+    if ! "$QMAKE_PATH" --version 2>/dev/null | grep -q "Qt version [6-9]"; then
+        echo "WARNING: qmake found at $QMAKE_PATH but may not be Qt 6."
+    fi
+    export QMAKE="$QMAKE_PATH"
 else
-    export QMAKE="qmake"
+    echo "ERROR: No qmake found. Install Qt 6 or set QT_PATH."
+    exit 1
 fi
 echo "Using Qt from: $QT_ROOT"
 echo ""
@@ -68,10 +76,6 @@ echo ""
 echo "Step 1: Building Rust library..."
 cd "$PROJECT_ROOT"
 cargo build -p myme-ui --release
-if [ $? -ne 0 ]; then
-    echo "Rust build failed!"
-    exit 1
-fi
 echo ""
 
 # Step 2: Configure CMake
@@ -82,22 +86,11 @@ cmake "$PROJECT_ROOT" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_PREFIX_PATH="$QT_ROOT" \
     -DQt6_DIR="$Qt6_DIR"
-if [ $? -ne 0 ]; then
-    echo "CMake configuration failed!"
-    exit 1
-fi
 echo ""
 
 # Step 3: Build Qt application
 echo "Step 3: Building Qt application..."
 cmake --build .
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "=================================="
-    echo "QT BUILD FAILED"
-    echo "=================================="
-    exit 1
-fi
 echo ""
 
 echo "=================================="
@@ -107,5 +100,5 @@ echo ""
 echo "Executable: $BUILD_DIR/myme-qt"
 echo "Run with: $BUILD_DIR/myme-qt"
 echo ""
-echo "For a portable build with bundled Qt, use linuxdeploy (see CI workflow)."
+echo "For a portable build with bundled Qt, use linuxdeployqt (see CI workflow)."
 echo ""
