@@ -11,52 +11,54 @@ MyMe is a modular Rust desktop application using Qt/QML via cxx-qt that serves a
 ## Build Commands
 
 ### Prerequisites
-- Rust 2021 edition or later
-- Qt 6.10.2 (or 6.x)
-- CMake 3.16+
-- C++ compiler (Visual Studio 2019+ on Windows; GCC on Linux)
 
-### Building
+**All platforms:**
+- Rust 2021 edition or later
+- CMake 3.16+
+- [Task](https://taskfile.dev) (task runner)
 
 **Windows:**
-```powershell
-# All-in-one build script (builds Rust + Qt)
-.\scripts\build.ps1
-```
+- Qt 6.10.2 (or 6.x) with MSVC 2022 kit
+- Visual Studio 2019+ with C++ workload
 
-**Linux / WSL2:**
+**Linux / WSL2 (Ubuntu/Debian):**
 ```bash
-# Prerequisites (Ubuntu/Debian):
-#   sudo apt install qt6-base-dev qt6-declarative-dev libxcb-cursor0 libsecret-1-dev cmake build-essential
-# Or use aqtinstall for Qt 6.10.1 and set QT_PATH to the Qt root.
-./scripts/build.sh
+# Build dependencies
+sudo apt install qt6-base-dev qt6-declarative-dev cmake build-essential g++ \
+    libssl-dev libsecret-1-dev libxcb-cursor0
+
+# QML runtime modules (required to run the app)
+sudo apt install qml6-module-qtquick qml6-module-qtquick-controls \
+    qml6-module-qtquick-layouts qml6-module-qtqml-workerscript
 ```
 WSL2 with WSLg supports GUI apps natively; no extra display configuration needed.
 
+### Building
+
+```bash
+# Build everything (Rust + Qt app) — works on both Windows and Linux
+task build
+
+# Build only non-Qt Rust crates (Linux, no Qt headers required)
+task os:build:rust
+```
+
 **Manual Build:**
 ```bash
-# Build Rust crates (includes cxx-qt code generation)
 cargo build --release
-
-# Build Qt application
-mkdir build-qt
-cd build-qt
-cmake ..
-cmake --build . --config Release
+cmake -B build-qt -DCMAKE_BUILD_TYPE=Release
+cmake --build build-qt
 ```
 
 ### Running
 
 ```bash
-# Run Rust binary (architecture test, no UI)
-cargo run
+# Run Qt application (both platforms)
+task run
 
-# Run Qt application (full UI)
-# Windows:
-.\build\Release\myme-qt.exe
-
-# Linux / WSL2:
-./build/myme-qt
+# Or directly:
+# Windows: .\build-qt\Release\myme-qt.exe
+# Linux:   ./build-qt/myme-qt
 ```
 
 ### Testing
