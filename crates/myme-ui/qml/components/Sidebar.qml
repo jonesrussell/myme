@@ -26,6 +26,7 @@ Rectangle {
         ListElement { title: "Gmail"; page: "GmailPage"; icon: "" }
         ListElement { title: "Calendar"; page: "CalendarPage"; icon: "" }
         ListElement { title: "Projects"; page: "ProjectsPage"; icon: "" }
+        ListElement { title: "Organizations"; page: "OrganizationsPage"; icon: "" }
         ListElement { title: "Repos"; page: "RepoPage"; icon: "" }
         ListElement { title: "Weather"; page: "WeatherPage"; icon: "" }
         ListElement { title: "Dev Tools"; page: "DevToolsPage"; icon: "" }
@@ -39,6 +40,7 @@ Rectangle {
             "GmailPage": Icons.envelopeSimple,
             "CalendarPage": Icons.calendarBlank,
             "ProjectsPage": Icons.squaresFour,
+            "OrganizationsPage": Icons.buildings,
             "RepoPage": Icons.gitBranch,
             "WeatherPage": Icons.cloud_sun,
             "DevToolsPage": Icons.wrench,

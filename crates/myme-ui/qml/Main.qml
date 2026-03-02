@@ -170,9 +170,10 @@ ApplicationWindow {
     Shortcut { sequence: "Ctrl+3"; onActivated: root.navigateToPage("GmailPage") }
     Shortcut { sequence: "Ctrl+4"; onActivated: root.navigateToPage("CalendarPage") }
     Shortcut { sequence: "Ctrl+5"; onActivated: root.navigateToPage("ProjectsPage") }
-    Shortcut { sequence: "Ctrl+6"; onActivated: root.navigateToPage("RepoPage") }
-    Shortcut { sequence: "Ctrl+7"; onActivated: root.navigateToPage("WeatherPage") }
-    Shortcut { sequence: "Ctrl+8"; onActivated: root.navigateToPage("DevToolsPage") }
+    Shortcut { sequence: "Ctrl+6"; onActivated: root.navigateToPage("OrganizationsPage") }
+    Shortcut { sequence: "Ctrl+7"; onActivated: root.navigateToPage("RepoPage") }
+    Shortcut { sequence: "Ctrl+8"; onActivated: root.navigateToPage("WeatherPage") }
+    Shortcut { sequence: "Ctrl+9"; onActivated: root.navigateToPage("DevToolsPage") }
     Shortcut { sequence: "Ctrl+,"; onActivated: root.navigateToPage("SettingsPage") }
     Shortcut { sequence: "Ctrl+B"; onActivated: sidebarComponent.expanded = !sidebarComponent.expanded }
 

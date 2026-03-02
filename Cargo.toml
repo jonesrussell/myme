@@ -8,6 +8,7 @@ members = [
     "crates/myme-weather",
     "crates/myme-gmail",
     "crates/myme-calendar",
+    "crates/myme-organizations",
 ]
 resolver = "2"
 

@@ -15,6 +15,7 @@ use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
 use myme_auth::GitHubAuth;
+use myme_organizations::OrganizationStore;
 use myme_services::{GitHubClient, NoteClient, ProjectStore, SqliteNoteStore};
 use myme_weather::{WeatherCache, WeatherProvider};
 
@@ -44,6 +45,9 @@ pub use crate::services::GmailServiceMessage;
 
 /// Message types for the Calendar service channel
 pub use crate::services::CalendarServiceMessage;
+
+/// Message types for the Organization service channel
+pub use crate::services::OrganizationServiceMessage;
 
 /// Generate shutdown clear lines for service channels. Pass `self` so the macro can refer to the receiver.
 macro_rules! service_channel_shutdown {
@@ -114,6 +118,9 @@ pub struct AppServices {
     /// Project store (SQLite database)
     project_store: RwLock<Option<Arc<parking_lot::Mutex<ProjectStore>>>>,
 
+    /// Organization store (SQLite database)
+    organization_store: RwLock<Option<Arc<parking_lot::Mutex<OrganizationStore>>>>,
+
     /// Weather provider
     weather_provider: RwLock<Option<Arc<WeatherProvider>>>,
 
@@ -165,6 +172,11 @@ pub struct AppServices {
     /// Calendar service channel receiver
     calendar_service_rx:
         RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<CalendarServiceMessage>>>>,
+    /// Organization service channel sender
+    organization_service_tx: RwLock<Option<std::sync::mpsc::Sender<OrganizationServiceMessage>>>,
+    /// Organization service channel receiver
+    organization_service_rx:
+        RwLock<Option<parking_lot::Mutex<std::sync::mpsc::Receiver<OrganizationServiceMessage>>>>,
 
     /// Cancellation token for repo operations (clone, pull)
     repo_cancel_token: RwLock<Option<Arc<CancellationToken>>>,
@@ -198,6 +210,7 @@ impl AppServices {
                     github_client: RwLock::new(None),
                     github_auth: RwLock::new(None),
                     project_store: RwLock::new(None),
+                    organization_store: RwLock::new(None),
                     weather_provider: RwLock::new(None),
                     weather_cache: RwLock::new(None),
                     repo_service_tx: RwLock::new(None),
@@ -218,6 +231,8 @@ impl AppServices {
                     gmail_service_rx: RwLock::new(None),
                     calendar_service_tx: RwLock::new(None),
                     calendar_service_rx: RwLock::new(None),
+                    organization_service_tx: RwLock::new(None),
+                    organization_service_rx: RwLock::new(None),
                     repo_cancel_token: RwLock::new(None),
                 })
             })
@@ -249,6 +264,7 @@ impl AppServices {
         *self.github_client.write() = None;
         *self.github_auth.write() = None;
         *self.project_store.write() = None;
+        *self.organization_store.write() = None;
         *self.weather_provider.write() = None;
         *self.weather_cache.write() = None;
         service_channel_shutdown!(
@@ -262,6 +278,7 @@ impl AppServices {
             kanban: KanbanServiceMessage,
             gmail: GmailServiceMessage,
             calendar: CalendarServiceMessage,
+            organization: OrganizationServiceMessage,
         );
 
         // Cancel any active repo operations
@@ -449,6 +466,48 @@ impl AppServices {
         }
     }
 
+    // =========== Organization Store ===========
+
+    /// Get the organization store if initialized.
+    pub fn organization_store(&self) -> Option<Arc<parking_lot::Mutex<OrganizationStore>>> {
+        self.organization_store.read().clone()
+    }
+
+    /// Set or update the organization store.
+    pub fn set_organization_store(
+        &self,
+        store: Option<Arc<parking_lot::Mutex<OrganizationStore>>>,
+    ) {
+        *self.organization_store.write() = store;
+    }
+
+    /// Initialize organization store, creating database if needed.
+    pub fn init_organization_store(&self) -> bool {
+        if self.organization_store.read().is_some() {
+            return true;
+        }
+
+        let config_dir = myme_core::Config::load_cached().config_dir.clone();
+        let db_path = config_dir.join("organizations.db");
+
+        if let Err(e) = std::fs::create_dir_all(&config_dir) {
+            tracing::error!("Failed to create config directory: {}", e);
+            return false;
+        }
+
+        match OrganizationStore::open(&db_path) {
+            Ok(store) => {
+                self.set_organization_store(Some(Arc::new(parking_lot::Mutex::new(store))));
+                tracing::info!("Organization store initialized at {:?}", db_path);
+                true
+            }
+            Err(e) => {
+                tracing::error!("Failed to open organization store: {}", e);
+                false
+            }
+        }
+    }
+
     // =========== Weather Services ===========
 
     /// Get the weather provider if initialized.
@@ -509,7 +568,7 @@ impl AppServices {
         }
     }
 
-    // Service channel methods (repo, note, weather, auth, project, workflow, kanban, gmail, calendar)
+    // Service channel methods for all registered services
     service_channel_methods!(
         repo: RepoServiceMessage,
         note: NoteServiceMessage,
@@ -520,6 +579,7 @@ impl AppServices {
         kanban: KanbanServiceMessage,
         gmail: GmailServiceMessage,
         calendar: CalendarServiceMessage,
+        organization: OrganizationServiceMessage,
     );
 
     // =========== Repo Operation Cancellation ===========
@@ -600,6 +660,18 @@ pub fn project_store_or_init() -> Option<Arc<parking_lot::Mutex<ProjectStore>>> 
     let svc = services();
     svc.init_project_store();
     svc.project_store()
+}
+
+/// Get organization store.
+pub fn organization_store() -> Option<Arc<parking_lot::Mutex<OrganizationStore>>> {
+    services().organization_store()
+}
+
+/// Get organization store, initializing if needed.
+pub fn organization_store_or_init() -> Option<Arc<parking_lot::Mutex<OrganizationStore>>> {
+    let svc = services();
+    svc.init_organization_store();
+    svc.organization_store()
 }
 
 /// Get weather services.

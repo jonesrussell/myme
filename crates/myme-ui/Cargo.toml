@@ -26,6 +26,7 @@ myme-integrations = { path = "../myme-integrations" }
 myme-weather = { path = "../myme-weather" }
 myme-gmail = { path = "../myme-gmail" }
 myme-calendar = { path = "../myme-calendar" }
+myme-organizations = { path = "../myme-organizations" }
 
 # JWT generation
 jsonwebtoken = "10"

@@ -4,6 +4,7 @@ pub mod gmail_service;
 pub mod google_common;
 pub mod kanban_service;
 pub mod note_service;
+pub mod organization_service;
 pub mod project_service;
 pub mod repo_service;
 pub mod weather_service;
@@ -32,6 +33,7 @@ pub use note_service::{
     request_toggle_done as request_note_toggle, request_update as request_note_update, NoteError,
     NoteFilter as NoteServiceFilter, NoteServiceMessage,
 };
+pub use organization_service::{OrganizationError, OrganizationServiceMessage};
 pub use project_service::{
     request_fetch_repo as request_project_fetch_repo, ProjectError, ProjectServiceMessage, RepoInfo,
 };
