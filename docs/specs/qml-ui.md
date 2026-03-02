@@ -50,7 +50,9 @@ QtObject {
 
     // Typography (Outfit variable font)
     property FontLoader outfitFont: FontLoader { source: "fonts/Outfit-Regular.ttf" }
-    readonly property string fontFamily: outfitFont.name
+    readonly property string fontFamily: outfitFont.status === FontLoader.Ready ? outfitFont.name : "Segoe UI"
+    readonly property string fontFamilyMedium: fontFamily   // Same font, use font.weight for variants
+    readonly property string fontFamilyBold: fontFamily
     property int fontSizeSmall: 12
     property int fontSizeNormal: 14
     property int fontSizeMedium: 16
@@ -62,22 +64,40 @@ QtObject {
     property color background: isDark ? "#141414" : "#faf8f5"
     property color surface: isDark ? "#1c1c1c" : "#ffffff"
     property color surfaceAlt: isDark ? "#242424" : "#f5f2ed"
+    property color surfaceHover: isDark ? "#2a2a2a" : "#ede8e0"
     property color text: isDark ? "#e8e4de" : "#1a1a1a"
     property color textSecondary: isDark ? "#a8a29e" : "#6c757d"
+    property color textMuted: isDark ? "#6b6560" : "#adb5bd"
     property color primary: isDark ? "#e5a54b" : "#c08832"      // Amber/Gold
     property color primaryHover: isDark ? "#d4952f" : "#a87528"
     property color primaryText: isDark ? "#141414" : "#ffffff"
+    property color primaryGlow: isDark ? "#e5a54b40" : "#c0883240"
     property color border: isDark ? "#2a2a2a" : "#e5e0d8"
+    property color borderLight: isDark ? "#333333" : "#ede8e0"
     property color success: "#5bb98c"
+    property color successBg: isDark ? "#1a2e22" : "#e8f5ed"
     property color warning: "#e5a54b"
+    property color warningBg: isDark ? "#2e2518" : "#fef7e8"
     property color error: "#e57373"
+    property color errorBg: isDark ? "#2e1a1a" : "#fdeaea"
     property color info: "#64b5f6"
+    property color infoBg: isDark ? "#1a222e" : "#e8f0fe"
 
     // Sidebar specific
     property color sidebarBg: isDark ? "#111111" : "#f0ece6"
     property color sidebarHover: isDark ? "#1a1a1a" : "#e5e0d8"
     property color sidebarActive: isDark ? "#252525" : "#e0dbd3"
+    property color sidebarBorder: isDark ? "#1a1a1a" : "#e5e0d8"
     property color sidebarActiveIndicator: isDark ? "#e5a54b" : "#c08832"
+
+    // Card, input, button, shadow
+    property color cardBg: surface
+    property color cardBorder: border
+    property color inputBg: isDark ? "#242424" : "#ffffff"
+    property color inputBorder: isDark ? "#333333" : "#d5d0c8"
+    property color inputFocus: primary
+    property int buttonPadding: 12
+    property color shadowColor: isDark ? "#00000080" : "#00000015"
 
     // Dimensions
     property int cardRadius: 10
@@ -147,9 +167,13 @@ ApplicationWindow {
     CalendarModel { id: calendarModel }
 
     // 100ms polling timers for each global model (running only when loading)
-    Timer { interval: 100; running: weatherModel.loading; onTriggered: weatherModel.poll_channel() }
-    Timer { interval: 100; running: gmailModel.loading; onTriggered: gmailModel.poll_channel() }
-    Timer { interval: 100; running: calendarModel.loading; onTriggered: calendarModel.poll_channel() }
+    Timer { interval: 100; running: weatherModel.loading; repeat: true; onTriggered: weatherModel.poll_channel() }
+    Timer { interval: 100; running: gmailModel.loading; repeat: true; onTriggered: gmailModel.poll_channel() }
+    Timer { interval: 100; running: calendarModel.loading; repeat: true; onTriggered: calendarModel.poll_channel() }
+
+    // Gmail and Calendar check auth before fetching:
+    // GmailModel { Component.onCompleted: { check_auth(); if (authenticated) fetch_messages() } }
+    // CalendarModel { Component.onCompleted: { check_auth(); if (authenticated) fetch_today_events() } }
 
     function navigateToPage(pageName) {
         root.currentPage = pageName
@@ -163,7 +187,7 @@ ApplicationWindow {
         StackView { id: contentStack; /* slide-fade transitions */ }
     }
 
-    // Keyboard shortcuts: Ctrl+1..8 for nav, Ctrl+, for Settings, Ctrl+B for sidebar toggle
+    // Keyboard shortcuts: Ctrl+1..9 for nav, Ctrl+, for Settings, Ctrl+B for sidebar toggle
 }
 ```
 
@@ -193,7 +217,7 @@ Rectangle {
 ### Page Navigation
 
 ```
-User clicks Sidebar item (or presses Ctrl+1..8)
+User clicks Sidebar item (or presses Ctrl+1..9)
   -> Sidebar emits navigateTo(pageName)
   -> Main.qml: navigateToPage(pageName)
      -> root.currentPage = pageName
@@ -287,6 +311,7 @@ No direct storage in QML layer. All persistence goes through Rust models:
 | Ctrl+6 | Organizations |
 | Ctrl+7 | Repos |
 | Ctrl+8 | Weather |
+| Ctrl+9 | Dev Tools |
 | Ctrl+, | Settings |
 | Ctrl+B | Toggle sidebar |
 

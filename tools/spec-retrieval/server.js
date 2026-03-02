@@ -1,5 +1,12 @@
 #!/usr/bin/env node
 
+try {
+  require("@modelcontextprotocol/sdk/server/mcp.js");
+} catch (err) {
+  console.error("[myme-specs] Missing dependency. Run: cd tools/spec-retrieval && npm install");
+  process.exit(1);
+}
+
 const { McpServer } = require("@modelcontextprotocol/sdk/server/mcp.js");
 const { StdioServerTransport } = require("@modelcontextprotocol/sdk/server/stdio.js");
 const fs = require("fs");
@@ -7,19 +14,43 @@ const path = require("path");
 
 const SPECS_DIR = path.resolve(__dirname, "../../docs/specs");
 
+process.on("uncaughtException", (err) => {
+  console.error(`[myme-specs] Uncaught exception: ${err.message}`);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error(`[myme-specs] Unhandled rejection: ${reason}`);
+  process.exit(1);
+});
+
 function loadSpecs() {
-  if (!fs.existsSync(SPECS_DIR)) return [];
-  return fs
-    .readdirSync(SPECS_DIR)
-    .filter((f) => f.endsWith(".md"))
-    .map((f) => {
-      const filePath = path.join(SPECS_DIR, f);
+  if (!fs.existsSync(SPECS_DIR)) {
+    console.error(`[myme-specs] Warning: specs directory not found at ${SPECS_DIR}`);
+    return [];
+  }
+
+  let files;
+  try {
+    files = fs.readdirSync(SPECS_DIR).filter((f) => f.endsWith(".md"));
+  } catch (err) {
+    console.error(`[myme-specs] Error reading specs directory: ${err.message}`);
+    return [];
+  }
+
+  return files.flatMap((f) => {
+    const filePath = path.join(SPECS_DIR, f);
+    try {
       const content = fs.readFileSync(filePath, "utf-8");
       const name = f.replace(".md", "");
       const firstLine = content.split("\n").find((l) => l.startsWith("# "));
       const description = firstLine ? firstLine.replace("# ", "").trim() : name;
-      return { name, description, file: f, content };
-    });
+      return [{ name, description, file: f, content }];
+    } catch (err) {
+      console.error(`[myme-specs] Error reading spec file ${f}: ${err.message}`);
+      return [];
+    }
+  });
 }
 
 const server = new McpServer({
@@ -28,6 +59,12 @@ const server = new McpServer({
 });
 
 server.tool("list_specs", "List all available subsystem specs", {}, () => {
+  if (!fs.existsSync(SPECS_DIR)) {
+    return {
+      content: [{ type: "text", text: `Error: specs directory not found at ${SPECS_DIR}` }],
+      isError: true,
+    };
+  }
   const specs = loadSpecs();
   const listing = specs.map((s) => ({
     name: s.name,
@@ -43,6 +80,12 @@ server.tool(
   "Get full content of a subsystem spec by name",
   { name: { type: "string", description: "Spec name (e.g. 'core-auth', 'ui-bridge')" } },
   ({ name }) => {
+    if (!name || typeof name !== "string" || name.trim() === "") {
+      return {
+        content: [{ type: "text", text: "Error: 'name' parameter is required and must be a non-empty string" }],
+        isError: true,
+      };
+    }
     const specs = loadSpecs();
     const spec = specs.find((s) => s.name === name);
     if (!spec) {
@@ -61,6 +104,12 @@ server.tool(
   "Search specs by keyword (case-insensitive substring match)",
   { query: { type: "string", description: "Search query" } },
   ({ query }) => {
+    if (!query || typeof query !== "string" || query.trim() === "") {
+      return {
+        content: [{ type: "text", text: "Error: 'query' parameter is required and must be a non-empty string" }],
+        isError: true,
+      };
+    }
     const specs = loadSpecs();
     const q = query.toLowerCase();
     const results = [];
@@ -95,4 +144,7 @@ async function main() {
   await server.connect(transport);
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(`[myme-specs] Fatal: failed to start MCP server: ${err.message}`);
+  process.exit(1);
+});

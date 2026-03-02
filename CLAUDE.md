@@ -21,6 +21,8 @@ cargo test -p myme-core -p myme-services -p myme-auth -p myme-integrations -p my
 
 **Prerequisites**: Rust 2021+, CMake 3.16+, Qt 6.x, [Task](https://taskfile.dev). Linux deps: `qt6-base-dev qt6-declarative-dev cmake build-essential g++ libssl-dev libsecret-1-dev libxcb-cursor0` plus QML runtime modules (`qml6-module-qtquick*`).
 
+**Windows**: May need "Developer Command Prompt for VS" for linker. See [WINDOWS_BUILD_FIX.md](WINDOWS_BUILD_FIX.md). Set `CMAKE_PREFIX_PATH` if Qt not on PATH.
+
 **Debugging**: `RUST_LOG=debug cargo run` (Rust) / `QT_LOGGING_RULES="*.debug=true"` (Qt)
 
 ## Orchestration
@@ -90,7 +92,7 @@ crates/
 
 ## Critical Gotchas
 
-1. **Never `block_on()` the Qt thread** — use channel pattern: model sends request via mpsc, Timer polls `poll_channel()` at 100ms, model receives result and emits signal
+1. **Never `block_on()` the Qt thread** — three threads: Qt Main (UI), Tokio Runtime (async), mpsc channels between them. Model sends request via mpsc, Timer polls `poll_channel()` at 100ms, model receives result and emits signal
 2. **cxx-qt snake_case** — QML calls Rust methods with exact snake_case: `model.fetch_data()` not `fetchData()`
 3. **Register new models in build.rs** — `.file("src/models/x.rs")` in cxx-qt build config
 4. **Add QML files to qml.qrc** — new files won't load without resource registration
@@ -114,7 +116,7 @@ crates/
 - **Fonts**: Outfit variable font; use `font.weight: Font.Bold` for variants
 - **Cards**: `cardRadius: 10`, `cardPadding: 20`, borders `#ffffff08` (dark) / `#00000008` (light)
 - **Animations**: Staggered delegates: `PauseAnimation { duration: index * 30 }` + opacity 0→1
-- **Keyboard**: Ctrl+1-8 nav, Ctrl+B sidebar toggle, Ctrl+, settings
+- **Keyboard**: Ctrl+1-9 nav, Ctrl+B sidebar toggle, Ctrl+, settings
 - **ES6+**: Qt 6.x QML supports arrow functions, template literals, destructuring
 - **Format**: `qmlformat -i <file>` (Qt 6 tool)
 

@@ -310,6 +310,8 @@ CREATE TABLE prospects (id TEXT PRIMARY KEY, organization_id TEXT NOT NULL, name
 CREATE TABLE organization_projects (organization_id TEXT NOT NULL, project_id TEXT NOT NULL, PRIMARY KEY (organization_id, project_id));
 CREATE INDEX idx_prospects_org ON prospects(organization_id);
 CREATE INDEX idx_prospects_stage ON prospects(stage);
+CREATE INDEX idx_org_projects_org ON organization_projects(organization_id);
+CREATE INDEX idx_org_projects_proj ON organization_projects(project_id);
 ```
 
 ## Configuration
@@ -327,6 +329,7 @@ CREATE INDEX idx_prospects_stage ON prospects(stage);
 
 - **Retry exhaustion**: After 3+1 attempts, `with_retry()` returns the last error; logs "All retry attempts exhausted"
 - **Rate limiting (429)**: Classified as retryable; backoff gives GitHub time to reset
+- **408 Request Timeout**: Classified as retryable (checked before general 4xx rejection)
 - **401/403 not retried**: Auth failures return immediately to avoid retry loops
 - **Schema migration**: `ProjectStore` auto-migrates v1 (single repo) -> v2 (many-to-many) -> v3 (project-based tasks) on `open()`
 - **Organization delete cascade**: Uses `unchecked_transaction` to atomically delete prospects, project links, and organization
