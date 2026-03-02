@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "myme-specs": {
+      "command": "node",
+      "args": ["tools/spec-retrieval/server.js"]
+    }
+  }
+}
