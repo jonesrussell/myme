@@ -2194,6 +2194,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "myme-organizations"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tracing",
+]
+
+[[package]]
 name = "myme-services"
 version = "0.1.0"
 dependencies = [
@@ -2237,6 +2250,7 @@ dependencies = [
  "myme-core",
  "myme-gmail",
  "myme-integrations",
+ "myme-organizations",
  "myme-services",
  "myme-weather",
  "parking_lot",

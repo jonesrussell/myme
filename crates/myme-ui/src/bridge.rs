@@ -6,6 +6,7 @@
 use std::sync::Arc;
 
 use myme_auth::GitHubAuth;
+use myme_organizations::OrganizationStore;
 use myme_services::{GitHubClient, NoteClient, ProjectStore};
 use myme_weather::{WeatherCache, WeatherProvider};
 
@@ -129,6 +130,11 @@ pub fn get_project_store_or_init() -> Option<Arc<parking_lot::Mutex<ProjectStore
     app_services::project_store_or_init()
 }
 
+/// Get organization store, initializing if needed.
+pub fn get_organization_store_or_init() -> Option<Arc<parking_lot::Mutex<OrganizationStore>>> {
+    app_services::organization_store_or_init()
+}
+
 /// Initialize GitHub OAuth provider
 /// Must be called before QML tries to use AuthModel
 #[no_mangle]
@@ -159,6 +165,7 @@ service_channel_bridge!(
     kanban: crate::services::KanbanServiceMessage,
     gmail: crate::services::GmailServiceMessage,
     calendar: crate::services::CalendarServiceMessage,
+    organization: crate::services::OrganizationServiceMessage,
 );
 
 /// Reinitialize GitHub client after successful OAuth

@@ -23,6 +23,7 @@ QtObject {
     readonly property string code: "\uea58"
     readonly property string terminalWindow: "\ued55"
     readonly property string squaresFour: "\ued20"
+    readonly property string buildings: "\ue9c1"
     readonly property string list: "\uebca"
     readonly property string sidebar: "\uece5"
     readonly property string sidebarSimple: "\uece6"

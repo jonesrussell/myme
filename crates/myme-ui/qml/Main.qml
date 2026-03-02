@@ -173,6 +173,7 @@ ApplicationWindow {
     Shortcut { sequence: "Ctrl+6"; onActivated: root.navigateToPage("RepoPage") }
     Shortcut { sequence: "Ctrl+7"; onActivated: root.navigateToPage("WeatherPage") }
     Shortcut { sequence: "Ctrl+8"; onActivated: root.navigateToPage("DevToolsPage") }
+    Shortcut { sequence: "Ctrl+9"; onActivated: root.navigateToPage("OrganizationsPage") }
     Shortcut { sequence: "Ctrl+,"; onActivated: root.navigateToPage("SettingsPage") }
     Shortcut { sequence: "Ctrl+B"; onActivated: sidebarComponent.expanded = !sidebarComponent.expanded }
 

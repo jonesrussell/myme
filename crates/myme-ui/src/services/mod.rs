@@ -4,6 +4,7 @@ pub mod gmail_service;
 pub mod google_common;
 pub mod kanban_service;
 pub mod note_service;
+pub mod organization_service;
 pub mod project_service;
 pub mod repo_service;
 pub mod weather_service;
@@ -41,6 +42,7 @@ pub use repo_service::{
 pub use weather_service::{
     request_fetch as request_weather_fetch, WeatherError, WeatherServiceMessage,
 };
+pub use organization_service::{OrganizationError, OrganizationServiceMessage};
 pub use workflow_service::{
     request_fetch_workflows, RepoWorkflows, WorkflowError, WorkflowServiceMessage,
 };
