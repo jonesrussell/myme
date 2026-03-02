@@ -232,7 +232,11 @@ impl OrganizationStore {
                 let stage = match serde_json::from_str(&stage_str) {
                     Ok(s) => s,
                     Err(e) => {
-                        tracing::warn!("Invalid prospect stage '{}' in database, defaulting to Lead: {}", stage_str, e);
+                        tracing::warn!(
+                            "Invalid prospect stage '{}' in database, defaulting to Lead: {}",
+                            stage_str,
+                            e
+                        );
                         ProspectStage::Lead
                     }
                 };
@@ -288,7 +292,11 @@ impl OrganizationStore {
                 let stage = match serde_json::from_str(&stage_str) {
                     Ok(s) => s,
                     Err(e) => {
-                        tracing::warn!("Invalid prospect stage '{}' in database, defaulting to Lead: {}", stage_str, e);
+                        tracing::warn!(
+                            "Invalid prospect stage '{}' in database, defaulting to Lead: {}",
+                            stage_str,
+                            e
+                        );
                         ProspectStage::Lead
                     }
                 };
@@ -325,9 +333,8 @@ impl OrganizationStore {
             "SELECT project_id FROM organization_projects WHERE organization_id = ?1 ORDER BY project_id",
         )?;
 
-        let projects = stmt
-            .query_map([organization_id], |row| row.get(0))?
-            .collect::<Result<Vec<_>, _>>()?;
+        let projects =
+            stmt.query_map([organization_id], |row| row.get(0))?.collect::<Result<Vec<_>, _>>()?;
         Ok(projects)
     }
 }
@@ -442,9 +449,7 @@ mod tests {
             updated_at: "2026-03-02T00:00:00Z".to_string(),
         };
         store.upsert_prospect(&prospect).unwrap();
-        store
-            .update_prospect_stage("p-1", ProspectStage::Contacted)
-            .unwrap();
+        store.update_prospect_stage("p-1", ProspectStage::Contacted).unwrap();
         let prospects = store.list_prospects("org-1").unwrap();
         assert_eq!(prospects[0].stage, ProspectStage::Contacted);
     }
@@ -453,9 +458,8 @@ mod tests {
     fn test_count_prospects_by_stage() {
         let (store, _dir) = test_store();
         store.upsert_organization(&test_org()).unwrap();
-        for (i, stage) in [ProspectStage::Lead, ProspectStage::Lead, ProspectStage::Contacted]
-            .iter()
-            .enumerate()
+        for (i, stage) in
+            [ProspectStage::Lead, ProspectStage::Lead, ProspectStage::Contacted].iter().enumerate()
         {
             let p = Prospect {
                 id: format!("p-{}", i),
@@ -473,11 +477,8 @@ mod tests {
             store.upsert_prospect(&p).unwrap();
         }
         let counts = store.count_prospects_by_stage("org-1").unwrap();
-        let lead_count = counts
-            .iter()
-            .find(|(s, _)| *s == ProspectStage::Lead)
-            .map(|(_, c)| *c)
-            .unwrap_or(0);
+        let lead_count =
+            counts.iter().find(|(s, _)| *s == ProspectStage::Lead).map(|(_, c)| *c).unwrap_or(0);
         assert_eq!(lead_count, 2);
     }
 

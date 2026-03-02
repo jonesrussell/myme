@@ -136,7 +136,6 @@ impl ProspectModelRust {
         }
         self.prospects.get(index as usize)
     }
-
 }
 
 fn opt_string(s: &QString) -> Option<String> {
@@ -162,8 +161,7 @@ fn parse_stage(s: &str) -> ProspectStage {
 impl qobject::ProspectModel {
     pub fn load_prospects(mut self: Pin<&mut Self>, organization_id: &QString) {
         self.as_mut().rust_mut().ensure_initialized();
-        self.as_mut()
-            .set_organization_id(organization_id.clone());
+        self.as_mut().set_organization_id(organization_id.clone());
 
         let org_id = organization_id.to_string();
         let store = match &self.as_ref().rust().organization_store {
@@ -277,11 +275,7 @@ impl qobject::ProspectModel {
 
     pub fn count_for_stage(&self, stage: &QString) -> i32 {
         let target_stage = parse_stage(&stage.to_string());
-        self.rust()
-            .prospects
-            .iter()
-            .filter(|p| p.stage == target_stage)
-            .count() as i32
+        self.rust().prospects.iter().filter(|p| p.stage == target_stage).count() as i32
     }
 
     pub fn move_prospect(mut self: Pin<&mut Self>, index: i32, new_stage: &QString) {
@@ -308,11 +302,7 @@ impl qobject::ProspectModel {
                 drop(store_guard);
                 self.as_mut().rust_mut().prospects[index as usize].stage = stage;
                 self.as_mut().prospects_changed();
-                tracing::info!(
-                    "Moved prospect {} to stage {:?}",
-                    prospect_id,
-                    stage
-                );
+                tracing::info!("Moved prospect {} to stage {:?}", prospect_id, stage);
             }
             Err(e) => {
                 tracing::error!("Failed to move prospect: {}", e);
@@ -338,8 +328,7 @@ impl qobject::ProspectModel {
 
         let name_str = name.to_string().trim().to_string();
         if name_str.is_empty() {
-            self.as_mut()
-                .set_error_message(QString::from("Prospect name cannot be empty"));
+            self.as_mut().set_error_message(QString::from("Prospect name cannot be empty"));
             return;
         }
 
@@ -398,8 +387,7 @@ impl qobject::ProspectModel {
             Some(p) => p.clone(),
             None => {
                 tracing::warn!("update_prospect: invalid index {}", index);
-                self.as_mut()
-                    .set_error_message(QString::from("Prospect not found"));
+                self.as_mut().set_error_message(QString::from("Prospect not found"));
                 return;
             }
         };
@@ -416,8 +404,7 @@ impl qobject::ProspectModel {
 
         let name_str = name.to_string().trim().to_string();
         if name_str.is_empty() {
-            self.as_mut()
-                .set_error_message(QString::from("Prospect name cannot be empty"));
+            self.as_mut().set_error_message(QString::from("Prospect name cannot be empty"));
             return;
         }
 
@@ -499,8 +486,7 @@ impl qobject::ProspectModel {
         let store_guard = store.lock();
         match store_guard.list_linked_projects(&org_id) {
             Ok(projects) => {
-                let json =
-                    serde_json::to_string(&projects).unwrap_or_else(|_| "[]".to_string());
+                let json = serde_json::to_string(&projects).unwrap_or_else(|_| "[]".to_string());
                 QString::from(&json)
             }
             Err(e) => {
@@ -530,11 +516,7 @@ impl qobject::ProspectModel {
         match store_guard.link_project(&org_id, &project_id_str) {
             Ok(()) => {
                 drop(store_guard);
-                tracing::info!(
-                    "Linked project {} to org {}",
-                    project_id_str,
-                    org_id
-                );
+                tracing::info!("Linked project {} to org {}", project_id_str, org_id);
                 self.as_mut().prospects_changed();
             }
             Err(e) => {
@@ -566,11 +548,7 @@ impl qobject::ProspectModel {
         match store_guard.unlink_project(&org_id, &project_id_str) {
             Ok(()) => {
                 drop(store_guard);
-                tracing::info!(
-                    "Unlinked project {} from org {}",
-                    project_id_str,
-                    org_id
-                );
+                tracing::info!("Unlinked project {} from org {}", project_id_str, org_id);
                 self.as_mut().prospects_changed();
             }
             Err(e) => {

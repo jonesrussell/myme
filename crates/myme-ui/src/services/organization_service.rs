@@ -41,16 +41,15 @@ mod tests {
 
     #[test]
     fn organization_error_display() {
-        assert!(format!("{}", OrganizationError::Database("timeout".into()))
-            .contains("Organization"));
+        assert!(
+            format!("{}", OrganizationError::Database("timeout".into())).contains("Organization")
+        );
         assert!(format!("{}", OrganizationError::NotInitialized).contains("not initialized"));
     }
 
     #[test]
     fn organization_service_message_variants() {
         let _msg: OrganizationServiceMessage =
-            OrganizationServiceMessage::OrganizationsLoaded(Err(
-                OrganizationError::NotInitialized,
-            ));
+            OrganizationServiceMessage::OrganizationsLoaded(Err(OrganizationError::NotInitialized));
     }
 }

@@ -187,7 +187,6 @@ impl OrganizationModelRust {
             }
         }
     }
-
 }
 
 fn opt_string(s: &QString) -> Option<String> {
@@ -307,8 +306,7 @@ impl qobject::OrganizationModel {
 
         let name_str = name.to_string().trim().to_string();
         if name_str.is_empty() {
-            self.as_mut()
-                .set_error_message(QString::from("Organization name cannot be empty"));
+            self.as_mut().set_error_message(QString::from("Organization name cannot be empty"));
             return;
         }
 
@@ -371,8 +369,7 @@ impl qobject::OrganizationModel {
             Some(o) => o.id.clone(),
             None => {
                 tracing::warn!("update_organization: invalid index {}", index);
-                self.as_mut()
-                    .set_error_message(QString::from("Organization not found"));
+                self.as_mut().set_error_message(QString::from("Organization not found"));
                 return;
             }
         };
@@ -389,14 +386,11 @@ impl qobject::OrganizationModel {
 
         let name_str = name.to_string().trim().to_string();
         if name_str.is_empty() {
-            self.as_mut()
-                .set_error_message(QString::from("Organization name cannot be empty"));
+            self.as_mut().set_error_message(QString::from("Organization name cannot be empty"));
             return;
         }
 
-        let created_at = self.as_ref().rust().organizations[index as usize]
-            .created_at
-            .clone();
+        let created_at = self.as_ref().rust().organizations[index as usize].created_at.clone();
         let now = chrono::Utc::now().to_rfc3339();
 
         let org = Organization {
