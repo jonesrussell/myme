@@ -568,7 +568,7 @@ impl AppServices {
         }
     }
 
-    // Service channel methods (repo, note, weather, auth, project, workflow, kanban, gmail, calendar)
+    // Service channel methods for all registered services
     service_channel_methods!(
         repo: RepoServiceMessage,
         note: NoteServiceMessage,

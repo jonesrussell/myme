@@ -505,10 +505,11 @@ Page {
                     }
 
                     Label {
-                        text: "Add notes, context, and details about this organization"
+                        text: "Notes persistence coming soon. Notes typed here will not be saved."
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.textSecondary
+                        color: Theme.primary
+                        opacity: 0.8
                     }
 
                     ScrollView {

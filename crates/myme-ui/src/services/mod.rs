@@ -33,6 +33,7 @@ pub use note_service::{
     request_toggle_done as request_note_toggle, request_update as request_note_update, NoteError,
     NoteFilter as NoteServiceFilter, NoteServiceMessage,
 };
+pub use organization_service::{OrganizationError, OrganizationServiceMessage};
 pub use project_service::{
     request_fetch_repo as request_project_fetch_repo, ProjectError, ProjectServiceMessage, RepoInfo,
 };
@@ -42,7 +43,6 @@ pub use repo_service::{
 pub use weather_service::{
     request_fetch as request_weather_fetch, WeatherError, WeatherServiceMessage,
 };
-pub use organization_service::{OrganizationError, OrganizationServiceMessage};
 pub use workflow_service::{
     request_fetch_workflows, RepoWorkflows, WorkflowError, WorkflowServiceMessage,
 };

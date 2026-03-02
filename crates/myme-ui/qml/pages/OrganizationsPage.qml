@@ -191,15 +191,18 @@ Page {
         clip: true
 
         delegate: Item {
+            id: orgDelegate
             width: orgGrid.cellWidth
             height: orgGrid.cellHeight
+            required property int index
+            property int orgIndex: index
 
             // Staggered fade-in animation
             opacity: 0
             Component.onCompleted: fadeIn.start()
             SequentialAnimation {
                 id: fadeIn
-                PauseAnimation { duration: index * 30 }
+                PauseAnimation { duration: orgDelegate.orgIndex * 30 }
                 ParallelAnimation {
                     NumberAnimation { target: parent; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
                     NumberAnimation { target: parent; property: "y"; from: parent.y + 8; to: parent.y; duration: 200; easing.type: Easing.OutCubic }
@@ -234,7 +237,7 @@ Page {
                         }
 
                         Label {
-                            text: organizationModel.get_name(index)
+                            text: organizationModel.get_name(orgDelegate.orgIndex)
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeNormal
                             font.weight: Font.Bold
@@ -246,7 +249,7 @@ Page {
                         // Prospect count badge
                         Rectangle {
                             visible: {
-                                const counts = JSON.parse(organizationModel.get_prospect_counts(index));
+                                const counts = JSON.parse(organizationModel.get_prospect_counts(orgDelegate.orgIndex));
                                 return counts.total > 0;
                             }
                             width: prospectBadgeLabel.implicitWidth + 12
@@ -258,7 +261,7 @@ Page {
                                 id: prospectBadgeLabel
                                 anchors.centerIn: parent
                                 text: {
-                                    const counts = JSON.parse(organizationModel.get_prospect_counts(index));
+                                    const counts = JSON.parse(organizationModel.get_prospect_counts(orgDelegate.orgIndex));
                                     return counts.total + " prospects";
                                 }
                                 font.family: Theme.fontFamily
@@ -271,7 +274,7 @@ Page {
                     // Website
                     Label {
                         visible: text !== ""
-                        text: organizationModel.get_website(index)
+                        text: organizationModel.get_website(orgDelegate.orgIndex)
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.primary
@@ -282,7 +285,7 @@ Page {
 
                     // Contact
                     RowLayout {
-                        visible: organizationModel.get_contact_name(index) !== ""
+                        visible: organizationModel.get_contact_name(orgDelegate.orgIndex) !== ""
                         Layout.fillWidth: true
                         spacing: Theme.spacingXs
 
@@ -295,8 +298,8 @@ Page {
 
                         Label {
                             text: {
-                                const name = organizationModel.get_contact_name(index);
-                                const email = organizationModel.get_contact_email(index);
+                                const name = organizationModel.get_contact_name(orgDelegate.orgIndex);
+                                const email = organizationModel.get_contact_email(orgDelegate.orgIndex);
                                 return email ? `${name} (${email})` : name;
                             }
                             font.family: Theme.fontFamily
@@ -324,7 +327,7 @@ Page {
                                 model: ["lead", "qualified", "contacted", "proposal", "negotiation", "won", "lost"]
 
                                 Rectangle {
-                                    property var counts: JSON.parse(organizationModel.get_prospect_counts(index))
+                                    property var counts: JSON.parse(organizationModel.get_prospect_counts(orgDelegate.orgIndex))
                                     property int stageCount: counts[modelData] || 0
                                     property int total: counts.total || 1
 
@@ -345,8 +348,8 @@ Page {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        const orgId = organizationModel.get_id(index);
-                        const orgName = organizationModel.get_name(index);
+                        const orgId = organizationModel.get_id(orgDelegate.orgIndex);
+                        const orgName = organizationModel.get_name(orgDelegate.orgIndex);
                         AppContext.pageStack.push(
                             Qt.resolvedUrl("OrganizationDetailPage.qml"),
                             { organizationId: orgId, organizationName: orgName }

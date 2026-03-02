@@ -15,6 +15,7 @@ impl OrganizationStore {
     /// Open or create the database
     pub fn open(path: &Path) -> Result<Self> {
         let conn = Connection::open(path).context("Failed to open organizations database")?;
+        conn.execute_batch("PRAGMA foreign_keys = ON;")?;
         let store = Self { conn };
         store.init_schema()?;
         Ok(store)
@@ -33,7 +34,9 @@ impl OrganizationStore {
 
         if version < SCHEMA_VERSION {
             self.conn.execute_batch(
-                "CREATE TABLE IF NOT EXISTS organizations (
+                "BEGIN TRANSACTION;
+
+                CREATE TABLE IF NOT EXISTS organizations (
                     id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
                     description TEXT,
@@ -71,13 +74,14 @@ impl OrganizationStore {
                 CREATE INDEX IF NOT EXISTS idx_prospects_org ON prospects(organization_id);
                 CREATE INDEX IF NOT EXISTS idx_prospects_stage ON prospects(stage);
                 CREATE INDEX IF NOT EXISTS idx_org_projects_org ON organization_projects(organization_id);
-                CREATE INDEX IF NOT EXISTS idx_org_projects_proj ON organization_projects(project_id);",
+                CREATE INDEX IF NOT EXISTS idx_org_projects_proj ON organization_projects(project_id);
+
+                DELETE FROM schema_version;
+                INSERT INTO schema_version (version) VALUES (1);
+
+                COMMIT;",
             )
             .context("Failed to initialize schema")?;
-
-            self.conn.execute("DELETE FROM schema_version", [])?;
-            self.conn
-                .execute("INSERT INTO schema_version (version) VALUES (?1)", params![SCHEMA_VERSION])?;
         }
 
         Ok(())
@@ -169,12 +173,14 @@ impl OrganizationStore {
         Ok(org)
     }
 
-    /// Delete an organization and cascade-delete its prospects and project links
+    /// Delete an organization along with its associated prospects and project links.
+    /// Deletion is performed in a transaction for atomicity.
     pub fn delete_organization(&self, id: &str) -> Result<()> {
-        self.conn.execute("DELETE FROM prospects WHERE organization_id = ?1", [id])?;
-        self.conn
-            .execute("DELETE FROM organization_projects WHERE organization_id = ?1", [id])?;
-        self.conn.execute("DELETE FROM organizations WHERE id = ?1", [id])?;
+        let tx = self.conn.unchecked_transaction()?;
+        tx.execute("DELETE FROM prospects WHERE organization_id = ?1", [id])?;
+        tx.execute("DELETE FROM organization_projects WHERE organization_id = ?1", [id])?;
+        tx.execute("DELETE FROM organizations WHERE id = ?1", [id])?;
+        tx.commit()?;
         Ok(())
     }
 
@@ -223,12 +229,19 @@ impl OrganizationStore {
         let prospects = stmt
             .query_map([organization_id], |row| {
                 let stage_str: String = row.get(4)?;
+                let stage = match serde_json::from_str(&stage_str) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        tracing::warn!("Invalid prospect stage '{}' in database, defaulting to Lead: {}", stage_str, e);
+                        ProspectStage::Lead
+                    }
+                };
                 Ok(Prospect {
                     id: row.get(0)?,
                     organization_id: row.get(1)?,
                     name: row.get(2)?,
                     description: row.get(3)?,
-                    stage: serde_json::from_str(&stage_str).unwrap_or(ProspectStage::Lead),
+                    stage,
                     value: row.get(5)?,
                     contact_name: row.get(6)?,
                     contact_email: row.get(7)?,
@@ -272,7 +285,13 @@ impl OrganizationStore {
             .query_map([organization_id], |row| {
                 let stage_str: String = row.get(0)?;
                 let count: i32 = row.get(1)?;
-                let stage = serde_json::from_str(&stage_str).unwrap_or(ProspectStage::Lead);
+                let stage = match serde_json::from_str(&stage_str) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        tracing::warn!("Invalid prospect stage '{}' in database, defaulting to Lead: {}", stage_str, e);
+                        ProspectStage::Lead
+                    }
+                };
                 Ok((stage, count))
             })?
             .collect::<Result<Vec<_>, _>>()?;
@@ -473,5 +492,96 @@ mod tests {
         store.unlink_project("org-1", "proj-abc").unwrap();
         let projects = store.list_linked_projects("org-1").unwrap();
         assert_eq!(projects.len(), 1);
+    }
+
+    #[test]
+    fn test_upsert_organization_updates_all_fields() {
+        let (store, _dir) = test_store();
+        store.upsert_organization(&test_org()).unwrap();
+
+        let mut updated = test_org();
+        updated.name = "Updated Name".to_string();
+        updated.description = Some("New description".to_string());
+        updated.website = Some("https://updated.net".to_string());
+        updated.contact_name = Some("New Contact".to_string());
+        updated.contact_email = Some("new@updated.net".to_string());
+        updated.contact_phone = Some("555-1234".to_string());
+        updated.contact_role = Some("CTO".to_string());
+        updated.updated_at = "2026-04-01T00:00:00Z".to_string();
+
+        store.upsert_organization(&updated).unwrap();
+        let org = store.get_organization("org-1").unwrap().unwrap();
+
+        assert_eq!(org.name, "Updated Name");
+        assert_eq!(org.description.unwrap(), "New description");
+        assert_eq!(org.website.unwrap(), "https://updated.net");
+        assert_eq!(org.contact_name.unwrap(), "New Contact");
+        assert_eq!(org.contact_email.unwrap(), "new@updated.net");
+        assert_eq!(org.contact_phone.unwrap(), "555-1234");
+        assert_eq!(org.contact_role.unwrap(), "CTO");
+        assert_eq!(org.updated_at, "2026-04-01T00:00:00Z");
+        // created_at should NOT be updated by upsert
+        assert_eq!(org.created_at, "2026-03-02T00:00:00Z");
+    }
+
+    #[test]
+    fn test_upsert_prospect_updates_all_mutable_fields() {
+        let (store, _dir) = test_store();
+        store.upsert_organization(&test_org()).unwrap();
+
+        let prospect = Prospect {
+            id: "p-1".to_string(),
+            organization_id: "org-1".to_string(),
+            name: "Original".to_string(),
+            description: Some("Original desc".to_string()),
+            stage: ProspectStage::Lead,
+            value: Some("$1000".to_string()),
+            contact_name: Some("Alice".to_string()),
+            contact_email: Some("alice@example.com".to_string()),
+            contact_role: Some("Manager".to_string()),
+            created_at: "2026-03-02T00:00:00Z".to_string(),
+            updated_at: "2026-03-02T00:00:00Z".to_string(),
+        };
+        store.upsert_prospect(&prospect).unwrap();
+
+        let mut updated = prospect;
+        updated.name = "Updated".to_string();
+        updated.description = Some("New desc".to_string());
+        updated.stage = ProspectStage::Proposal;
+        updated.value = Some("$5000".to_string());
+        updated.contact_name = Some("Bob".to_string());
+        updated.contact_email = Some("bob@example.com".to_string());
+        updated.contact_role = Some("Director".to_string());
+        updated.updated_at = "2026-04-01T00:00:00Z".to_string();
+
+        store.upsert_prospect(&updated).unwrap();
+        let prospects = store.list_prospects("org-1").unwrap();
+        assert_eq!(prospects.len(), 1);
+        assert_eq!(prospects[0].name, "Updated");
+        assert_eq!(prospects[0].description.as_deref(), Some("New desc"));
+        assert_eq!(prospects[0].stage, ProspectStage::Proposal);
+        assert_eq!(prospects[0].value.as_deref(), Some("$5000"));
+        assert_eq!(prospects[0].contact_name.as_deref(), Some("Bob"));
+        assert_eq!(prospects[0].contact_email.as_deref(), Some("bob@example.com"));
+        assert_eq!(prospects[0].contact_role.as_deref(), Some("Director"));
+        assert_eq!(prospects[0].updated_at, "2026-04-01T00:00:00Z");
+    }
+
+    #[test]
+    fn test_store_reopen_preserves_data() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join("test.db");
+
+        {
+            let store = OrganizationStore::open(&db_path).unwrap();
+            store.upsert_organization(&test_org()).unwrap();
+        }
+
+        {
+            let store = OrganizationStore::open(&db_path).unwrap();
+            let orgs = store.list_organizations().unwrap();
+            assert_eq!(orgs.len(), 1);
+            assert_eq!(orgs[0].name, "Web Networks");
+        }
     }
 }

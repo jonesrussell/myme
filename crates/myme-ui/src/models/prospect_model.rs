@@ -137,13 +137,6 @@ impl ProspectModelRust {
         self.prospects.get(index as usize)
     }
 
-    fn set_error(&mut self, msg: &str) {
-        self.error_message = QString::from(msg);
-    }
-
-    fn clear_error(&mut self) {
-        self.error_message = QString::from("");
-    }
 }
 
 fn opt_string(s: &QString) -> Option<String> {
@@ -156,7 +149,14 @@ fn opt_string(s: &QString) -> Option<String> {
 }
 
 fn parse_stage(s: &str) -> ProspectStage {
-    serde_json::from_str(&format!("\"{}\"", s)).unwrap_or(ProspectStage::Lead)
+    let json_str = format!("\"{}\"", s);
+    match serde_json::from_str(&json_str) {
+        Ok(stage) => stage,
+        Err(e) => {
+            tracing::warn!("Invalid stage string '{}', defaulting to Lead: {}", s, e);
+            ProspectStage::Lead
+        }
+    }
 }
 
 impl qobject::ProspectModel {
@@ -176,7 +176,7 @@ impl qobject::ProspectModel {
         };
 
         self.as_mut().set_loading(true);
-        self.as_mut().rust_mut().clear_error();
+        self.as_mut().set_error_message(QString::from(""));
 
         let store_guard = store.lock();
         match store_guard.list_prospects(&org_id) {
@@ -191,8 +191,7 @@ impl qobject::ProspectModel {
                 tracing::error!("Failed to load prospects: {}", e);
                 drop(store_guard);
                 self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                    .set_error_message(QString::from(myme_core::AppError::from(e).user_message()));
                 self.as_mut().set_loading(false);
             }
         }
@@ -288,12 +287,18 @@ impl qobject::ProspectModel {
     pub fn move_prospect(mut self: Pin<&mut Self>, index: i32, new_stage: &QString) {
         let prospect_id = match self.as_ref().rust().get_prospect(index) {
             Some(p) => p.id.clone(),
-            None => return,
+            None => {
+                tracing::warn!("move_prospect: invalid index {}", index);
+                return;
+            }
         };
 
         let store = match &self.as_ref().rust().organization_store {
             Some(s) => s.clone(),
-            None => return,
+            None => {
+                tracing::warn!("move_prospect: store not initialized");
+                return;
+            }
         };
 
         let stage = parse_stage(&new_stage.to_string());
@@ -310,10 +315,10 @@ impl qobject::ProspectModel {
                 );
             }
             Err(e) => {
+                tracing::error!("Failed to move prospect: {}", e);
                 drop(store_guard);
                 self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                    .set_error_message(QString::from(myme_core::AppError::from(e).user_message()));
             }
         }
     }
@@ -371,10 +376,10 @@ impl qobject::ProspectModel {
                 self.as_mut().prospects_changed();
             }
             Err(e) => {
+                tracing::error!("Failed to create prospect: {}", e);
                 drop(store_guard);
                 self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                    .set_error_message(QString::from(myme_core::AppError::from(e).user_message()));
             }
         }
     }
@@ -391,12 +396,22 @@ impl qobject::ProspectModel {
     ) {
         let existing = match self.as_ref().rust().get_prospect(index) {
             Some(p) => p.clone(),
-            None => return,
+            None => {
+                tracing::warn!("update_prospect: invalid index {}", index);
+                self.as_mut()
+                    .set_error_message(QString::from("Prospect not found"));
+                return;
+            }
         };
 
         let store = match &self.as_ref().rust().organization_store {
             Some(s) => s.clone(),
-            None => return,
+            None => {
+                tracing::warn!("update_prospect: store not initialized");
+                self.as_mut()
+                    .set_error_message(QString::from("Organization store not initialized"));
+                return;
+            }
         };
 
         let name_str = name.to_string().trim().to_string();
@@ -430,10 +445,10 @@ impl qobject::ProspectModel {
                 self.as_mut().prospects_changed();
             }
             Err(e) => {
+                tracing::error!("Failed to update prospect: {}", e);
                 drop(store_guard);
                 self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                    .set_error_message(QString::from(myme_core::AppError::from(e).user_message()));
             }
         }
     }
@@ -441,12 +456,18 @@ impl qobject::ProspectModel {
     pub fn delete_prospect(mut self: Pin<&mut Self>, index: i32) {
         let prospect_id = match self.as_ref().rust().get_prospect(index) {
             Some(p) => p.id.clone(),
-            None => return,
+            None => {
+                tracing::warn!("delete_prospect: invalid index {}", index);
+                return;
+            }
         };
 
         let store = match &self.as_ref().rust().organization_store {
             Some(s) => s.clone(),
-            None => return,
+            None => {
+                tracing::warn!("delete_prospect: store not initialized");
+                return;
+            }
         };
 
         let store_guard = store.lock();
@@ -461,8 +482,7 @@ impl qobject::ProspectModel {
                 tracing::error!("Failed to delete prospect: {}", e);
                 drop(store_guard);
                 self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                    .set_error_message(QString::from(myme_core::AppError::from(e).user_message()));
             }
         }
     }
@@ -483,19 +503,26 @@ impl qobject::ProspectModel {
                     serde_json::to_string(&projects).unwrap_or_else(|_| "[]".to_string());
                 QString::from(&json)
             }
-            Err(_) => QString::from("[]"),
+            Err(e) => {
+                tracing::error!("Failed to list linked projects for org {}: {}", org_id, e);
+                QString::from("[]")
+            }
         }
     }
 
     pub fn link_project(mut self: Pin<&mut Self>, project_id: &QString) {
         let org_id = self.as_ref().rust().organization_id.to_string();
         if org_id.is_empty() {
+            tracing::warn!("link_project: no organization_id set");
             return;
         }
 
         let store = match &self.as_ref().rust().organization_store {
             Some(s) => s.clone(),
-            None => return,
+            None => {
+                tracing::warn!("link_project: store not initialized");
+                return;
+            }
         };
 
         let project_id_str = project_id.to_string();
@@ -511,10 +538,10 @@ impl qobject::ProspectModel {
                 self.as_mut().prospects_changed();
             }
             Err(e) => {
+                tracing::error!("Failed to link project: {}", e);
                 drop(store_guard);
                 self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                    .set_error_message(QString::from(myme_core::AppError::from(e).user_message()));
             }
         }
     }
@@ -522,12 +549,16 @@ impl qobject::ProspectModel {
     pub fn unlink_project(mut self: Pin<&mut Self>, project_id: &QString) {
         let org_id = self.as_ref().rust().organization_id.to_string();
         if org_id.is_empty() {
+            tracing::warn!("unlink_project: no organization_id set");
             return;
         }
 
         let store = match &self.as_ref().rust().organization_store {
             Some(s) => s.clone(),
-            None => return,
+            None => {
+                tracing::warn!("unlink_project: store not initialized");
+                return;
+            }
         };
 
         let project_id_str = project_id.to_string();
@@ -543,10 +574,10 @@ impl qobject::ProspectModel {
                 self.as_mut().prospects_changed();
             }
             Err(e) => {
+                tracing::error!("Failed to unlink project: {}", e);
                 drop(store_guard);
                 self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                    .set_error_message(QString::from(myme_core::AppError::from(e).user_message()));
             }
         }
     }

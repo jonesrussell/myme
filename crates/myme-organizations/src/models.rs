@@ -96,4 +96,24 @@ mod tests {
         assert_eq!(ProspectStage::Lead.display_name(), "Lead");
         assert_eq!(ProspectStage::Won.display_name(), "Won");
     }
+
+    #[test]
+    fn test_prospect_stage_serde_all_variants_roundtrip() {
+        for stage in ProspectStage::all() {
+            let json = serde_json::to_string(stage).unwrap();
+            let parsed: ProspectStage = serde_json::from_str(&json).unwrap();
+            assert_eq!(*stage, parsed, "Stage {:?} failed roundtrip", stage);
+        }
+    }
+
+    #[test]
+    fn test_prospect_stage_serde_format_is_lowercase() {
+        assert_eq!(serde_json::to_string(&ProspectStage::Lead).unwrap(), "\"lead\"");
+        assert_eq!(serde_json::to_string(&ProspectStage::Qualified).unwrap(), "\"qualified\"");
+        assert_eq!(serde_json::to_string(&ProspectStage::Contacted).unwrap(), "\"contacted\"");
+        assert_eq!(serde_json::to_string(&ProspectStage::Proposal).unwrap(), "\"proposal\"");
+        assert_eq!(serde_json::to_string(&ProspectStage::Negotiation).unwrap(), "\"negotiation\"");
+        assert_eq!(serde_json::to_string(&ProspectStage::Won).unwrap(), "\"won\"");
+        assert_eq!(serde_json::to_string(&ProspectStage::Lost).unwrap(), "\"lost\"");
+    }
 }

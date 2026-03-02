@@ -188,13 +188,6 @@ impl OrganizationModelRust {
         }
     }
 
-    fn set_error(&mut self, msg: &str) {
-        self.error_message = QString::from(msg);
-    }
-
-    fn clear_error(&mut self) {
-        self.error_message = QString::from("");
-    }
 }
 
 fn opt_string(s: &QString) -> Option<String> {
@@ -220,7 +213,7 @@ impl qobject::OrganizationModel {
         };
 
         self.as_mut().set_loading(true);
-        self.as_mut().rust_mut().clear_error();
+        self.as_mut().set_error_message(QString::from(""));
 
         let store_guard = store.lock();
         match store_guard.list_organizations() {
@@ -236,8 +229,7 @@ impl qobject::OrganizationModel {
                 tracing::error!("Failed to load organizations: {}", e);
                 drop(store_guard);
                 self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                    .set_error_message(QString::from(myme_core::AppError::from(e).user_message()));
                 self.as_mut().set_loading(false);
             }
         }
@@ -356,10 +348,10 @@ impl qobject::OrganizationModel {
                 self.as_mut().organizations_changed();
             }
             Err(e) => {
+                tracing::error!("Failed to create organization: {}", e);
                 drop(store_guard);
                 self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                    .set_error_message(QString::from(myme_core::AppError::from(e).user_message()));
             }
         }
     }
@@ -377,12 +369,22 @@ impl qobject::OrganizationModel {
     ) {
         let org_id = match self.as_ref().rust().get_org(index) {
             Some(o) => o.id.clone(),
-            None => return,
+            None => {
+                tracing::warn!("update_organization: invalid index {}", index);
+                self.as_mut()
+                    .set_error_message(QString::from("Organization not found"));
+                return;
+            }
         };
 
         let store = match &self.as_ref().rust().organization_store {
             Some(s) => s.clone(),
-            None => return,
+            None => {
+                tracing::warn!("update_organization: store not initialized");
+                self.as_mut()
+                    .set_error_message(QString::from("Organization store not initialized"));
+                return;
+            }
         };
 
         let name_str = name.to_string().trim().to_string();
@@ -419,10 +421,10 @@ impl qobject::OrganizationModel {
                 self.as_mut().organizations_changed();
             }
             Err(e) => {
+                tracing::error!("Failed to update organization: {}", e);
                 drop(store_guard);
                 self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                    .set_error_message(QString::from(myme_core::AppError::from(e).user_message()));
             }
         }
     }
@@ -430,12 +432,18 @@ impl qobject::OrganizationModel {
     pub fn delete_organization(mut self: Pin<&mut Self>, index: i32) {
         let org_id = match self.as_ref().rust().get_org(index) {
             Some(o) => o.id.clone(),
-            None => return,
+            None => {
+                tracing::warn!("delete_organization: invalid index {}", index);
+                return;
+            }
         };
 
         let store = match &self.as_ref().rust().organization_store {
             Some(s) => s.clone(),
-            None => return,
+            None => {
+                tracing::warn!("delete_organization: store not initialized");
+                return;
+            }
         };
 
         let store_guard = store.lock();
@@ -451,8 +459,7 @@ impl qobject::OrganizationModel {
                 tracing::error!("Failed to delete organization: {}", e);
                 drop(store_guard);
                 self.as_mut()
-                    .rust_mut()
-                    .set_error(myme_core::AppError::from(e).user_message());
+                    .set_error_message(QString::from(myme_core::AppError::from(e).user_message()));
             }
         }
     }
