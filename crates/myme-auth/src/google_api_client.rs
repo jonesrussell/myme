@@ -47,16 +47,16 @@ impl GoogleApiClient {
     /// Create a client from an existing token set in the system keyring.
     ///
     /// Returns `GoogleApiError::NotAuthenticated` if no tokens are stored.
-    pub fn from_keyring(client_id: String, client_secret: String) -> Result<Arc<Self>, GoogleApiError> {
-        let token_set =
-            SecureStorage::retrieve_token("google").map_err(|_| GoogleApiError::NotAuthenticated)?;
+    pub fn from_keyring(
+        client_id: String,
+        client_secret: String,
+    ) -> Result<Arc<Self>, GoogleApiError> {
+        let token_set = SecureStorage::retrieve_token("google")
+            .map_err(|_| GoogleApiError::NotAuthenticated)?;
 
-        let refresh_token = token_set
-            .refresh_token
-            .ok_or(GoogleApiError::NotAuthenticated)?;
+        let refresh_token = token_set.refresh_token.ok_or(GoogleApiError::NotAuthenticated)?;
 
-        let expires_at = DateTime::from_timestamp(token_set.expires_at, 0)
-            .unwrap_or_else(Utc::now);
+        let expires_at = DateTime::from_timestamp(token_set.expires_at, 0).unwrap_or_else(Utc::now);
 
         Ok(Arc::new(Self {
             http: reqwest::Client::new(),
@@ -86,9 +86,7 @@ impl GoogleApiClient {
 
     /// Force a token refresh regardless of expiry.
     pub async fn force_refresh(&self) -> Result<String, GoogleApiError> {
-        let refresh_token = {
-            self.token_state.read().refresh_token.clone()
-        };
+        let refresh_token = { self.token_state.read().refresh_token.clone() };
 
         debug!("Refreshing Google access token");
         let provider =

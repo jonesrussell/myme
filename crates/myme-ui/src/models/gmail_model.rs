@@ -11,7 +11,9 @@ use myme_auth::SecureStorage;
 use myme_gmail::{GmailCache, Message};
 
 use crate::bridge;
-use crate::services::google_common::{create_google_api_client, get_google_cache_path, get_sync_interval_secs};
+use crate::services::google_common::{
+    create_google_api_client, get_google_cache_path, get_sync_interval_secs,
+};
 use crate::services::{
     request_gmail_archive, request_gmail_fetch, request_gmail_mark_as_read, request_gmail_trash,
     GmailServiceMessage,

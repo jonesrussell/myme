@@ -79,8 +79,8 @@ async fn do_import_rfp_leads(
     let config = myme_core::Config::load_cached();
     let base_url = config.northcloud.base_url.clone();
 
-    let client = NorthCloudClient::new(&base_url)
-        .map_err(|e| OrganizationError::Network(e.to_string()))?;
+    let client =
+        NorthCloudClient::new(&base_url).map_err(|e| OrganizationError::Network(e.to_string()))?;
 
     let params = RfpSearchParams {
         rfp_province: Some("on".to_string()),
@@ -89,10 +89,8 @@ async fn do_import_rfp_leads(
         ..Default::default()
     };
 
-    let response = client
-        .search_rfps(&params)
-        .await
-        .map_err(|e| OrganizationError::Network(e.to_string()))?;
+    let response =
+        client.search_rfps(&params).await.map_err(|e| OrganizationError::Network(e.to_string()))?;
 
     let store = crate::app_services::organization_store_or_init()
         .ok_or(OrganizationError::NotInitialized)?;
@@ -112,12 +110,7 @@ async fn do_import_rfp_leads(
             }
         };
 
-        let name = rfp
-            .title
-            .as_deref()
-            .filter(|s| !s.is_empty())
-            .unwrap_or(&hit.title)
-            .to_string();
+        let name = rfp.title.as_deref().filter(|s| !s.is_empty()).unwrap_or(&hit.title).to_string();
 
         let description = build_rfp_description(rfp, &hit.url);
         let value = rfp_budget_string(rfp);
@@ -131,16 +124,8 @@ async fn do_import_rfp_leads(
             description: Some(description),
             stage: ProspectStage::Lead,
             value: if value.is_empty() { None } else { Some(value) },
-            contact_name: if contact_name.is_empty() {
-                None
-            } else {
-                Some(contact_name)
-            },
-            contact_email: if contact_email.is_empty() {
-                None
-            } else {
-                Some(contact_email)
-            },
+            contact_name: if contact_name.is_empty() { None } else { Some(contact_name) },
+            contact_email: if contact_email.is_empty() { None } else { Some(contact_email) },
             contact_role: None,
             created_at: now.clone(),
             updated_at: now.clone(),
@@ -162,14 +147,7 @@ async fn do_import_rfp_leads(
 
     drop(store_guard);
 
-    Ok((
-        RfpImportResult {
-            imported,
-            skipped,
-            failed,
-        },
-        prospects,
-    ))
+    Ok((RfpImportResult { imported, skipped, failed }, prospects))
 }
 
 #[cfg(test)]

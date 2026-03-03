@@ -12,7 +12,9 @@ use myme_auth::SecureStorage;
 use myme_calendar::{Calendar, CalendarCache, Event};
 
 use crate::bridge;
-use crate::services::google_common::{create_google_api_client, get_google_cache_path, get_sync_interval_secs};
+use crate::services::google_common::{
+    create_google_api_client, get_google_cache_path, get_sync_interval_secs,
+};
 use crate::services::{
     request_calendar_fetch_events, request_calendar_fetch_today_events, CalendarServiceMessage,
 };

@@ -48,10 +48,7 @@ impl GoogleOAuth2Provider {
     /// Create a provider using default credentials.
     /// Config.toml values override these at the call site.
     pub fn with_defaults() -> Self {
-        Self::new(
-            DEFAULT_GOOGLE_CLIENT_ID.to_string(),
-            DEFAULT_GOOGLE_CLIENT_SECRET.to_string(),
-        )
+        Self::new(DEFAULT_GOOGLE_CLIENT_ID.to_string(), DEFAULT_GOOGLE_CLIENT_SECRET.to_string())
     }
 
     /// Generate authorization URL for OAuth flow.

@@ -18,18 +18,12 @@ pub struct CalendarClient {
 
 impl CalendarClient {
     pub fn new(api: &Arc<GoogleApiClient>) -> Self {
-        Self {
-            api: api.clone(),
-            base_url: CALENDAR_API_BASE.to_string(),
-        }
+        Self { api: api.clone(), base_url: CALENDAR_API_BASE.to_string() }
     }
 
     #[cfg(test)]
     pub fn new_with_base_url(access_token: &str, base_url: &str) -> Self {
-        Self {
-            api: GoogleApiClient::new_for_test(access_token),
-            base_url: base_url.to_string(),
-        }
+        Self { api: GoogleApiClient::new_for_test(access_token), base_url: base_url.to_string() }
     }
 
     async fn auth_header(&self) -> Result<String, CalendarError> {
@@ -47,8 +41,7 @@ impl CalendarClient {
         let url = format!("{}/users/me/calendarList", self.base_url);
 
         let auth = self.auth_header().await?;
-        let response =
-            self.api.http().get(&url).header("Authorization", auth).send().await?;
+        let response = self.api.http().get(&url).header("Authorization", auth).send().await?;
 
         let resp: CalendarListResponse = self.handle_response(response).await?;
         Ok(resp.items.into_iter().map(Calendar::from).collect())
@@ -76,8 +69,7 @@ impl CalendarClient {
         }
 
         let auth = self.auth_header().await?;
-        let response =
-            self.api.http().get(&url).header("Authorization", auth).send().await?;
+        let response = self.api.http().get(&url).header("Authorization", auth).send().await?;
 
         self.handle_response(response).await
     }
@@ -97,8 +89,7 @@ impl CalendarClient {
         );
 
         let auth = self.auth_header().await?;
-        let response =
-            self.api.http().get(&url).header("Authorization", auth).send().await?;
+        let response = self.api.http().get(&url).header("Authorization", auth).send().await?;
 
         let api_event: ApiEvent = self.handle_response(response).await?;
         Ok(Event::from_api(api_event, calendar_id))
@@ -132,14 +123,8 @@ impl CalendarClient {
         }
 
         let auth = self.auth_header().await?;
-        let response = self
-            .api
-            .http()
-            .post(&url)
-            .header("Authorization", auth)
-            .json(&body)
-            .send()
-            .await?;
+        let response =
+            self.api.http().post(&url).header("Authorization", auth).json(&body).send().await?;
 
         let api_event: ApiEvent = self.handle_response(response).await?;
         Ok(Event::from_api(api_event, calendar_id))
@@ -184,14 +169,8 @@ impl CalendarClient {
         }
 
         let auth = self.auth_header().await?;
-        let response = self
-            .api
-            .http()
-            .patch(&url)
-            .header("Authorization", auth)
-            .json(&body)
-            .send()
-            .await?;
+        let response =
+            self.api.http().patch(&url).header("Authorization", auth).json(&body).send().await?;
 
         let api_event: ApiEvent = self.handle_response(response).await?;
         Ok(Event::from_api(api_event, calendar_id))
@@ -212,8 +191,7 @@ impl CalendarClient {
         );
 
         let auth = self.auth_header().await?;
-        let response =
-            self.api.http().delete(&url).header("Authorization", auth).send().await?;
+        let response = self.api.http().delete(&url).header("Authorization", auth).send().await?;
 
         // Delete returns 204 No Content on success
         if response.status().is_success() {
@@ -236,8 +214,7 @@ impl CalendarClient {
         );
 
         let auth = self.auth_header().await?;
-        let response =
-            self.api.http().post(&url).header("Authorization", auth).send().await?;
+        let response = self.api.http().post(&url).header("Authorization", auth).send().await?;
 
         let api_event: ApiEvent = self.handle_response(response).await?;
         Ok(Event::from_api(api_event, calendar_id))

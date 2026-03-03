@@ -52,18 +52,19 @@ pub fn request_fetch(
 
     runtime.spawn(async move {
         // First get location
-        let mut location = match myme_weather::location::get_current_location(location_override.as_ref()).await {
-            Ok(loc) => {
-                tracing::info!("Got location: {}, {}", loc.latitude, loc.longitude);
-                loc
-            }
-            Err(e) => {
-                let _ = tx.send(WeatherServiceMessage::FetchDone(Err(WeatherError::Location(
-                    e.to_string(),
-                ))));
-                return;
-            }
-        };
+        let mut location =
+            match myme_weather::location::get_current_location(location_override.as_ref()).await {
+                Ok(loc) => {
+                    tracing::info!("Got location: {}, {}", loc.latitude, loc.longitude);
+                    loc
+                }
+                Err(e) => {
+                    let _ = tx.send(WeatherServiceMessage::FetchDone(Err(WeatherError::Location(
+                        e.to_string(),
+                    ))));
+                    return;
+                }
+            };
 
         // Reverse geocode to get city name (coordinates only from system APIs)
         if location.city_name.is_none() {

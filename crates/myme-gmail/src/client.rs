@@ -18,18 +18,12 @@ pub struct GmailClient {
 
 impl GmailClient {
     pub fn new(api: &Arc<GoogleApiClient>) -> Self {
-        Self {
-            api: api.clone(),
-            base_url: GMAIL_API_BASE.to_string(),
-        }
+        Self { api: api.clone(), base_url: GMAIL_API_BASE.to_string() }
     }
 
     #[cfg(test)]
     pub fn new_with_base_url(access_token: &str, base_url: &str) -> Self {
-        Self {
-            api: GoogleApiClient::new_for_test(access_token),
-            base_url: base_url.to_string(),
-        }
+        Self { api: GoogleApiClient::new_for_test(access_token), base_url: base_url.to_string() }
     }
 
     async fn auth_header(&self) -> Result<String, GmailError> {
@@ -64,8 +58,7 @@ impl GmailClient {
         }
 
         let auth = self.auth_header().await?;
-        let response =
-            self.api.http().get(&url).header("Authorization", auth).send().await?;
+        let response = self.api.http().get(&url).header("Authorization", auth).send().await?;
 
         self.handle_response(response).await
     }
@@ -77,8 +70,7 @@ impl GmailClient {
             format!("{}/gmail/v1/users/me/messages/{}?format=full", self.base_url, message_id);
 
         let auth = self.auth_header().await?;
-        let response =
-            self.api.http().get(&url).header("Authorization", auth).send().await?;
+        let response = self.api.http().get(&url).header("Authorization", auth).send().await?;
 
         let api_msg: ApiMessage = self.handle_response(response).await?;
         Ok(Message::from_api(api_msg))
@@ -90,8 +82,7 @@ impl GmailClient {
         let url = format!("{}/gmail/v1/users/me/labels", self.base_url);
 
         let auth = self.auth_header().await?;
-        let response =
-            self.api.http().get(&url).header("Authorization", auth).send().await?;
+        let response = self.api.http().get(&url).header("Authorization", auth).send().await?;
 
         let resp: LabelListResponse = self.handle_response(response).await?;
         Ok(resp.labels.into_iter().map(Label::from).collect())
@@ -113,14 +104,8 @@ impl GmailClient {
         });
 
         let auth = self.auth_header().await?;
-        let response = self
-            .api
-            .http()
-            .post(&url)
-            .header("Authorization", auth)
-            .json(&body)
-            .send()
-            .await?;
+        let response =
+            self.api.http().post(&url).header("Authorization", auth).json(&body).send().await?;
 
         if response.status().is_success() {
             Ok(())
@@ -137,8 +122,7 @@ impl GmailClient {
         let url = format!("{}/gmail/v1/users/me/messages/{}/trash", self.base_url, message_id);
 
         let auth = self.auth_header().await?;
-        let response =
-            self.api.http().post(&url).header("Authorization", auth).send().await?;
+        let response = self.api.http().post(&url).header("Authorization", auth).send().await?;
 
         if response.status().is_success() {
             Ok(())

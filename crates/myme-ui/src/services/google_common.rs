@@ -4,7 +4,9 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use myme_auth::{GoogleApiClient, GoogleApiError, DEFAULT_GOOGLE_CLIENT_ID, DEFAULT_GOOGLE_CLIENT_SECRET};
+use myme_auth::{
+    GoogleApiClient, GoogleApiError, DEFAULT_GOOGLE_CLIENT_ID, DEFAULT_GOOGLE_CLIENT_SECRET,
+};
 
 /// Returns (client_id, client_secret) from config, falling back to compiled defaults.
 pub fn get_google_credentials() -> (String, String) {
@@ -24,10 +26,7 @@ pub fn get_google_credentials() -> (String, String) {
                 .unwrap_or_else(|| DEFAULT_GOOGLE_CLIENT_SECRET.to_string());
             (client_id, client_secret)
         }
-        Err(_) => (
-            DEFAULT_GOOGLE_CLIENT_ID.to_string(),
-            DEFAULT_GOOGLE_CLIENT_SECRET.to_string(),
-        ),
+        Err(_) => (DEFAULT_GOOGLE_CLIENT_ID.to_string(), DEFAULT_GOOGLE_CLIENT_SECRET.to_string()),
     }
 }
 
@@ -51,11 +50,7 @@ pub fn create_google_api_client() -> Option<Arc<GoogleApiClient>> {
 /// Get the configured sync interval in seconds (default: 300).
 pub fn get_sync_interval_secs() -> u64 {
     match myme_core::Config::load() {
-        Ok(config) => config
-            .google
-            .as_ref()
-            .map(|g| g.sync_interval_secs)
-            .unwrap_or(300),
+        Ok(config) => config.google.as_ref().map(|g| g.sync_interval_secs).unwrap_or(300),
         Err(_) => 300,
     }
 }

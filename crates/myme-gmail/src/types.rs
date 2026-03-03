@@ -388,9 +388,9 @@ mod tests {
     #[test]
     fn test_body_extraction_single_part() {
         // "Hello World" base64url-encoded
-        let encoded = base64::engine::general_purpose::URL_SAFE_NO_PAD
-            .encode(b"Hello World");
-        let json = format!(r#"{{
+        let encoded = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(b"Hello World");
+        let json = format!(
+            r#"{{
             "id": "msg1",
             "threadId": "thread1",
             "labelIds": ["INBOX"],
@@ -400,7 +400,9 @@ mod tests {
                 "body": {{ "data": "{}" }},
                 "parts": []
             }}
-        }}"#, encoded);
+        }}"#,
+            encoded
+        );
 
         let api_msg: ApiMessage = serde_json::from_str(&json).unwrap();
         let msg = Message::from_api(api_msg);
@@ -409,11 +411,10 @@ mod tests {
 
     #[test]
     fn test_body_extraction_multipart_prefers_plain() {
-        let plain = base64::engine::general_purpose::URL_SAFE_NO_PAD
-            .encode(b"Plain text body");
-        let html = base64::engine::general_purpose::URL_SAFE_NO_PAD
-            .encode(b"<p>HTML body</p>");
-        let json = format!(r#"{{
+        let plain = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(b"Plain text body");
+        let html = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(b"<p>HTML body</p>");
+        let json = format!(
+            r#"{{
             "id": "msg2",
             "threadId": "thread2",
             "labelIds": [],
@@ -425,7 +426,9 @@ mod tests {
                     {{ "mimeType": "text/plain", "body": {{ "data": "{}" }}, "parts": [] }}
                 ]
             }}
-        }}"#, html, plain);
+        }}"#,
+            html, plain
+        );
 
         let api_msg: ApiMessage = serde_json::from_str(&json).unwrap();
         let msg = Message::from_api(api_msg);
@@ -434,9 +437,9 @@ mod tests {
 
     #[test]
     fn test_body_extraction_html_fallback() {
-        let html = base64::engine::general_purpose::URL_SAFE_NO_PAD
-            .encode(b"<p>HTML only</p>");
-        let json = format!(r#"{{
+        let html = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(b"<p>HTML only</p>");
+        let json = format!(
+            r#"{{
             "id": "msg3",
             "threadId": "thread3",
             "labelIds": [],
@@ -447,7 +450,9 @@ mod tests {
                     {{ "mimeType": "text/html", "body": {{ "data": "{}" }}, "parts": [] }}
                 ]
             }}
-        }}"#, html);
+        }}"#,
+            html
+        );
 
         let api_msg: ApiMessage = serde_json::from_str(&json).unwrap();
         let msg = Message::from_api(api_msg);

@@ -107,10 +107,7 @@ pub mod qobject {
         /// Import RFPs from NorthCloud as Lead-stage prospects for the given organization.
         /// Returns JSON: {"imported": N, "skipped": N} or {"error": "..."}
         #[qinvokable]
-        fn import_rfp_leads(
-            self: Pin<&mut ProspectModel>,
-            organization_id: &QString,
-        ) -> QString;
+        fn import_rfp_leads(self: Pin<&mut ProspectModel>, organization_id: &QString) -> QString;
 
         #[qsignal]
         fn prospects_changed(self: Pin<&mut ProspectModel>);
@@ -590,16 +587,16 @@ impl qobject::ProspectModel {
                             "skipped": counts.skipped,
                             "failed": counts.failed,
                         });
-                        self.as_mut()
-                            .set_import_result(QString::from(result_json.to_string()));
+                        self.as_mut().set_import_result(QString::from(result_json.to_string()));
                     }
                     Err(e) => {
                         tracing::error!("RFP import failed: {}", e);
-                        self.as_mut()
-                            .set_error_message(QString::from(format!("Failed to import leads: {}", e)));
+                        self.as_mut().set_error_message(QString::from(format!(
+                            "Failed to import leads: {}",
+                            e
+                        )));
                         let error_json = serde_json::json!({"error": e.to_string()});
-                        self.as_mut()
-                            .set_import_result(QString::from(error_json.to_string()));
+                        self.as_mut().set_import_result(QString::from(error_json.to_string()));
                     }
                 }
             }
@@ -612,14 +609,10 @@ impl qobject::ProspectModel {
     /// Import RFPs from NorthCloud as Lead-stage prospects.
     /// Non-blocking: spawns async work and returns immediately.
     /// Results arrive via poll_channel -> OrganizationServiceMessage::RfpImportDone.
-    pub fn import_rfp_leads(
-        mut self: Pin<&mut Self>,
-        organization_id: &QString,
-    ) -> QString {
+    pub fn import_rfp_leads(mut self: Pin<&mut Self>, organization_id: &QString) -> QString {
         let org_id = organization_id.to_string();
         if org_id.is_empty() {
-            self.as_mut()
-                .set_error_message(QString::from("Organization ID is required"));
+            self.as_mut().set_error_message(QString::from("Organization ID is required"));
             return QString::from(r#"{"error":"organization_id is required"}"#);
         }
 
@@ -627,8 +620,7 @@ impl qobject::ProspectModel {
         let tx = match bridge::get_organization_service_tx() {
             Some(t) => t,
             None => {
-                self.as_mut()
-                    .set_error_message(QString::from("Service channel not ready"));
+                self.as_mut().set_error_message(QString::from("Service channel not ready"));
                 return QString::from(r#"{"error":"service channel not ready"}"#);
             }
         };
@@ -643,4 +635,3 @@ impl qobject::ProspectModel {
         QString::from(r#"{"pending":true}"#)
     }
 }
-

@@ -78,10 +78,7 @@ impl NorthCloudClient {
             .connect_timeout(std::time::Duration::from_secs(10))
             .build()
             .context("Failed to create NorthCloud HTTP client")?;
-        Ok(Self {
-            client,
-            base_url: parsed,
-        })
+        Ok(Self { client, base_url: parsed })
     }
 
     /// Fetch RFP leads from the NorthCloud search API.
@@ -110,12 +107,8 @@ impl NorthCloudClient {
             }
         }
 
-        let response = self
-            .client
-            .get(url)
-            .send()
-            .await
-            .context("NorthCloud API request failed")?;
+        let response =
+            self.client.get(url).send().await.context("NorthCloud API request failed")?;
 
         if !response.status().is_success() {
             let status = response.status();
@@ -282,19 +275,13 @@ mod tests {
 
     #[test]
     fn rfp_budget_string_min_only() {
-        let rfp = RfpData {
-            budget_min: Some(5000.0),
-            ..Default::default()
-        };
+        let rfp = RfpData { budget_min: Some(5000.0), ..Default::default() };
         assert_eq!(rfp_budget_string(&rfp), "$5000+ CAD");
     }
 
     #[test]
     fn rfp_budget_string_max_only() {
-        let rfp = RfpData {
-            budget_max: Some(100000.0),
-            ..Default::default()
-        };
+        let rfp = RfpData { budget_max: Some(100000.0), ..Default::default() };
         assert_eq!(rfp_budget_string(&rfp), "Up to $100000 CAD");
     }
 
@@ -329,16 +316,10 @@ mod tests {
             .await;
 
         let client = NorthCloudClient::new(mock_server.uri()).unwrap();
-        let response = client
-            .search_rfps(&RfpSearchParams::default())
-            .await
-            .unwrap();
+        let response = client.search_rfps(&RfpSearchParams::default()).await.unwrap();
         assert_eq!(response.total_hits, 1);
         assert_eq!(response.hits[0].title, "Web RFP");
-        assert_eq!(
-            response.hits[0].rfp.as_ref().unwrap().province.as_deref(),
-            Some("on")
-        );
+        assert_eq!(response.hits[0].rfp.as_ref().unwrap().province.as_deref(), Some("on"));
     }
 
     #[tokio::test]
@@ -354,10 +335,7 @@ mod tests {
             .await;
 
         let client = NorthCloudClient::new(mock_server.uri()).unwrap();
-        let params = RfpSearchParams {
-            rfp_province: Some("on".to_string()),
-            ..Default::default()
-        };
+        let params = RfpSearchParams { rfp_province: Some("on".to_string()), ..Default::default() };
         let response = client.search_rfps(&params).await.unwrap();
         assert_eq!(response.total_hits, 0);
     }
@@ -373,16 +351,9 @@ mod tests {
             .await;
 
         let client = NorthCloudClient::new(mock_server.uri()).unwrap();
-        let err = client
-            .search_rfps(&RfpSearchParams::default())
-            .await
-            .unwrap_err();
+        let err = client.search_rfps(&RfpSearchParams::default()).await.unwrap_err();
         let msg = err.to_string();
-        assert!(
-            msg.contains("500"),
-            "Error should contain status code: {}",
-            msg
-        );
+        assert!(msg.contains("500"), "Error should contain status code: {}", msg);
     }
 
     #[tokio::test]
