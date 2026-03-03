@@ -303,4 +303,98 @@ mod tests {
         let rfp = RfpData::default();
         assert_eq!(rfp_budget_string(&rfp), "");
     }
+
+    #[tokio::test]
+    async fn search_rfps_success() {
+        let mock_server = wiremock::MockServer::start().await;
+        let body = serde_json::json!({
+            "total_hits": 1,
+            "hits": [{
+                "id": "nc-123",
+                "title": "Web RFP",
+                "url": "https://example.com/rfp/1",
+                "source_name": "Test",
+                "rfp": {
+                    "organization_name": "City of Ottawa",
+                    "closing_date": "2026-04-01",
+                    "province": "on"
+                }
+            }]
+        });
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/api/v1/search"))
+            .and(wiremock::matchers::query_param("content_type", "rfp"))
+            .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(&body))
+            .mount(&mock_server)
+            .await;
+
+        let client = NorthCloudClient::new(mock_server.uri()).unwrap();
+        let response = client
+            .search_rfps(&RfpSearchParams::default())
+            .await
+            .unwrap();
+        assert_eq!(response.total_hits, 1);
+        assert_eq!(response.hits[0].title, "Web RFP");
+        assert_eq!(
+            response.hits[0].rfp.as_ref().unwrap().province.as_deref(),
+            Some("on")
+        );
+    }
+
+    #[tokio::test]
+    async fn search_rfps_with_province_param() {
+        let mock_server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::query_param("rfp_province", "on"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"total_hits": 0, "hits": []})),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let client = NorthCloudClient::new(mock_server.uri()).unwrap();
+        let params = RfpSearchParams {
+            rfp_province: Some("on".to_string()),
+            ..Default::default()
+        };
+        let response = client.search_rfps(&params).await.unwrap();
+        assert_eq!(response.total_hits, 0);
+    }
+
+    #[tokio::test]
+    async fn search_rfps_server_error() {
+        let mock_server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::any())
+            .respond_with(
+                wiremock::ResponseTemplate::new(500).set_body_string("Internal Server Error"),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let client = NorthCloudClient::new(mock_server.uri()).unwrap();
+        let err = client
+            .search_rfps(&RfpSearchParams::default())
+            .await
+            .unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("500"),
+            "Error should contain status code: {}",
+            msg
+        );
+    }
+
+    #[tokio::test]
+    async fn search_rfps_invalid_json() {
+        let mock_server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::any())
+            .respond_with(wiremock::ResponseTemplate::new(200).set_body_string("not json"))
+            .mount(&mock_server)
+            .await;
+
+        let client = NorthCloudClient::new(mock_server.uri()).unwrap();
+        let result = client.search_rfps(&RfpSearchParams::default()).await;
+        assert!(result.is_err());
+    }
 }
