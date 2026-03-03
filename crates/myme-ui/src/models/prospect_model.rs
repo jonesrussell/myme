@@ -103,6 +103,14 @@ pub mod qobject {
         #[qinvokable]
         fn poll_channel(self: Pin<&mut ProspectModel>);
 
+        /// Import RFPs from NorthCloud as Lead-stage prospects for the given organization.
+        /// Returns JSON: {"imported": N, "skipped": N} or {"error": "..."}
+        #[qinvokable]
+        fn import_rfp_leads(
+            self: Pin<&mut ProspectModel>,
+            organization_id: &QString,
+        ) -> QString;
+
         #[qsignal]
         fn prospects_changed(self: Pin<&mut ProspectModel>);
     }
@@ -564,5 +572,133 @@ impl qobject::ProspectModel {
         // Prospect operations are synchronous (local SQLite).
         // Channel reserved for future async operations.
         let _ = bridge::try_recv_organization_message();
+    }
+
+    pub fn import_rfp_leads(
+        mut self: Pin<&mut Self>,
+        organization_id: &QString,
+    ) -> QString {
+        use myme_integrations::{NorthCloudClient, RfpSearchParams};
+        use myme_organizations::ProspectStage;
+
+        let org_id = organization_id.to_string();
+        if org_id.is_empty() {
+            return QString::from(r#"{"error":"organization_id is required"}"#);
+        }
+
+        let config = myme_core::Config::load_cached();
+        let base_url = config.northcloud.base_url.clone();
+
+        let client = match NorthCloudClient::new(&base_url) {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::error!("Failed to create NorthCloud client: {}", e);
+                return QString::from(format!(r#"{{"error":"{}"}}"#, e));
+            }
+        };
+
+        let params = RfpSearchParams {
+            rfp_province: Some("on".to_string()),
+            page: 1,
+            size: 50,
+            ..Default::default()
+        };
+
+        let rt = crate::app_services::runtime();
+        let response = match rt.block_on(client.search_rfps(&params)) {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!("NorthCloud RFP search failed: {}", e);
+                return QString::from(format!(r#"{{"error":"{}"}}"#, e));
+            }
+        };
+
+        let store = match crate::app_services::organization_store_or_init() {
+            Some(s) => s,
+            None => return QString::from(r#"{"error":"organization store not available"}"#),
+        };
+
+        let now = chrono::Utc::now().to_rfc3339();
+        let mut imported = 0i32;
+        let mut skipped = 0i32;
+
+        for hit in &response.hits {
+            let rfp = match &hit.rfp {
+                Some(r) => r,
+                None => {
+                    skipped += 1;
+                    continue;
+                }
+            };
+
+            let name = rfp
+                .title
+                .as_deref()
+                .filter(|s| !s.is_empty())
+                .unwrap_or(&hit.title)
+                .to_string();
+
+            let description = build_rfp_description(rfp, &hit.url);
+            let value = rfp_budget_string(rfp);
+            let contact_name = rfp.organization_name.clone().unwrap_or_default();
+            let contact_email = rfp.contact_email.clone().unwrap_or_default();
+
+            let prospect = Prospect {
+                id: uuid::Uuid::new_v4().to_string(),
+                organization_id: org_id.clone(),
+                name,
+                description: Some(description),
+                stage: ProspectStage::Lead,
+                value: if value.is_empty() { None } else { Some(value) },
+                contact_name: if contact_name.is_empty() { None } else { Some(contact_name) },
+                contact_email: if contact_email.is_empty() { None } else { Some(contact_email) },
+                contact_role: None,
+                created_at: now.clone(),
+                updated_at: now.clone(),
+            };
+
+            let guard = store.lock();
+            match guard.upsert_prospect(&prospect) {
+                Ok(_) => imported += 1,
+                Err(e) => {
+                    tracing::warn!("Failed to upsert prospect '{}': {}", prospect.name, e);
+                    skipped += 1;
+                }
+            }
+        }
+
+        // Reload prospects to update UI
+        self.as_mut().load_prospects(organization_id);
+
+        QString::from(format!(r#"{{"imported":{},"skipped":{}}}"#, imported, skipped))
+    }
+}
+
+fn build_rfp_description(rfp: &myme_integrations::RfpData, url: &str) -> String {
+    let mut parts = Vec::new();
+    if let Some(desc) = &rfp.description {
+        if !desc.is_empty() {
+            parts.push(desc.clone());
+        }
+    }
+    if let Some(closing) = &rfp.closing_date {
+        parts.push(format!("Closing: {}", closing));
+    }
+    if let Some(city) = &rfp.city {
+        parts.push(format!("Location: {}", city));
+    }
+    if !url.is_empty() {
+        parts.push(format!("Source: {}", url));
+    }
+    parts.join("\n")
+}
+
+fn rfp_budget_string(rfp: &myme_integrations::RfpData) -> String {
+    let currency = rfp.budget_currency.as_deref().unwrap_or("CAD");
+    match (rfp.budget_min, rfp.budget_max) {
+        (Some(min), Some(max)) => format!("${:.0}\u{2013}${:.0} {}", min, max, currency),
+        (Some(min), None) => format!("${:.0}+ {}", min, currency),
+        (None, Some(max)) => format!("Up to ${:.0} {}", max, currency),
+        (None, None) => String::new(),
     }
 }
