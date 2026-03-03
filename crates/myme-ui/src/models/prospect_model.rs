@@ -593,7 +593,8 @@ impl qobject::ProspectModel {
             Ok(c) => c,
             Err(e) => {
                 tracing::error!("Failed to create NorthCloud client: {}", e);
-                return QString::from(format!(r#"{{"error":"{}"}}"#, e));
+                let msg = e.to_string().replace('\\', "\\\\").replace('"', "\\\"");
+                return QString::from(format!(r#"{{"error":"{}"}}"#, msg));
             }
         };
 
@@ -609,7 +610,8 @@ impl qobject::ProspectModel {
             Ok(r) => r,
             Err(e) => {
                 tracing::error!("NorthCloud RFP search failed: {}", e);
-                return QString::from(format!(r#"{{"error":"{}"}}"#, e));
+                let msg = e.to_string().replace('\\', "\\\\").replace('"', "\\\"");
+                return QString::from(format!(r#"{{"error":"{}"}}"#, msg));
             }
         };
 
@@ -622,6 +624,7 @@ impl qobject::ProspectModel {
         let mut imported = 0i32;
         let mut skipped = 0i32;
 
+        let store_guard = store.lock();
         for hit in &response.hits {
             let rfp = match &hit.rfp {
                 Some(r) => r,
@@ -657,8 +660,7 @@ impl qobject::ProspectModel {
                 updated_at: now.clone(),
             };
 
-            let guard = store.lock();
-            match guard.upsert_prospect(&prospect) {
+            match store_guard.upsert_prospect(&prospect) {
                 Ok(_) => imported += 1,
                 Err(e) => {
                     tracing::warn!("Failed to upsert prospect '{}': {}", prospect.name, e);
@@ -666,6 +668,7 @@ impl qobject::ProspectModel {
                 }
             }
         }
+        drop(store_guard);
 
         // Reload prospects to update UI
         self.as_mut().load_prospects(organization_id);
@@ -676,6 +679,11 @@ impl qobject::ProspectModel {
 
 fn build_rfp_description(rfp: &myme_integrations::RfpData, url: &str) -> String {
     let mut parts = Vec::new();
+    if let Some(org) = &rfp.organization_name {
+        if !org.is_empty() {
+            parts.push(format!("Issuer: {}", org));
+        }
+    }
     if let Some(desc) = &rfp.description {
         if !desc.is_empty() {
             parts.push(desc.clone());
