@@ -63,7 +63,7 @@ pub fn request_fetch(
                 .map_err(|e| GmailError::Network(e.to_string()))?;
 
             let mut messages = Vec::new();
-            for msg_ref in list_response.messages {
+            for msg_ref in list_response.messages.into_iter().take(50) {
                 match client.get_message(&msg_ref.id).await {
                     Ok(msg) => messages.push(msg),
                     Err(e) => tracing::warn!("Failed to fetch message {}: {}", msg_ref.id, e),

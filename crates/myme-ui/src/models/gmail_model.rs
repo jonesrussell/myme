@@ -168,10 +168,13 @@ impl qobject::GmailModel {
     }
 
     /// Mark message as read
-    pub fn mark_as_read(self: Pin<&mut Self>, message_id: QString) {
+    pub fn mark_as_read(mut self: Pin<&mut Self>, message_id: QString) {
         let api = match create_google_api_client() {
             Some(a) => a,
-            None => return,
+            None => {
+                self.as_mut().rust_mut().set_error("Not authenticated");
+                return;
+            }
         };
 
         bridge::init_gmail_service_channel();
@@ -185,10 +188,13 @@ impl qobject::GmailModel {
     }
 
     /// Archive message
-    pub fn archive_message(self: Pin<&mut Self>, message_id: QString) {
+    pub fn archive_message(mut self: Pin<&mut Self>, message_id: QString) {
         let api = match create_google_api_client() {
             Some(a) => a,
-            None => return,
+            None => {
+                self.as_mut().rust_mut().set_error("Not authenticated");
+                return;
+            }
         };
 
         bridge::init_gmail_service_channel();
@@ -202,10 +208,13 @@ impl qobject::GmailModel {
     }
 
     /// Move message to trash
-    pub fn trash_message(self: Pin<&mut Self>, message_id: QString) {
+    pub fn trash_message(mut self: Pin<&mut Self>, message_id: QString) {
         let api = match create_google_api_client() {
             Some(a) => a,
-            None => return,
+            None => {
+                self.as_mut().rust_mut().set_error("Not authenticated");
+                return;
+            }
         };
 
         bridge::init_gmail_service_channel();
@@ -270,11 +279,11 @@ impl qobject::GmailModel {
                         self.as_mut().messages_changed();
                     }
                     Err(e) => {
-                        // During background sync, don't overwrite the UI with errors
-                        if !was_syncing {
-                            self.as_mut()
-                                .rust_mut()
-                                .set_error(myme_core::AppError::from(e).user_message());
+                        let app_error = myme_core::AppError::from(e);
+                        if was_syncing {
+                            tracing::warn!("Background Gmail sync failed: {}", app_error);
+                        } else {
+                            self.as_mut().rust_mut().set_error(app_error.user_message());
                         }
                     }
                 }

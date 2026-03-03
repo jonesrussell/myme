@@ -412,4 +412,20 @@ mod tests {
 
         assert!(result.is_ok());
     }
+
+    #[tokio::test]
+    async fn test_sync_token_expired_error() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/users/me/calendarList"))
+            .respond_with(ResponseTemplate::new(410))
+            .mount(&mock_server)
+            .await;
+
+        let client = CalendarClient::new_with_base_url("token", &mock_server.uri());
+        let result = client.list_calendars().await;
+
+        assert!(matches!(result, Err(CalendarError::SyncTokenExpired)));
+    }
 }

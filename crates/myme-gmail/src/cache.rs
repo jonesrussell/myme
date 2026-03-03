@@ -427,4 +427,21 @@ mod tests {
         assert!(!retrieved.is_unread);
         assert!(retrieved.is_starred);
     }
+
+    #[test]
+    fn test_history_id_round_trip() {
+        let cache = GmailCache::in_memory().unwrap();
+        assert!(cache.get_history_id().unwrap().is_none());
+
+        cache.set_history_id("12345").unwrap();
+        assert_eq!(cache.get_history_id().unwrap(), Some("12345".to_string()));
+
+        // Update overwrites
+        cache.set_history_id("67890").unwrap();
+        assert_eq!(cache.get_history_id().unwrap(), Some("67890".to_string()));
+
+        // Clear removes it
+        cache.clear().unwrap();
+        assert!(cache.get_history_id().unwrap().is_none());
+    }
 }

@@ -292,10 +292,11 @@ impl qobject::CalendarModel {
                         self.as_mut().events_changed();
                     }
                     Err(e) => {
-                        if !was_syncing {
-                            self.as_mut()
-                                .rust_mut()
-                                .set_error(myme_core::AppError::from(e).user_message());
+                        let app_error = myme_core::AppError::from(e);
+                        if was_syncing {
+                            tracing::warn!("Background Calendar sync failed: {}", app_error);
+                        } else {
+                            self.as_mut().rust_mut().set_error(app_error.user_message());
                         }
                     }
                 }

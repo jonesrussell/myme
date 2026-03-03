@@ -98,4 +98,11 @@ mod tests {
         assert!(GmailError::RateLimited(10).is_retryable());
         assert!(!GmailError::MessageNotFound("x".into()).is_retryable());
     }
+
+    #[test]
+    fn test_requires_full_sync() {
+        assert!(GmailError::HistoryExpired.requires_full_sync());
+        assert!(!GmailError::TokenExpired.requires_full_sync());
+        assert!(!GmailError::RateLimited(10).requires_full_sync());
+    }
 }

@@ -427,4 +427,20 @@ mod tests {
 
         assert_eq!(result.messages.len(), 1);
     }
+
+    #[tokio::test]
+    async fn test_history_expired_error() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/gmail/v1/users/me/messages"))
+            .respond_with(ResponseTemplate::new(410))
+            .mount(&mock_server)
+            .await;
+
+        let client = GmailClient::new_with_base_url("token", &mock_server.uri());
+        let result = client.list_message_ids(None, None).await;
+
+        assert!(matches!(result, Err(GmailError::HistoryExpired)));
+    }
 }

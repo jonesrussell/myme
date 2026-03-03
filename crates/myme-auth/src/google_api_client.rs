@@ -1,10 +1,9 @@
 //! Google API client with transparent token lifecycle management.
 //!
-//! Wraps `reqwest::Client` with proactive token refresh and 401 retry.
+//! Wraps token state with proactive refresh before expiry.
 
 use std::sync::Arc;
 
-use anyhow::Result;
 use chrono::{DateTime, Utc};
 use parking_lot::RwLock;
 use thiserror::Error;
@@ -35,7 +34,6 @@ struct TokenState {
 /// Auth middleware for Google APIs.
 ///
 /// - **Proactive refresh**: if token expires within 5 minutes, refreshes before sending.
-/// - **Reactive retry**: on 401, refreshes once and retries.
 /// - **Persistence**: writes refreshed tokens back to the system keyring.
 /// - **Thread-safe**: `RwLock` on token state for concurrent async access.
 pub struct GoogleApiClient {
@@ -118,7 +116,14 @@ impl GoogleApiClient {
             access_token: new_access.clone(),
             refresh_token: Some(new_refresh),
             expires_at: expires_at.timestamp(),
-            scopes: new_tokens.scope.split(' ').map(|s| s.to_string()).collect(),
+            scopes: new_tokens
+                .scope
+                .as_deref()
+                .unwrap_or("")
+                .split(' ')
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string())
+                .collect(),
         };
         if let Err(e) = SecureStorage::store_token("google", &token_set) {
             warn!("Failed to persist refreshed token to keyring: {}", e);

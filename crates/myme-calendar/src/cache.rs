@@ -451,4 +451,22 @@ mod tests {
 
         assert!(cache.get_event("primary", "e1").unwrap().is_none());
     }
+
+    #[test]
+    fn test_sync_token_round_trip() {
+        let cache = CalendarCache::in_memory().unwrap();
+        assert!(cache.get_sync_token("primary").unwrap().is_none());
+
+        cache.set_sync_token("primary", "token_abc").unwrap();
+        assert_eq!(cache.get_sync_token("primary").unwrap(), Some("token_abc".to_string()));
+
+        // Different calendar has its own token
+        assert!(cache.get_sync_token("work").unwrap().is_none());
+        cache.set_sync_token("work", "token_xyz").unwrap();
+        assert_eq!(cache.get_sync_token("work").unwrap(), Some("token_xyz".to_string()));
+
+        // Clear removes all tokens
+        cache.clear().unwrap();
+        assert!(cache.get_sync_token("primary").unwrap().is_none());
+    }
 }

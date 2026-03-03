@@ -102,4 +102,11 @@ mod tests {
         assert!(!CalendarError::EventNotFound("x".into()).is_retryable());
         assert!(!CalendarError::Conflict.is_retryable());
     }
+
+    #[test]
+    fn test_requires_full_sync() {
+        assert!(CalendarError::SyncTokenExpired.requires_full_sync());
+        assert!(!CalendarError::TokenExpired.requires_full_sync());
+        assert!(!CalendarError::Conflict.requires_full_sync());
+    }
 }
