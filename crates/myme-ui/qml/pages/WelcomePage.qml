@@ -76,7 +76,7 @@ Page {
                     Layout.preferredHeight: 90
                     radius: Theme.cardRadius
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     border.width: 1
 
                     property bool hovered: emailStatMouse.containsMouse
@@ -133,7 +133,7 @@ Page {
                     Layout.preferredHeight: 90
                     radius: Theme.cardRadius
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     border.width: 1
 
                     property bool hovered: calStatMouse.containsMouse
@@ -190,7 +190,7 @@ Page {
                     Layout.preferredHeight: 90
                     radius: Theme.cardRadius
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     border.width: 1
 
                     property bool hovered: noteStatMouse.containsMouse
@@ -339,7 +339,7 @@ Page {
                             Layout.preferredHeight: 80
                             radius: Theme.cardRadius
                             color: quickLinkMouse.containsMouse ? Theme.surfaceHover : Theme.surface
-                            border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                            border.color: Theme.cardBorderSubtle
                             border.width: 1
 
                             Behavior on color { ColorAnimation { duration: 100 } }

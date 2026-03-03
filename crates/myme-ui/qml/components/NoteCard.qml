@@ -19,7 +19,7 @@ Rectangle {
         const c = noteModel ? noteModel.get_color(noteIndex) : "";
         return (c && c.length > 0) ? c : Theme.surface;
     }
-    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+    border.color: Theme.cardBorderSubtle
     border.width: 1
 
     opacity: 0
@@ -358,7 +358,7 @@ Rectangle {
                             Label {
                                 text: "Set reminder"
                                 font.pixelSize: Theme.fontSizeMedium
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.text
                             }
                             TextField {
@@ -456,7 +456,7 @@ Rectangle {
             Label {
                 text: "Add label"
                 font.pixelSize: Theme.fontSizeMedium
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
             }
             TextField {

@@ -51,11 +51,12 @@ Page {
 
             Label {
                 text: "Weather"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeLarge
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
                 Layout.fillWidth: true
-                leftPadding: Theme.spacingMd
+                leftPadding: Theme.spacingLg
             }
 
             // Refresh button
@@ -106,9 +107,7 @@ Page {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: errorContent.implicitHeight + Theme.spacingMd * 2
-                color: Theme.error + "20"
-                border.color: "transparent"
-                border.width: 0
+                color: Theme.errorBg
                 radius: Theme.cardRadius
                 visible: weatherModel.error_message !== ""
 
@@ -127,6 +126,7 @@ Page {
 
                     Label {
                         text: weatherModel.error_message
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeNormal
                         color: Theme.text
                         wrapMode: Text.WordWrap
@@ -160,6 +160,7 @@ Page {
 
                     Label {
                         text: "Weather data may be outdated. Click refresh to update."
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeNormal
                         color: Theme.text
                         Layout.fillWidth: true
@@ -179,7 +180,7 @@ Page {
                 Layout.fillWidth: true
                 Layout.preferredHeight: currentContent.implicitHeight + Theme.spacingMd * 2
                 color: Theme.surface
-                border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                border.color: Theme.cardBorderSubtle
                 border.width: 1
                 radius: Theme.cardRadius
                 visible: weatherModel.has_data
@@ -196,8 +197,9 @@ Page {
 
                         Label {
                             text: weatherModel.location_name || "Current Location"
+                            font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeMedium
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                             Layout.fillWidth: true
                         }
@@ -212,6 +214,7 @@ Page {
                                 id: statusLabel
                                 anchors.centerIn: parent
                                 text: weatherModel.is_stale ? "Cached" : "Live"
+                                font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: weatherModel.is_stale ? Theme.warning : Theme.success
                             }
@@ -236,6 +239,7 @@ Page {
                             // Temperature
                             Label {
                                 text: `${Math.round(weatherModel.temperature)}°`
+                                font.family: Theme.fontFamily
                                 font.pixelSize: 48
                                 font.weight: Font.Bold
                                 color: Theme.text
@@ -244,6 +248,7 @@ Page {
                             // Condition
                             Label {
                                 text: weatherModel.condition
+                                font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeLarge
                                 color: Theme.textSecondary
                             }
@@ -251,6 +256,7 @@ Page {
                             // Feels like
                             Label {
                                 text: `Feels like ${Math.round(weatherModel.feels_like)}°`
+                                font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeNormal
                                 color: Theme.textMuted
                             }
@@ -272,6 +278,7 @@ Page {
                                 }
                                 Label {
                                     text: `${Math.round(weatherModel.today_high)}°`
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeLarge
                                     color: Theme.text
                                 }
@@ -287,6 +294,7 @@ Page {
                                 }
                                 Label {
                                     text: `${Math.round(weatherModel.today_low)}°`
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeLarge
                                     color: Theme.text
                                 }
@@ -378,8 +386,9 @@ Page {
             // Hourly forecast heading
             Label {
                 text: "Today's Hourly Forecast"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeMedium
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
                 visible: weatherModel.has_data && weatherModel.hourly_count(0) > 0
                 Layout.topMargin: Theme.spacingSm
@@ -404,7 +413,7 @@ Page {
                             height: 90
                             radius: Theme.cardRadius
                             color: Theme.surface
-                            border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                            border.color: Theme.cardBorderSubtle
                             border.width: 1
 
                             property int hourIndex: index
@@ -416,6 +425,7 @@ Page {
                                 // Time
                                 Label {
                                     text: weatherModel.get_hourly_time(0, hourIndex)
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                     color: Theme.textSecondary
                                     Layout.alignment: Qt.AlignHCenter
@@ -433,6 +443,7 @@ Page {
                                 // Temperature
                                 Label {
                                     text: `${Math.round(weatherModel.get_hourly_temp(0, hourIndex))}°`
+                                    font.family: Theme.fontFamily
                                     font.weight: Font.Medium
                                     font.pixelSize: Theme.fontSizeNormal
                                     color: Theme.text
@@ -442,7 +453,7 @@ Page {
                                 // Precipitation
                                 RowLayout {
                                     Layout.alignment: Qt.AlignHCenter
-                                    spacing: 2
+                                    spacing: Theme.spacingXxs
                                     visible: weatherModel.get_hourly_precip(0, hourIndex) > 0
 
                                     Text {
@@ -453,6 +464,7 @@ Page {
                                     }
                                     Label {
                                         text: `${weatherModel.get_hourly_precip(0, hourIndex)}%`
+                                        font.family: Theme.fontFamily
                                         font.pixelSize: 10
                                         color: Theme.textMuted
                                     }
@@ -472,8 +484,9 @@ Page {
             // 7-Day Forecast heading
             Label {
                 text: "7-Day Forecast"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeMedium
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
                 visible: weatherModel.has_data
                 Layout.topMargin: Theme.spacingMd
@@ -488,7 +501,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 80
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     border.width: 1
                     radius: Theme.cardRadius
                     opacity: 0
@@ -524,6 +537,7 @@ Page {
                             // Day name
                             Label {
                                 text: isToday ? "Today" : weatherModel.get_forecast_day(dayIndex)
+                                font.family: Theme.fontFamily
                                 font.weight: isToday ? Font.Bold : Font.Normal
                                 font.pixelSize: Theme.fontSizeNormal
                                 color: Theme.text
@@ -541,6 +555,7 @@ Page {
                             // Condition
                             Label {
                                 text: weatherModel.get_forecast_condition(dayIndex)
+                                font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeNormal
                                 color: Theme.textSecondary
                                 Layout.fillWidth: true
@@ -560,6 +575,7 @@ Page {
                                 }
                                 Label {
                                     text: `${weatherModel.get_forecast_precip(dayIndex)}%`
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                     color: Theme.textSecondary
                                 }
@@ -568,6 +584,7 @@ Page {
                             // High temp
                             Label {
                                 text: `${Math.round(weatherModel.get_forecast_high(dayIndex))}°`
+                                font.family: Theme.fontFamily
                                 font.weight: Font.Bold
                                 font.pixelSize: Theme.fontSizeNormal
                                 color: Theme.text
@@ -578,6 +595,7 @@ Page {
                             // Low temp
                             Label {
                                 text: `${Math.round(weatherModel.get_forecast_low(dayIndex))}°`
+                                font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeNormal
                                 color: Theme.textMuted
                                 horizontalAlignment: Text.AlignRight
@@ -604,6 +622,7 @@ Page {
                                 }
                                 Label {
                                     text: weatherModel.get_forecast_sunrise(dayIndex)
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                     color: Theme.textMuted
                                 }
@@ -620,6 +639,7 @@ Page {
                                 }
                                 Label {
                                     text: weatherModel.get_forecast_sunset(dayIndex)
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                     color: Theme.textMuted
                                 }
@@ -636,7 +656,7 @@ Page {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 200
                 color: Theme.surface
-                border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                border.color: Theme.cardBorderSubtle
                 border.width: 1
                 radius: Theme.cardRadius
                 visible: !weatherModel.has_data && !weatherModel.loading
@@ -655,14 +675,16 @@ Page {
 
                     Label {
                         text: "Weather data unavailable"
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeMedium
-                        font.bold: true
+                        font.weight: Font.Bold
                         color: Theme.text
                         Layout.alignment: Qt.AlignHCenter
                     }
 
                     Label {
                         text: "Check your location settings and internet connection"
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeNormal
                         color: Theme.textSecondary
                         Layout.alignment: Qt.AlignHCenter
@@ -680,6 +702,7 @@ Page {
                             id: retryLabel
                             anchors.centerIn: parent
                             text: "Retry"
+                            font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeNormal
                             color: Theme.primaryText
                         }

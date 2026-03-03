@@ -74,11 +74,12 @@ Page {
 
             Label {
                 text: "CI/CD Workflows"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeLarge
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
                 Layout.fillWidth: true
-                leftPadding: Theme.spacingSm
+                leftPadding: Theme.spacingLg
             }
 
             ToolButton {
@@ -122,7 +123,7 @@ Page {
             Layout.fillWidth: true
             Layout.fillHeight: true
             color: Theme.surface
-            border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+            border.color: Theme.cardBorderSubtle
             border.width: 1
             radius: Theme.cardRadius
 
@@ -140,6 +141,7 @@ Page {
 
                 Label {
                     text: "Connect GitHub to view workflows"
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeMedium
                     color: Theme.textSecondary
                     Layout.alignment: Qt.AlignHCenter
@@ -147,6 +149,7 @@ Page {
 
                 Label {
                     text: "Link repos to projects, then open this page to see their CI/CD workflows."
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeNormal
                     color: Theme.textMuted
                     wrapMode: Text.WordWrap
@@ -177,6 +180,7 @@ Page {
 
                 Label {
                     text: workflowModel.error_message
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeNormal
                     color: Theme.error
                     wrapMode: Text.WordWrap
@@ -203,7 +207,7 @@ Page {
             Layout.fillWidth: true
             Layout.fillHeight: true
             color: Theme.surface
-            border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+            border.color: Theme.cardBorderSubtle
             border.width: 1
             radius: Theme.cardRadius
 
@@ -213,6 +217,7 @@ Page {
 
                 Label {
                     text: "No project repos yet"
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeMedium
                     color: Theme.textSecondary
                     Layout.alignment: Qt.AlignHCenter
@@ -220,6 +225,7 @@ Page {
 
                 Label {
                     text: "Add GitHub repos to your projects to see their CI/CD workflows here."
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeNormal
                     color: Theme.textMuted
                     wrapMode: Text.WordWrap
@@ -256,7 +262,7 @@ Page {
                         Layout.fillWidth: true
                         Layout.preferredHeight: repoColumn.implicitHeight + Theme.spacingMd * 2
                         color: Theme.surface
-                        border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                        border.color: Theme.cardBorderSubtle
                         border.width: 1
                         radius: Theme.cardRadius
 
@@ -279,8 +285,9 @@ Page {
 
                             Label {
                                 text: workflowModel.get_repo_id(repoColumn.parent.repoIndex)
+                                font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeMedium
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.text
                                 Layout.fillWidth: true
                             }
@@ -303,6 +310,7 @@ Page {
 
                                         Label {
                                             text: workflowModel.get_workflow_name(repoColumn.parent.repoIndex, workflowRow.parent.workflowIndex)
+                                            font.family: Theme.fontFamily
                                             font.pixelSize: Theme.fontSizeNormal
                                             color: Theme.text
                                             Layout.preferredWidth: 140
@@ -312,6 +320,7 @@ Page {
 
                                         Label {
                                             text: workflowModel.get_workflow_path(repoColumn.parent.repoIndex, workflowRow.parent.workflowIndex)
+                                            font.family: Theme.fontFamily
                                             font.pixelSize: Theme.fontSizeSmall
                                             color: Theme.textSecondary
                                             Layout.fillWidth: true
@@ -320,6 +329,7 @@ Page {
 
                                         Label {
                                             text: workflowModel.get_workflow_state(repoColumn.parent.repoIndex, workflowRow.parent.workflowIndex)
+                                            font.family: Theme.fontFamily
                                             font.pixelSize: Theme.fontSizeSmall
                                             color: Theme.textMuted
                                             Layout.alignment: Qt.AlignRight

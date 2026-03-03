@@ -17,7 +17,7 @@ Rectangle {
     signal refreshRequested()
 
     color: Theme.cardBg
-    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+    border.color: Theme.cardBorderSubtle
     border.width: 1
     radius: Theme.cardRadius
 

@@ -10,7 +10,7 @@ Rectangle {
     implicitHeight: expanded ? addColumn.implicitHeight + Theme.spacingMd * 2 : 56
     radius: Theme.cardRadius
     color: Theme.surface
-    border.color: addField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff08" : "#00000008")
+    border.color: addField.activeFocus ? Theme.primary : (Theme.cardBorderSubtle)
     border.width: addField.activeFocus ? 2 : 1
 
     property bool expanded: false

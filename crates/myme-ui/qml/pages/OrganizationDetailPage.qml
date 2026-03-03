@@ -44,7 +44,7 @@ Page {
     readonly property var stages: [
         { key: "lead", label: "Lead", color: "#8a8580" },
         { key: "qualified", label: "Qualified", color: "#64b5f6" },
-        { key: "contacted", label: "Contacted", color: "#e5a54b" },
+        { key: "contacted", label: "Contacted", color: "#F59E0B" },
         { key: "proposal", label: "Proposal", color: "#b39ddb" },
         { key: "negotiation", label: "Negotiation", color: "#ff8a65" },
         { key: "won", label: "Won", color: "#5bb98c" },
@@ -178,7 +178,7 @@ Page {
             Layout.fillWidth: true
             Layout.margins: Theme.spacingMd
             height: visible ? detailErrorLabel.implicitHeight + Theme.spacingMd * 2 : 0
-            color: Theme.isDark ? "#3d2020" : "#fde8e8"
+            color: Theme.errorBg
             radius: Theme.cardRadius
             border.color: "transparent"
 
@@ -189,7 +189,7 @@ Page {
                 text: prospectModel.error_message
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeSmall
-                color: Theme.isDark ? "#f5a5a5" : "#c53030"
+                color: Theme.error
                 wrapMode: Text.WordWrap
             }
         }
@@ -223,7 +223,7 @@ Page {
                             text: importStatusText
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeSmall
-                            color: importStatusIsError ? (Theme.isDark ? "#f5a5a5" : "#c53030") : Theme.textSecondary
+                            color: importStatusIsError ? Theme.error : Theme.textSecondary
 
                             property string importStatusText: {
                                 var raw = prospectModel.import_result
@@ -257,7 +257,7 @@ Page {
                                 horizontalAlignment: Text.AlignHCenter
                             }
                             background: Rectangle {
-                                color: parent.enabled ? (parent.hovered ? Qt.darker(Theme.primary, 1.1) : Theme.primary) : (Theme.isDark ? "#ffffff30" : "#00000020")
+                                color: parent.enabled ? (parent.hovered ? Theme.primaryHover : Theme.primary) : (Theme.isDark ? "#ffffff30" : "#00000020")
                                 radius: Theme.buttonRadius
                                 implicitHeight: 32
                                 implicitWidth: 110
@@ -290,7 +290,7 @@ Page {
                                     Layout.fillHeight: true
                                     color: Theme.isDark ? "#ffffff05" : "#00000003"
                                     radius: Theme.cardRadius
-                                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                                    border.color: Theme.cardBorderSubtle
                                     border.width: 1
 
                                     ColumnLayout {
@@ -344,7 +344,7 @@ Page {
                                                 height: prospectCardLayout.implicitHeight + Theme.spacingSm * 2
                                                 radius: Theme.buttonRadius
                                                 color: prospectMouse.containsMouse ? (Theme.isDark ? Qt.lighter(Theme.cardBg, 1.05) : Qt.darker(Theme.cardBg, 1.02)) : Theme.cardBg
-                                                border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                                                border.color: Theme.cardBorderSubtle
                                                 border.width: 1
 
                                                 property int prospectIndex: modelData
@@ -364,7 +364,7 @@ Page {
                                                     anchors.right: parent.right
                                                     anchors.top: parent.top
                                                     anchors.margins: Theme.spacingSm
-                                                    spacing: 2
+                                                    spacing: Theme.spacingXxs
 
                                                     Label {
                                                         text: prospectModel.get_prospect_name(prospectIndex)
@@ -419,7 +419,7 @@ Page {
                                                 horizontalAlignment: Text.AlignHCenter
                                             }
                                             background: Rectangle {
-                                                color: parent.hovered ? (Theme.isDark ? "#ffffff08" : "#00000005") : "transparent"
+                                                color: parent.hovered ? (Theme.surfaceAlt) : "transparent"
                                                 radius: Theme.buttonRadius
                                                 border.color: Theme.isDark ? "#ffffff10" : "#00000010"
                                                 border.width: 1
@@ -471,7 +471,7 @@ Page {
                                 horizontalAlignment: Text.AlignHCenter
                             }
                             background: Rectangle {
-                                color: parent.hovered ? Qt.darker(Theme.primary, 1.1) : Theme.primary
+                                color: parent.hovered ? Theme.primaryHover : Theme.primary
                                 radius: Theme.buttonRadius
                                 implicitHeight: 32
                                 implicitWidth: 120
@@ -496,7 +496,7 @@ Page {
                             height: 48
                             radius: Theme.buttonRadius
                             color: projectCardMouse.containsMouse ? (Theme.isDark ? Qt.lighter(Theme.cardBg, 1.05) : Qt.darker(Theme.cardBg, 1.02)) : Theme.cardBg
-                            border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                            border.color: Theme.cardBorderSubtle
                             border.width: 1
 
                             RowLayout {
@@ -625,7 +625,7 @@ Page {
         background: Rectangle {
             color: Theme.cardBg
             radius: Theme.cardRadius
-            border.color: Theme.isDark ? "#ffffff15" : "#00000015"
+            border.color: Theme.borderLight
             border.width: 1
         }
 
@@ -649,9 +649,9 @@ Page {
                 placeholderText: "Prospect name"
                 color: Theme.text
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: prospectNameField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: prospectNameField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -664,9 +664,9 @@ Page {
                 placeholderText: "$10,000"
                 color: Theme.text
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: prospectValueField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: prospectValueField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -679,9 +679,9 @@ Page {
                 placeholderText: "Contact name"
                 color: Theme.text
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: prospectContactField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: prospectContactField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -696,9 +696,9 @@ Page {
                 color: Theme.text
                 wrapMode: TextArea.Wrap
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: prospectDescField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: prospectDescField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -720,7 +720,7 @@ Page {
                 font.family: Theme.fontFamily
                 DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
                 contentItem: Label { text: parent.text; font: parent.font; color: Theme.primaryText; horizontalAlignment: Text.AlignHCenter }
-                background: Rectangle { color: parent.hovered ? Qt.darker(Theme.primary, 1.1) : Theme.primary; radius: Theme.buttonRadius; implicitHeight: 36; implicitWidth: 80 }
+                background: Rectangle { color: parent.hovered ? Theme.primaryHover : Theme.primary; radius: Theme.buttonRadius; implicitHeight: 36; implicitWidth: 80 }
             }
         }
 
@@ -760,7 +760,7 @@ Page {
         background: Rectangle {
             color: Theme.cardBg
             radius: Theme.cardRadius
-            border.color: Theme.isDark ? "#ffffff15" : "#00000015"
+            border.color: Theme.borderLight
             border.width: 1
         }
 
@@ -801,9 +801,9 @@ Page {
                 font.family: Theme.fontFamily
                 color: Theme.text
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: editNameField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: editNameField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -815,9 +815,9 @@ Page {
                 font.family: Theme.fontFamily
                 color: Theme.text
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: editValueField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: editValueField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -829,9 +829,9 @@ Page {
                 font.family: Theme.fontFamily
                 color: Theme.text
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: editContactField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: editContactField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -845,9 +845,9 @@ Page {
                 color: Theme.text
                 wrapMode: TextArea.Wrap
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: editDescField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: editDescField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -869,7 +869,7 @@ Page {
                 font.family: Theme.fontFamily
                 DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
                 contentItem: Label { text: parent.text; font: parent.font; color: Theme.primaryText; horizontalAlignment: Text.AlignHCenter }
-                background: Rectangle { color: parent.hovered ? Qt.darker(Theme.primary, 1.1) : Theme.primary; radius: Theme.buttonRadius; implicitHeight: 36; implicitWidth: 80 }
+                background: Rectangle { color: parent.hovered ? Theme.primaryHover : Theme.primary; radius: Theme.buttonRadius; implicitHeight: 36; implicitWidth: 80 }
             }
         }
 
@@ -908,7 +908,7 @@ Page {
         background: Rectangle {
             color: Theme.cardBg
             radius: Theme.cardRadius
-            border.color: Theme.isDark ? "#ffffff15" : "#00000015"
+            border.color: Theme.borderLight
             border.width: 1
         }
 
@@ -932,9 +932,9 @@ Page {
                 placeholderText: "Enter project ID"
                 color: Theme.text
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: linkProjectField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: linkProjectField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -956,7 +956,7 @@ Page {
                 font.family: Theme.fontFamily
                 DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
                 contentItem: Label { text: parent.text; font: parent.font; color: Theme.primaryText; horizontalAlignment: Text.AlignHCenter }
-                background: Rectangle { color: parent.hovered ? Qt.darker(Theme.primary, 1.1) : Theme.primary; radius: Theme.buttonRadius; implicitHeight: 36; implicitWidth: 80 }
+                background: Rectangle { color: parent.hovered ? Theme.primaryHover : Theme.primary; radius: Theme.buttonRadius; implicitHeight: 36; implicitWidth: 80 }
             }
         }
 
