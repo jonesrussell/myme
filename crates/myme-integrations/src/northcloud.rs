@@ -3,7 +3,7 @@ use reqwest::Client;
 use serde::Deserialize;
 
 /// RFP metadata extracted by the NorthCloud classifier
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct RfpData {
     pub organization_name: Option<String>,
     pub title: Option<String>,
@@ -130,6 +130,46 @@ impl NorthCloudClient {
     }
 }
 
+/// Build a multi-line prospect description from RFP metadata.
+pub fn build_rfp_description(rfp: &RfpData, url: &str) -> String {
+    let mut parts = Vec::new();
+    if let Some(org) = &rfp.organization_name {
+        if !org.is_empty() {
+            parts.push(format!("Issuer: {}", org));
+        }
+    }
+    if let Some(desc) = &rfp.description {
+        if !desc.is_empty() {
+            parts.push(desc.clone());
+        }
+    }
+    if let Some(closing) = &rfp.closing_date {
+        if !closing.is_empty() {
+            parts.push(format!("Closing: {}", closing));
+        }
+    }
+    if let Some(city) = &rfp.city {
+        if !city.is_empty() {
+            parts.push(format!("Location: {}", city));
+        }
+    }
+    if !url.is_empty() {
+        parts.push(format!("Source: {}", url));
+    }
+    parts.join("\n")
+}
+
+/// Format budget range as a display string. Defaults to CAD.
+pub fn rfp_budget_string(rfp: &RfpData) -> String {
+    let currency = rfp.budget_currency.as_deref().unwrap_or("CAD");
+    match (rfp.budget_min, rfp.budget_max) {
+        (Some(min), Some(max)) => format!("${:.0}\u{2013}${:.0} {}", min, max, currency),
+        (Some(min), None) => format!("${:.0}+ {}", min, currency),
+        (None, Some(max)) => format!("Up to ${:.0} {}", max, currency),
+        (None, None) => String::new(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
@@ -191,5 +231,76 @@ mod tests {
         }"#;
         let hit: RfpHit = serde_json::from_str(json).unwrap();
         assert!(hit.rfp.is_none());
+    }
+
+    #[test]
+    fn build_rfp_description_all_fields() {
+        let rfp = RfpData {
+            organization_name: Some("City of Ottawa".into()),
+            description: Some("Web dev project".into()),
+            closing_date: Some("2026-04-01".into()),
+            city: Some("Ottawa".into()),
+            ..Default::default()
+        };
+        let result = build_rfp_description(&rfp, "https://example.com/rfp/1");
+        assert!(result.contains("Issuer: City of Ottawa"));
+        assert!(result.contains("Web dev project"));
+        assert!(result.contains("Closing: 2026-04-01"));
+        assert!(result.contains("Location: Ottawa"));
+        assert!(result.contains("Source: https://example.com/rfp/1"));
+    }
+
+    #[test]
+    fn build_rfp_description_minimal() {
+        let rfp = RfpData::default();
+        let result = build_rfp_description(&rfp, "");
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn build_rfp_description_empty_org_skipped() {
+        let rfp = RfpData {
+            organization_name: Some(String::new()),
+            description: Some("A project".into()),
+            ..Default::default()
+        };
+        let result = build_rfp_description(&rfp, "");
+        assert!(!result.contains("Issuer:"));
+        assert!(result.contains("A project"));
+    }
+
+    #[test]
+    fn rfp_budget_string_both_bounds() {
+        let rfp = RfpData {
+            budget_min: Some(10000.0),
+            budget_max: Some(50000.0),
+            budget_currency: Some("USD".into()),
+            ..Default::default()
+        };
+        assert_eq!(rfp_budget_string(&rfp), "$10000\u{2013}$50000 USD");
+    }
+
+    #[test]
+    fn rfp_budget_string_min_only() {
+        let rfp = RfpData {
+            budget_min: Some(5000.0),
+            ..Default::default()
+        };
+        assert_eq!(rfp_budget_string(&rfp), "$5000+ CAD");
+    }
+
+    #[test]
+    fn rfp_budget_string_max_only() {
+        let rfp = RfpData {
+            budget_max: Some(100000.0),
+            ..Default::default()
+        };
+        assert_eq!(rfp_budget_string(&rfp), "Up to $100000 CAD");
+    }
+
+    #[test]
+    fn rfp_budget_string_no_budget() {
+        let rfp = RfpData::default();
+        assert_eq!(rfp_budget_string(&rfp), "");
     }
 }

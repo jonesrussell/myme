@@ -641,8 +641,8 @@ impl qobject::ProspectModel {
                 .unwrap_or(&hit.title)
                 .to_string();
 
-            let description = build_rfp_description(rfp, &hit.url);
-            let value = rfp_budget_string(rfp);
+            let description = myme_integrations::build_rfp_description(rfp, &hit.url);
+            let value = myme_integrations::rfp_budget_string(rfp);
             let contact_name = rfp.organization_name.clone().unwrap_or_default();
             let contact_email = rfp.contact_email.clone().unwrap_or_default();
 
@@ -677,36 +677,3 @@ impl qobject::ProspectModel {
     }
 }
 
-fn build_rfp_description(rfp: &myme_integrations::RfpData, url: &str) -> String {
-    let mut parts = Vec::new();
-    if let Some(org) = &rfp.organization_name {
-        if !org.is_empty() {
-            parts.push(format!("Issuer: {}", org));
-        }
-    }
-    if let Some(desc) = &rfp.description {
-        if !desc.is_empty() {
-            parts.push(desc.clone());
-        }
-    }
-    if let Some(closing) = &rfp.closing_date {
-        parts.push(format!("Closing: {}", closing));
-    }
-    if let Some(city) = &rfp.city {
-        parts.push(format!("Location: {}", city));
-    }
-    if !url.is_empty() {
-        parts.push(format!("Source: {}", url));
-    }
-    parts.join("\n")
-}
-
-fn rfp_budget_string(rfp: &myme_integrations::RfpData) -> String {
-    let currency = rfp.budget_currency.as_deref().unwrap_or("CAD");
-    match (rfp.budget_min, rfp.budget_max) {
-        (Some(min), Some(max)) => format!("${:.0}\u{2013}${:.0} {}", min, max, currency),
-        (Some(min), None) => format!("${:.0}+ {}", min, currency),
-        (None, Some(max)) => format!("Up to ${:.0} {}", max, currency),
-        (None, None) => String::new(),
-    }
-}
