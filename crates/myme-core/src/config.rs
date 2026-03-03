@@ -137,9 +137,9 @@ impl Default for WeatherConfig {
         Self {
             temperature_unit: TemperatureUnit::Auto,
             refresh_minutes: 15,
-            latitude: None,
-            longitude: None,
-            city_name: None,
+            latitude: Some(43.6532),
+            longitude: Some(-79.3832),
+            city_name: Some("Toronto".to_string()),
         }
     }
 }
@@ -516,11 +516,11 @@ mod tests {
     }
 
     #[test]
-    fn test_weather_config_default_has_no_location() {
+    fn test_weather_config_default_has_toronto() {
         let weather = WeatherConfig::default();
-        assert!(weather.latitude.is_none());
-        assert!(weather.longitude.is_none());
-        assert!(weather.city_name.is_none());
+        assert_eq!(weather.latitude, Some(43.6532));
+        assert_eq!(weather.longitude, Some(-79.3832));
+        assert_eq!(weather.city_name.as_deref(), Some("Toronto"));
     }
 
     #[test]
