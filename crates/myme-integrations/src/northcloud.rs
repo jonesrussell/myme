@@ -40,13 +40,25 @@ pub struct RfpSearchResponse {
 }
 
 /// Parameters for an RFP search
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct RfpSearchParams {
     pub rfp_province: Option<String>,
     pub rfp_sector: Vec<String>,
     pub rfp_closing_after: Option<String>,
     pub page: u32,
     pub size: u32,
+}
+
+impl Default for RfpSearchParams {
+    fn default() -> Self {
+        Self {
+            rfp_province: None,
+            rfp_sector: Vec::new(),
+            rfp_closing_after: None,
+            page: 1,
+            size: 20,
+        }
+    }
 }
 
 /// HTTP client for the NorthCloud search API
@@ -56,11 +68,15 @@ pub struct NorthCloudClient {
 }
 
 impl NorthCloudClient {
-    pub fn new(base_url: impl Into<String>) -> Self {
-        Self {
-            client: Client::new(),
+    pub fn new(base_url: impl Into<String>) -> anyhow::Result<Self> {
+        let client = reqwest::Client::builder()
+            .user_agent("MyMe/0.1.0")
+            .build()
+            .context("Failed to create NorthCloud HTTP client")?;
+        Ok(Self {
+            client,
             base_url: base_url.into(),
-        }
+        })
     }
 
     /// Fetch RFP leads from the NorthCloud search API.
@@ -109,13 +125,16 @@ impl NorthCloudClient {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
     use super::*;
 
     #[test]
     fn rfp_search_params_default() {
-        let params = RfpSearchParams { page: 1, size: 20, ..Default::default() };
+        let params = RfpSearchParams::default();
         assert!(params.rfp_province.is_none());
         assert!(params.rfp_sector.is_empty());
+        assert_eq!(params.page, 1);
+        assert_eq!(params.size, 20);
     }
 
     #[test]
