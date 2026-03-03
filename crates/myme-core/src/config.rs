@@ -247,6 +247,13 @@ pub struct GoogleConfig {
     pub client_id: Option<String>,
     /// Google OAuth Client Secret
     pub client_secret: Option<String>,
+    /// Background sync interval in seconds (default: 300 = 5 minutes)
+    #[serde(default = "default_google_sync_interval")]
+    pub sync_interval_secs: u64,
+}
+
+fn default_google_sync_interval() -> u64 {
+    300
 }
 
 impl GoogleConfig {

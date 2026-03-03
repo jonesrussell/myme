@@ -232,6 +232,29 @@ impl GmailCache {
         Ok(())
     }
 
+    /// Get the stored history ID for incremental sync.
+    pub fn get_history_id(&self) -> Result<Option<String>> {
+        let result: Result<String, _> = self.conn.query_row(
+            "SELECT value FROM sync_state WHERE key = 'history_id'",
+            [],
+            |row| row.get(0),
+        );
+        match result {
+            Ok(id) => Ok(Some(id)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    /// Set the history ID for incremental sync.
+    pub fn set_history_id(&self, history_id: &str) -> Result<()> {
+        self.conn.execute(
+            "INSERT OR REPLACE INTO sync_state (key, value) VALUES ('history_id', ?1)",
+            params![history_id],
+        )?;
+        Ok(())
+    }
+
     /// Clear all cached data.
     pub fn clear(&self) -> Result<()> {
         self.conn

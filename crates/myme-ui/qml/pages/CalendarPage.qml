@@ -18,12 +18,22 @@ Page {
         }
     }
 
+    // Poll timer: runs while loading or syncing
     Timer {
         id: pollTimer
         interval: 100
-        running: calendarModel.loading
+        running: calendarModel.loading || calendarModel.syncing
         repeat: true
         onTriggered: calendarModel.poll_channel()
+    }
+
+    // Background sync timer
+    Timer {
+        id: syncTimer
+        interval: calendarModel.sync_interval * 1000
+        running: calendarModel.authenticated && calendarModel.sync_interval > 0
+        repeat: true
+        onTriggered: calendarModel.background_sync()
     }
 
     background: Rectangle {
@@ -47,6 +57,33 @@ Page {
                 color: Theme.text
                 Layout.fillWidth: true
                 leftPadding: Theme.spacingLg
+            }
+
+            // Sync indicator (subtle pulsing dot during background sync)
+            Rectangle {
+                visible: calendarModel.syncing
+                width: 8
+                height: 8
+                radius: 4
+                color: Theme.primary
+                opacity: syncPulse.running ? 1 : 0.4
+
+                SequentialAnimation on opacity {
+                    id: syncPulse
+                    running: calendarModel.syncing
+                    loops: Animation.Infinite
+                    NumberAnimation { to: 0.3; duration: 800; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutSine }
+                }
+            }
+
+            // Last synced label
+            Label {
+                visible: calendarModel.last_synced !== ""
+                text: "Synced " + calendarModel.last_synced
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.textMuted
             }
 
             // Today's event count badge

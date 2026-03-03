@@ -2,8 +2,10 @@
 //! All network work runs off the UI thread; results sent via mpsc.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use chrono::{Duration, Utc};
+use myme_auth::GoogleApiClient;
 use myme_calendar::{Calendar, CalendarCache, CalendarClient, Event};
 
 use crate::bridge;
@@ -40,7 +42,7 @@ pub enum CalendarServiceMessage {
 /// Request to fetch events for the next 7 days.
 pub fn request_fetch_events(
     tx: &std::sync::mpsc::Sender<CalendarServiceMessage>,
-    access_token: String,
+    api: Arc<GoogleApiClient>,
     cache_path: PathBuf,
 ) {
     let tx = tx.clone();
@@ -54,7 +56,7 @@ pub fn request_fetch_events(
     };
 
     runtime.spawn(async move {
-        let client = CalendarClient::new(&access_token);
+        let client = CalendarClient::new(&api);
         let time_min = Utc::now();
         let time_max = time_min + Duration::days(7);
 
@@ -85,7 +87,7 @@ pub fn request_fetch_events(
 /// Request to fetch events for today only.
 pub fn request_fetch_today_events(
     tx: &std::sync::mpsc::Sender<CalendarServiceMessage>,
-    access_token: String,
+    api: Arc<GoogleApiClient>,
 ) {
     let tx = tx.clone();
     let runtime = match bridge::get_runtime() {
@@ -98,7 +100,7 @@ pub fn request_fetch_today_events(
     };
 
     runtime.spawn(async move {
-        let client = CalendarClient::new(&access_token);
+        let client = CalendarClient::new(&api);
         let today = Utc::now().date_naive();
         let time_min = match today.and_hms_opt(0, 0, 0) {
             Some(t) => t.and_utc(),

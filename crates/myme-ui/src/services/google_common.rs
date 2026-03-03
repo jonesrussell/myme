@@ -2,45 +2,62 @@
 //! Reduces duplication of token refresh, config loading, and cache paths.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
-use myme_auth::{GoogleOAuth2Provider, SecureStorage};
+use myme_auth::{GoogleApiClient, GoogleApiError, DEFAULT_GOOGLE_CLIENT_ID, DEFAULT_GOOGLE_CLIENT_SECRET};
 
-/// Returns (client_id, client_secret) from config if Google OAuth is configured.
-pub fn get_google_config() -> Option<(String, String)> {
+/// Returns (client_id, client_secret) from config, falling back to compiled defaults.
+pub fn get_google_credentials() -> (String, String) {
     match myme_core::Config::load() {
         Ok(config) => {
-            let client_id = config.google.as_ref()?.client_id.clone()?;
-            let client_secret = config.google.as_ref()?.client_secret.clone()?;
-            Some((client_id, client_secret))
+            let client_id = config
+                .google
+                .as_ref()
+                .and_then(|g| g.client_id.clone())
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| DEFAULT_GOOGLE_CLIENT_ID.to_string());
+            let client_secret = config
+                .google
+                .as_ref()
+                .and_then(|g| g.client_secret.clone())
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| DEFAULT_GOOGLE_CLIENT_SECRET.to_string());
+            (client_id, client_secret)
         }
-        Err(_) => None,
+        Err(_) => (
+            DEFAULT_GOOGLE_CLIENT_ID.to_string(),
+            DEFAULT_GOOGLE_CLIENT_SECRET.to_string(),
+        ),
     }
 }
 
-/// Get a valid Google access token, refreshing if expired.
-/// Returns None if not authenticated or refresh fails.
-pub fn get_google_access_token() -> Option<String> {
-    let token_set = SecureStorage::retrieve_token("google").ok()?;
-
-    if token_set.is_expired() {
-        let refresh_token = token_set.refresh_token.as_ref()?;
-        let (client_id, client_secret) = get_google_config()?;
-        let rt = tokio::runtime::Runtime::new().ok()?;
-        let provider = GoogleOAuth2Provider::new(client_id, client_secret);
-
-        let new_tokens = rt.block_on(provider.refresh_token(refresh_token)).ok()?;
-        let expires_at = chrono::Utc::now().timestamp() + new_tokens.expires_in as i64;
-        let new_token_set = myme_auth::TokenSet {
-            access_token: new_tokens.access_token.clone(),
-            refresh_token: new_tokens.refresh_token.or(token_set.refresh_token.clone()),
-            expires_at,
-            scopes: new_tokens.scope.split(' ').map(|s| s.to_string()).collect(),
-        };
-        let _ = SecureStorage::store_token("google", &new_token_set);
-        return Some(new_tokens.access_token);
+/// Create a GoogleApiClient from the keyring, using config credentials.
+/// Returns None if not authenticated.
+pub fn create_google_api_client() -> Option<Arc<GoogleApiClient>> {
+    let (client_id, client_secret) = get_google_credentials();
+    match GoogleApiClient::from_keyring(client_id, client_secret) {
+        Ok(client) => Some(client),
+        Err(GoogleApiError::NotAuthenticated) => {
+            tracing::debug!("Google not authenticated");
+            None
+        }
+        Err(e) => {
+            tracing::warn!("Failed to create Google API client: {}", e);
+            None
+        }
     }
+}
 
-    Some(token_set.access_token)
+/// Get the configured sync interval in seconds (default: 300).
+pub fn get_sync_interval_secs() -> u64 {
+    match myme_core::Config::load() {
+        Ok(config) => config
+            .google
+            .as_ref()
+            .map(|g| g.sync_interval_secs)
+            .unwrap_or(300),
+        Err(_) => 300,
+    }
 }
 
 /// Config directory for MyMe (e.g. ~/.config/myme on Linux).

@@ -247,6 +247,31 @@ impl CalendarCache {
         Ok(count)
     }
 
+    /// Get the stored sync token for a calendar (for incremental sync).
+    pub fn get_sync_token(&self, calendar_id: &str) -> Result<Option<String>> {
+        let key = format!("sync_token:{}", calendar_id);
+        let result: Result<String, _> = self.conn.query_row(
+            "SELECT value FROM sync_state WHERE key = ?1",
+            params![key],
+            |row| row.get(0),
+        );
+        match result {
+            Ok(token) => Ok(Some(token)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    /// Set the sync token for a calendar (for incremental sync).
+    pub fn set_sync_token(&self, calendar_id: &str, token: &str) -> Result<()> {
+        let key = format!("sync_token:{}", calendar_id);
+        self.conn.execute(
+            "INSERT OR REPLACE INTO sync_state (key, value) VALUES (?1, ?2)",
+            params![key, token],
+        )?;
+        Ok(())
+    }
+
     /// Clear all cached data.
     pub fn clear(&self) -> Result<()> {
         self.conn

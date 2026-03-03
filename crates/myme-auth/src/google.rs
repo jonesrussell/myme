@@ -12,6 +12,12 @@ const GMAIL_SCOPE: &str = "https://www.googleapis.com/auth/gmail.modify";
 const CALENDAR_SCOPE: &str = "https://www.googleapis.com/auth/calendar";
 const USERINFO_SCOPE: &str = "https://www.googleapis.com/auth/userinfo.email";
 
+/// Default Google OAuth2 client ID (placeholder — set real credentials in config.toml).
+pub const DEFAULT_GOOGLE_CLIENT_ID: &str = "561277478283-placeholder.apps.googleusercontent.com";
+
+/// Default Google OAuth2 client secret (placeholder — set real credentials in config.toml).
+pub const DEFAULT_GOOGLE_CLIENT_SECRET: &str = "GOCSPX-placeholder";
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GoogleTokenResponse {
     pub access_token: String,
@@ -36,6 +42,15 @@ pub struct GoogleOAuth2Provider {
 impl GoogleOAuth2Provider {
     pub fn new(client_id: String, client_secret: String) -> Self {
         Self { client_id, client_secret }
+    }
+
+    /// Create a provider using default credentials.
+    /// Config.toml values override these at the call site.
+    pub fn with_defaults() -> Self {
+        Self::new(
+            DEFAULT_GOOGLE_CLIENT_ID.to_string(),
+            DEFAULT_GOOGLE_CLIENT_SECRET.to_string(),
+        )
     }
 
     /// Generate authorization URL for OAuth flow.

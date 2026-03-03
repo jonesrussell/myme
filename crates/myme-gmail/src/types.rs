@@ -1,5 +1,6 @@
 //! Gmail API types and data structures.
 
+use base64::Engine as _;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -63,6 +64,65 @@ pub struct MessagePart {
     pub parts: Vec<MessagePart>,
 }
 
+/// Decode base64url-encoded data (as used by Gmail API).
+fn decode_base64url(data: &str) -> Option<String> {
+    let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(data).ok()?;
+    String::from_utf8(bytes).ok()
+}
+
+/// Extract body text from a list of MIME parts (recursive).
+/// Prefers text/plain, falls back to text/html.
+fn extract_body_from_parts(parts: &[MessagePart]) -> Option<String> {
+    // First pass: look for text/plain
+    for part in parts {
+        if part.mime_type == "text/plain" {
+            if let Some(data) = part.body.as_ref().and_then(|b| b.data.as_ref()) {
+                if let Some(text) = decode_base64url(data) {
+                    return Some(text);
+                }
+            }
+        }
+        // Recurse into nested parts
+        if !part.parts.is_empty() {
+            if let Some(text) = extract_body_from_parts(&part.parts) {
+                return Some(text);
+            }
+        }
+    }
+    // Second pass: fall back to text/html
+    for part in parts {
+        if part.mime_type == "text/html" {
+            if let Some(data) = part.body.as_ref().and_then(|b| b.data.as_ref()) {
+                if let Some(text) = decode_base64url(data) {
+                    return Some(text);
+                }
+            }
+        }
+        if !part.parts.is_empty() {
+            if let Some(text) = extract_body_from_parts(&part.parts) {
+                return Some(text);
+            }
+        }
+    }
+    None
+}
+
+/// Extract body from a message payload.
+/// Handles both single-part (body.data on payload) and multipart (parts array) messages.
+fn extract_body(payload: &MessagePayload) -> Option<String> {
+    // Single-part message: body data directly on payload
+    if let Some(data) = payload.body.as_ref().and_then(|b| b.data.as_ref()) {
+        if let Some(text) = decode_base64url(data) {
+            return Some(text);
+        }
+    }
+    // Multipart message: search parts
+    if !payload.parts.is_empty() {
+        return extract_body_from_parts(&payload.parts);
+    }
+    None
+}
+
 impl Message {
     /// Convert API response to local Message.
     pub fn from_api(api: ApiMessage) -> Self {
@@ -93,6 +153,8 @@ impl Message {
         let is_unread = api.label_ids.iter().any(|l| l == "UNREAD");
         let is_starred = api.label_ids.iter().any(|l| l == "STARRED");
 
+        let body = api.payload.as_ref().and_then(extract_body);
+
         Self {
             id: api.id,
             thread_id: api.thread_id,
@@ -104,7 +166,7 @@ impl Message {
             labels: api.label_ids,
             is_unread,
             is_starred,
-            body: None, // Loaded separately with full message
+            body,
         }
     }
 }
@@ -180,6 +242,49 @@ pub struct ApiLabel {
     pub label_type: Option<String>,
     pub messages_total: Option<u32>,
     pub messages_unread: Option<u32>,
+}
+
+/// Gmail History API response for incremental sync.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryListResponse {
+    #[serde(default)]
+    pub history: Vec<HistoryRecord>,
+    pub next_page_token: Option<String>,
+    pub history_id: Option<String>,
+}
+
+/// A single history record from the Gmail History API.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryRecord {
+    pub id: String,
+    #[serde(default)]
+    pub messages: Vec<HistoryMessage>,
+    #[serde(default)]
+    pub messages_added: Vec<HistoryMessage>,
+    #[serde(default)]
+    pub messages_deleted: Vec<HistoryMessage>,
+    #[serde(default)]
+    pub labels_added: Vec<HistoryLabelChange>,
+    #[serde(default)]
+    pub labels_removed: Vec<HistoryLabelChange>,
+}
+
+/// A message reference within a history record.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryMessage {
+    pub message: MessageRef,
+}
+
+/// A label change within a history record.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryLabelChange {
+    pub message: MessageRef,
+    #[serde(default)]
+    pub label_ids: Vec<String>,
 }
 
 impl From<ApiLabel> for Label {
@@ -278,6 +383,98 @@ mod tests {
         };
         let label = Label::from(api_label);
         assert_eq!(label.label_type, LabelType::User);
+    }
+
+    #[test]
+    fn test_body_extraction_single_part() {
+        // "Hello World" base64url-encoded
+        let encoded = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .encode(b"Hello World");
+        let json = format!(r#"{{
+            "id": "msg1",
+            "threadId": "thread1",
+            "labelIds": ["INBOX"],
+            "snippet": "Hello...",
+            "payload": {{
+                "headers": [],
+                "body": {{ "data": "{}" }},
+                "parts": []
+            }}
+        }}"#, encoded);
+
+        let api_msg: ApiMessage = serde_json::from_str(&json).unwrap();
+        let msg = Message::from_api(api_msg);
+        assert_eq!(msg.body, Some("Hello World".to_string()));
+    }
+
+    #[test]
+    fn test_body_extraction_multipart_prefers_plain() {
+        let plain = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .encode(b"Plain text body");
+        let html = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .encode(b"<p>HTML body</p>");
+        let json = format!(r#"{{
+            "id": "msg2",
+            "threadId": "thread2",
+            "labelIds": [],
+            "snippet": "",
+            "payload": {{
+                "headers": [],
+                "parts": [
+                    {{ "mimeType": "text/html", "body": {{ "data": "{}" }}, "parts": [] }},
+                    {{ "mimeType": "text/plain", "body": {{ "data": "{}" }}, "parts": [] }}
+                ]
+            }}
+        }}"#, html, plain);
+
+        let api_msg: ApiMessage = serde_json::from_str(&json).unwrap();
+        let msg = Message::from_api(api_msg);
+        assert_eq!(msg.body, Some("Plain text body".to_string()));
+    }
+
+    #[test]
+    fn test_body_extraction_html_fallback() {
+        let html = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .encode(b"<p>HTML only</p>");
+        let json = format!(r#"{{
+            "id": "msg3",
+            "threadId": "thread3",
+            "labelIds": [],
+            "snippet": "",
+            "payload": {{
+                "headers": [],
+                "parts": [
+                    {{ "mimeType": "text/html", "body": {{ "data": "{}" }}, "parts": [] }}
+                ]
+            }}
+        }}"#, html);
+
+        let api_msg: ApiMessage = serde_json::from_str(&json).unwrap();
+        let msg = Message::from_api(api_msg);
+        assert_eq!(msg.body, Some("<p>HTML only</p>".to_string()));
+    }
+
+    #[test]
+    fn test_history_list_response_parsing() {
+        let json = r#"{
+            "history": [
+                {
+                    "id": "12345",
+                    "messages": [{"message": {"id": "msg1", "threadId": "t1"}}],
+                    "messagesAdded": [{"message": {"id": "msg2", "threadId": "t2"}}],
+                    "messagesDeleted": [],
+                    "labelsAdded": [{"message": {"id": "msg1", "threadId": "t1"}, "labelIds": ["INBOX"]}],
+                    "labelsRemoved": []
+                }
+            ],
+            "historyId": "67890"
+        }"#;
+
+        let resp: HistoryListResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(resp.history.len(), 1);
+        assert_eq!(resp.history_id, Some("67890".to_string()));
+        assert_eq!(resp.history[0].messages_added.len(), 1);
+        assert_eq!(resp.history[0].labels_added.len(), 1);
     }
 
     #[test]

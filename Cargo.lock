@@ -2101,6 +2101,7 @@ dependencies = [
  "dirs",
  "keyring",
  "oauth2",
+ "parking_lot",
  "reqwest 0.12.28",
  "serde",
  "serde_json",

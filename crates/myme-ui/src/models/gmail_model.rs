@@ -11,7 +11,7 @@ use myme_auth::SecureStorage;
 use myme_gmail::{GmailCache, Message};
 
 use crate::bridge;
-use crate::services::google_common::{get_google_access_token, get_google_cache_path};
+use crate::services::google_common::{create_google_api_client, get_google_cache_path, get_sync_interval_secs};
 use crate::services::{
     request_gmail_archive, request_gmail_fetch, request_gmail_mark_as_read, request_gmail_trash,
     GmailServiceMessage,
@@ -32,6 +32,9 @@ pub mod qobject {
         #[qproperty(QString, error_message)]
         #[qproperty(i32, unread_count)]
         #[qproperty(i32, message_count)]
+        #[qproperty(bool, syncing)]
+        #[qproperty(QString, last_synced)]
+        #[qproperty(i32, sync_interval)]
         type GmailModel = super::GmailModelRust;
 
         #[qinvokable]
@@ -52,6 +55,10 @@ pub mod qobject {
         #[qinvokable]
         fn trash_message(self: Pin<&mut GmailModel>, message_id: QString);
 
+        /// Trigger a background sync (non-blocking, doesn't set loading=true).
+        #[qinvokable]
+        fn background_sync(self: Pin<&mut GmailModel>);
+
         /// Poll for async operation results. Call this from a QML Timer.
         #[qinvokable]
         fn poll_channel(self: Pin<&mut GmailModel>);
@@ -71,6 +78,9 @@ pub struct GmailModelRust {
     error_message: QString,
     unread_count: i32,
     message_count: i32,
+    syncing: bool,
+    last_synced: QString,
+    sync_interval: i32,
     messages: Vec<Message>,
 }
 
@@ -81,10 +91,6 @@ impl GmailModelRust {
 
     fn clear_error(&mut self) {
         self.error_message = QString::from("");
-    }
-
-    fn get_access_token() -> Option<String> {
-        get_google_access_token()
     }
 
     fn get_cache_path() -> std::path::PathBuf {
@@ -98,6 +104,10 @@ impl qobject::GmailModel {
         let is_authenticated = SecureStorage::has_token("google");
         self.as_mut().set_authenticated(is_authenticated);
 
+        // Load sync interval from config
+        let interval = get_sync_interval_secs() as i32;
+        self.as_mut().set_sync_interval(interval);
+
         if is_authenticated {
             if let Ok(cache) = GmailCache::new(GmailModelRust::get_cache_path()) {
                 if let Ok(count) = cache.unread_count() {
@@ -109,8 +119,8 @@ impl qobject::GmailModel {
 
     /// Fetch messages from Gmail (non-blocking, uses shared runtime)
     pub fn fetch_messages(mut self: Pin<&mut Self>) {
-        let access_token = match GmailModelRust::get_access_token() {
-            Some(t) => t,
+        let api = match create_google_api_client() {
+            Some(a) => a,
             None => {
                 self.as_mut().set_error_message(QString::from("Not authenticated"));
                 self.as_mut().set_authenticated(false);
@@ -131,7 +141,7 @@ impl qobject::GmailModel {
         self.as_mut().rust_mut().clear_error();
 
         let cache_path = GmailModelRust::get_cache_path();
-        request_gmail_fetch(&tx, access_token, cache_path);
+        request_gmail_fetch(&tx, api, cache_path);
     }
 
     /// Get message at index as JSON
@@ -150,6 +160,7 @@ impl qobject::GmailModel {
             "date": msg.date.to_rfc3339(),
             "isUnread": msg.is_unread,
             "isStarred": msg.is_starred,
+            "body": msg.body,
         });
 
         let s = json.to_string();
@@ -158,8 +169,8 @@ impl qobject::GmailModel {
 
     /// Mark message as read
     pub fn mark_as_read(self: Pin<&mut Self>, message_id: QString) {
-        let access_token = match GmailModelRust::get_access_token() {
-            Some(t) => t,
+        let api = match create_google_api_client() {
+            Some(a) => a,
             None => return,
         };
 
@@ -170,13 +181,13 @@ impl qobject::GmailModel {
         };
 
         let msg_id = message_id.to_string();
-        request_gmail_mark_as_read(&tx, access_token, msg_id);
+        request_gmail_mark_as_read(&tx, api, msg_id);
     }
 
     /// Archive message
     pub fn archive_message(self: Pin<&mut Self>, message_id: QString) {
-        let access_token = match GmailModelRust::get_access_token() {
-            Some(t) => t,
+        let api = match create_google_api_client() {
+            Some(a) => a,
             None => return,
         };
 
@@ -187,13 +198,13 @@ impl qobject::GmailModel {
         };
 
         let msg_id = message_id.to_string();
-        request_gmail_archive(&tx, access_token, msg_id);
+        request_gmail_archive(&tx, api, msg_id);
     }
 
     /// Move message to trash
     pub fn trash_message(self: Pin<&mut Self>, message_id: QString) {
-        let access_token = match GmailModelRust::get_access_token() {
-            Some(t) => t,
+        let api = match create_google_api_client() {
+            Some(a) => a,
             None => return,
         };
 
@@ -204,7 +215,30 @@ impl qobject::GmailModel {
         };
 
         let msg_id = message_id.to_string();
-        request_gmail_trash(&tx, access_token, msg_id);
+        request_gmail_trash(&tx, api, msg_id);
+    }
+
+    /// Background sync: fetches new messages without showing the loading spinner.
+    pub fn background_sync(mut self: Pin<&mut Self>) {
+        if *self.as_ref().syncing() || *self.as_ref().loading() {
+            return;
+        }
+
+        let api = match create_google_api_client() {
+            Some(a) => a,
+            None => return,
+        };
+
+        bridge::init_gmail_service_channel();
+        let tx = match bridge::get_gmail_service_tx() {
+            Some(t) => t,
+            None => return,
+        };
+
+        self.as_mut().set_syncing(true);
+
+        let cache_path = GmailModelRust::get_cache_path();
+        request_gmail_fetch(&tx, api, cache_path);
     }
 
     /// Poll for async operation results
@@ -216,7 +250,9 @@ impl qobject::GmailModel {
 
         match msg {
             GmailServiceMessage::FetchDone(result) => {
+                let was_syncing = *self.as_ref().syncing();
                 self.as_mut().set_loading(false);
+                self.as_mut().set_syncing(false);
 
                 match result {
                     Ok(messages) => {
@@ -225,12 +261,21 @@ impl qobject::GmailModel {
                         self.as_mut().set_message_count(messages.len() as i32);
                         self.as_mut().rust_mut().messages = messages;
                         self.as_mut().rust_mut().clear_error();
+
+                        // Update last-synced timestamp
+                        let now = chrono::Utc::now();
+                        let time_str = now.format("%H:%M").to_string();
+                        self.as_mut().set_last_synced(QString::from(time_str.as_str()));
+
                         self.as_mut().messages_changed();
                     }
                     Err(e) => {
-                        self.as_mut()
-                            .rust_mut()
-                            .set_error(myme_core::AppError::from(e).user_message());
+                        // During background sync, don't overwrite the UI with errors
+                        if !was_syncing {
+                            self.as_mut()
+                                .rust_mut()
+                                .set_error(myme_core::AppError::from(e).user_message());
+                        }
                     }
                 }
             }

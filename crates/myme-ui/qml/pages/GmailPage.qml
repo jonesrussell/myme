@@ -18,12 +18,22 @@ Page {
         }
     }
 
+    // Poll timer: runs while loading or syncing
     Timer {
         id: pollTimer
         interval: 100
-        running: gmailModel.loading
+        running: gmailModel.loading || gmailModel.syncing
         repeat: true
         onTriggered: gmailModel.poll_channel()
+    }
+
+    // Background sync timer
+    Timer {
+        id: syncTimer
+        interval: gmailModel.sync_interval * 1000
+        running: gmailModel.authenticated && gmailModel.sync_interval > 0
+        repeat: true
+        onTriggered: gmailModel.background_sync()
     }
 
     background: Rectangle {
@@ -47,6 +57,33 @@ Page {
                 color: Theme.text
                 Layout.fillWidth: true
                 leftPadding: Theme.spacingLg
+            }
+
+            // Sync indicator (subtle pulsing dot during background sync)
+            Rectangle {
+                visible: gmailModel.syncing
+                width: 8
+                height: 8
+                radius: 4
+                color: Theme.primary
+                opacity: syncPulse.running ? 1 : 0.4
+
+                SequentialAnimation on opacity {
+                    id: syncPulse
+                    running: gmailModel.syncing
+                    loops: Animation.Infinite
+                    NumberAnimation { to: 0.3; duration: 800; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutSine }
+                }
+            }
+
+            // Last synced label
+            Label {
+                visible: gmailModel.last_synced !== ""
+                text: "Synced " + gmailModel.last_synced
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.textMuted
             }
 
             // Unread count badge
