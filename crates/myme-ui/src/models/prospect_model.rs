@@ -647,7 +647,7 @@ impl qobject::ProspectModel {
             let contact_email = rfp.contact_email.clone().unwrap_or_default();
 
             let prospect = Prospect {
-                id: uuid::Uuid::new_v4().to_string(),
+                id: format!("nc-{}", hit.id),
                 organization_id: org_id.clone(),
                 name,
                 description: Some(description),
