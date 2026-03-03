@@ -39,6 +39,7 @@ pub enum WeatherServiceMessage {
 pub fn request_fetch(
     tx: &std::sync::mpsc::Sender<WeatherServiceMessage>,
     provider: Arc<WeatherProvider>,
+    location_override: Option<myme_weather::LocationOverride>,
 ) {
     let tx = tx.clone();
     let runtime = match bridge::get_runtime() {
@@ -51,7 +52,7 @@ pub fn request_fetch(
 
     runtime.spawn(async move {
         // First get location
-        let mut location = match myme_weather::location::get_current_location().await {
+        let mut location = match myme_weather::location::get_current_location(location_override.as_ref()).await {
             Ok(loc) => {
                 tracing::info!("Got location: {}, {}", loc.latitude, loc.longitude);
                 loc

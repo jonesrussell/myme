@@ -42,7 +42,7 @@ Page {
     readonly property var stageColors: ({
         lead: "#8a8580",
         qualified: "#64b5f6",
-        contacted: "#e5a54b",
+        contacted: "#F59E0B",
         proposal: "#b39ddb",
         negotiation: "#ff8a65",
         won: "#5bb98c",
@@ -62,7 +62,7 @@ Page {
                 text: "Organizations"
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeLarge
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
                 Layout.leftMargin: Theme.spacingLg
             }
@@ -83,7 +83,7 @@ Page {
                     verticalAlignment: Text.AlignVCenter
                 }
                 background: Rectangle {
-                    color: parent.hovered ? Qt.darker(Theme.primary, 1.1) : Theme.primary
+                    color: parent.hovered ? Theme.primaryHover : Theme.primary
                     radius: Theme.buttonRadius
                     implicitHeight: 36
                     implicitWidth: 160
@@ -136,7 +136,7 @@ Page {
                 horizontalAlignment: Text.AlignHCenter
             }
             background: Rectangle {
-                color: parent.hovered ? Qt.darker(Theme.primary, 1.1) : Theme.primary
+                color: parent.hovered ? Theme.primaryHover : Theme.primary
                 radius: Theme.buttonRadius
                 implicitHeight: 36
                 implicitWidth: 160
@@ -160,7 +160,7 @@ Page {
         anchors.right: parent.right
         anchors.margins: Theme.spacingMd
         height: errorLabel.implicitHeight + Theme.spacingMd * 2
-        color: Theme.isDark ? "#3d2020" : "#fde8e8"
+        color: Theme.errorBg
         radius: Theme.cardRadius
         border.color: "transparent"
         z: 10
@@ -172,7 +172,7 @@ Page {
             text: organizationModel.error_message
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSizeSmall
-            color: Theme.isDark ? "#f5a5a5" : "#c53030"
+            color: Theme.error
             wrapMode: Text.WordWrap
         }
     }
@@ -204,8 +204,8 @@ Page {
                 id: fadeIn
                 PauseAnimation { duration: orgDelegate.orgIndex * 30 }
                 ParallelAnimation {
-                    NumberAnimation { target: parent; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
-                    NumberAnimation { target: parent; property: "y"; from: parent.y + 8; to: parent.y; duration: 200; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: orgDelegate; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: orgDelegate; property: "y"; from: orgDelegate.y + 8; to: orgDelegate.y; duration: 200; easing.type: Easing.OutCubic }
                 }
             }
 
@@ -214,7 +214,7 @@ Page {
                 anchors.margins: Theme.spacingSm
                 color: cardMouse.containsMouse ? (Theme.isDark ? Qt.lighter(Theme.cardBg, 1.05) : Qt.darker(Theme.cardBg, 1.02)) : Theme.cardBg
                 radius: Theme.cardRadius
-                border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                border.color: Theme.cardBorderSubtle
                 border.width: 1
 
                 Behavior on color { ColorAnimation { duration: 100 } }
@@ -371,7 +371,7 @@ Page {
         background: Rectangle {
             color: Theme.cardBg
             radius: Theme.cardRadius
-            border.color: Theme.isDark ? "#ffffff15" : "#00000015"
+            border.color: Theme.borderLight
             border.width: 1
         }
 
@@ -395,9 +395,9 @@ Page {
                 placeholderText: "Organization name"
                 color: Theme.text
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: orgNameField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: orgNameField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -410,9 +410,9 @@ Page {
                 placeholderText: "https://example.com"
                 color: Theme.text
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: orgWebsiteField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: orgWebsiteField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -425,9 +425,9 @@ Page {
                 placeholderText: "Primary contact"
                 color: Theme.text
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: orgContactNameField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: orgContactNameField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -440,9 +440,9 @@ Page {
                 placeholderText: "email@example.com"
                 color: Theme.text
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: orgContactEmailField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: orgContactEmailField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -464,7 +464,7 @@ Page {
                 font.family: Theme.fontFamily
                 DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
                 contentItem: Label { text: parent.text; font: parent.font; color: Theme.primaryText; horizontalAlignment: Text.AlignHCenter }
-                background: Rectangle { color: parent.hovered ? Qt.darker(Theme.primary, 1.1) : Theme.primary; radius: Theme.buttonRadius; implicitHeight: 36; implicitWidth: 80 }
+                background: Rectangle { color: parent.hovered ? Theme.primaryHover : Theme.primary; radius: Theme.buttonRadius; implicitHeight: 36; implicitWidth: 80 }
             }
         }
 

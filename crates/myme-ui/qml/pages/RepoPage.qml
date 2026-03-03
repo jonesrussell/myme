@@ -82,11 +82,12 @@ Page {
 
             Label {
                 text: "Repos"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeLarge
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
                 Layout.fillWidth: true
-                leftPadding: Theme.spacingMd
+                leftPadding: Theme.spacingLg
             }
 
             ToolButton {
@@ -140,6 +141,7 @@ Page {
 
                 Label {
                     text: "Sign in to GitHub to see your remote repositories."
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeNormal
                     color: Theme.text
                     Layout.fillWidth: true
@@ -178,6 +180,7 @@ Page {
 
                 Label {
                     text: "Repository path is invalid (missing or not a directory). Using: " + (repoModel.effectivePath || ".")
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeSmall
                     color: Theme.text
                     wrapMode: Text.WordWrap
@@ -202,6 +205,7 @@ Page {
 
                 Label {
                     text: repoModel.errorMessage
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeNormal
                     color: Theme.error
                     wrapMode: Text.WordWrap
@@ -261,7 +265,7 @@ Page {
             Layout.fillWidth: true
             Layout.fillHeight: true
             color: Theme.surface
-            border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+            border.color: Theme.cardBorderSubtle
             border.width: 1
             radius: Theme.cardRadius
 
@@ -269,18 +273,19 @@ Page {
                 anchors.centerIn: parent
                 spacing: Theme.spacingMd
 
-                Label {
+                Text {
                     text: Icons.folderSimple
                     font.family: Icons.family
-                    font.pixelSize: 64
+                    font.pixelSize: 48
                     color: Theme.textMuted
                     Layout.alignment: Qt.AlignHCenter
                 }
 
                 Label {
                     text: "No repositories found"
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeLarge
-                    font.bold: true
+                    font.weight: Font.Bold
                     color: Theme.text
                     Layout.alignment: Qt.AlignHCenter
                 }
@@ -289,6 +294,7 @@ Page {
                     text: repoModel.authenticated
                         ? "Add local repos under your dev path, or clone from GitHub."
                         : "Sign in to GitHub to see remote repos. Local repos from your dev path will still appear."
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeNormal
                     color: Theme.textSecondary
                     Layout.alignment: Qt.AlignHCenter

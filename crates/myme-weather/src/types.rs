@@ -81,6 +81,14 @@ impl WeatherCondition {
     }
 }
 
+/// Optional location override from config
+#[derive(Debug, Clone)]
+pub struct LocationOverride {
+    pub latitude: f64,
+    pub longitude: f64,
+    pub city_name: Option<String>,
+}
+
 /// Geographic location
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Location {
@@ -88,6 +96,17 @@ pub struct Location {
     pub longitude: f64,
     pub accuracy_meters: Option<f64>,
     pub city_name: Option<String>,
+}
+
+impl From<LocationOverride> for Location {
+    fn from(ovr: LocationOverride) -> Self {
+        Self {
+            latitude: ovr.latitude,
+            longitude: ovr.longitude,
+            accuracy_meters: None,
+            city_name: ovr.city_name,
+        }
+    }
 }
 
 /// Current weather conditions
@@ -247,5 +266,28 @@ mod tests {
     fn test_condition_icon_name() {
         assert_eq!(WeatherCondition::Clear.icon_name(), "sun");
         assert_eq!(WeatherCondition::Rain.icon_name(), "cloud_rain");
+    }
+
+    #[test]
+    fn test_location_override_converts_to_location() {
+        let ovr = LocationOverride {
+            latitude: 40.7128,
+            longitude: -74.0060,
+            city_name: Some("New York".to_string()),
+        };
+        let loc: Location = ovr.into();
+        assert!((loc.latitude - 40.7128).abs() < f64::EPSILON);
+        assert!((loc.longitude - (-74.0060)).abs() < f64::EPSILON);
+        assert_eq!(loc.city_name.as_deref(), Some("New York"));
+        assert!(loc.accuracy_meters.is_none());
+    }
+
+    #[test]
+    fn test_location_override_without_city_converts_to_location() {
+        let ovr = LocationOverride { latitude: 51.5074, longitude: -0.1278, city_name: None };
+        let loc: Location = ovr.into();
+        assert!((loc.latitude - 51.5074).abs() < f64::EPSILON);
+        assert!((loc.longitude - (-0.1278)).abs() < f64::EPSILON);
+        assert!(loc.city_name.is_none());
     }
 }

@@ -20,6 +20,7 @@ pub mod qobject {
         #[qproperty(bool, loading)]
         #[qproperty(QString, error_message)]
         #[qproperty(QString, organization_id)]
+        #[qproperty(QString, import_result)]
         type ProspectModel = super::ProspectModelRust;
 
         #[qinvokable]
@@ -103,6 +104,14 @@ pub mod qobject {
         #[qinvokable]
         fn poll_channel(self: Pin<&mut ProspectModel>);
 
+        /// Import RFPs from NorthCloud as Lead-stage prospects for the given organization.
+        /// Returns JSON: {"imported": N, "skipped": N} or {"error": "..."}
+        #[qinvokable]
+        fn import_rfp_leads(
+            self: Pin<&mut ProspectModel>,
+            organization_id: &QString,
+        ) -> QString;
+
         #[qsignal]
         fn prospects_changed(self: Pin<&mut ProspectModel>);
     }
@@ -113,6 +122,7 @@ pub struct ProspectModelRust {
     loading: bool,
     error_message: QString,
     organization_id: QString,
+    import_result: QString,
     prospects: Vec<Prospect>,
     organization_store: Option<Arc<parking_lot::Mutex<OrganizationStore>>>,
 }
@@ -560,9 +570,77 @@ impl qobject::ProspectModel {
         }
     }
 
-    pub fn poll_channel(self: Pin<&mut Self>) {
-        // Prospect operations are synchronous (local SQLite).
-        // Channel reserved for future async operations.
-        let _ = bridge::try_recv_organization_message();
+    pub fn poll_channel(mut self: Pin<&mut Self>) {
+        let msg = match bridge::try_recv_organization_message() {
+            Some(m) => m,
+            None => return,
+        };
+
+        use crate::services::OrganizationServiceMessage;
+        match msg {
+            OrganizationServiceMessage::RfpImportDone(result) => {
+                self.as_mut().set_loading(false);
+                match result {
+                    Ok((counts, prospects)) => {
+                        self.as_mut().rust_mut().prospects = prospects;
+                        self.as_mut().prospects_changed();
+
+                        let result_json = serde_json::json!({
+                            "imported": counts.imported,
+                            "skipped": counts.skipped,
+                            "failed": counts.failed,
+                        });
+                        self.as_mut()
+                            .set_import_result(QString::from(result_json.to_string()));
+                    }
+                    Err(e) => {
+                        tracing::error!("RFP import failed: {}", e);
+                        self.as_mut()
+                            .set_error_message(QString::from(format!("Failed to import leads: {}", e)));
+                        let error_json = serde_json::json!({"error": e.to_string()});
+                        self.as_mut()
+                            .set_import_result(QString::from(error_json.to_string()));
+                    }
+                }
+            }
+            _ => {
+                // Other message types reserved for future use
+            }
+        }
+    }
+
+    /// Import RFPs from NorthCloud as Lead-stage prospects.
+    /// Non-blocking: spawns async work and returns immediately.
+    /// Results arrive via poll_channel -> OrganizationServiceMessage::RfpImportDone.
+    pub fn import_rfp_leads(
+        mut self: Pin<&mut Self>,
+        organization_id: &QString,
+    ) -> QString {
+        let org_id = organization_id.to_string();
+        if org_id.is_empty() {
+            self.as_mut()
+                .set_error_message(QString::from("Organization ID is required"));
+            return QString::from(r#"{"error":"organization_id is required"}"#);
+        }
+
+        bridge::init_organization_service_channel();
+        let tx = match bridge::get_organization_service_tx() {
+            Some(t) => t,
+            None => {
+                self.as_mut()
+                    .set_error_message(QString::from("Service channel not ready"));
+                return QString::from(r#"{"error":"service channel not ready"}"#);
+            }
+        };
+
+        self.as_mut().set_loading(true);
+        self.as_mut().set_error_message(QString::from(""));
+        self.as_mut().set_import_result(QString::from(""));
+
+        crate::services::request_import_rfp_leads(&tx, org_id);
+
+        // Return pending — actual result arrives via poll_channel
+        QString::from(r#"{"pending":true}"#)
     }
 }
+

@@ -32,7 +32,7 @@ Rectangle {
     signal refreshRequested()
 
     color: Theme.cardBg
-    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+    border.color: Theme.cardBorderSubtle
     border.width: 1
     radius: Theme.cardRadius
 
@@ -84,7 +84,7 @@ Rectangle {
 
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 2
+                spacing: Theme.spacingXxs
 
                 Text {
                     font.pixelSize: Theme.fontSizeSmall
@@ -174,7 +174,7 @@ Rectangle {
 
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 2
+                spacing: Theme.spacingXxs
 
                 // Temperature
                 Text {

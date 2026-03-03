@@ -73,10 +73,12 @@ Page {
 
             Label {
                 text: "Notes"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeLarge
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
                 Layout.fillWidth: true
+                leftPadding: Theme.spacingLg
             }
 
             RowLayout {
@@ -99,6 +101,7 @@ Page {
 
                     contentItem: Text {
                         text: parent.text
+                        font.family: Theme.fontFamily
                         color: Theme.text
                         font.pixelSize: Theme.fontSizeSmall
                         horizontalAlignment: Text.AlignHCenter
@@ -120,6 +123,7 @@ Page {
 
                     contentItem: Text {
                         text: parent.text
+                        font.family: Theme.fontFamily
                         color: Theme.text
                         font.pixelSize: Theme.fontSizeSmall
                         horizontalAlignment: Text.AlignHCenter
@@ -141,6 +145,7 @@ Page {
 
                     contentItem: Text {
                         text: parent.text
+                        font.family: Theme.fontFamily
                         color: Theme.text
                         font.pixelSize: Theme.fontSizeSmall
                         horizontalAlignment: Text.AlignHCenter
@@ -267,32 +272,34 @@ Page {
                     }
                 }
 
-                Column {
+                ColumnLayout {
                     visible: !noteModel.loading && noteModel.row_count() === 0
                     width: notesFlow.width
                     spacing: Theme.spacingMd
 
-                    Label {
+                    Text {
                         text: Icons.notePencil
                         font.family: Icons.family
                         font.pixelSize: 48
                         color: Theme.textMuted
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        Layout.alignment: Qt.AlignHCenter
                     }
 
                     Label {
                         text: "No notes yet"
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeLarge
-                        font.bold: true
+                        font.weight: Font.Bold
                         color: Theme.text
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        Layout.alignment: Qt.AlignHCenter
                     }
 
                     Label {
                         text: "Take a note above or click + to add"
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeNormal
                         color: Theme.textSecondary
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        Layout.alignment: Qt.AlignHCenter
                     }
                 }
             }
@@ -308,7 +315,7 @@ Page {
             Layout.fillWidth: true
             Layout.preferredHeight: 44
             color: Theme.surfaceAlt
-            border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+            border.color: Theme.cardBorderSubtle
             border.width: 1
             radius: Theme.cardRadius
 
@@ -327,6 +334,7 @@ Page {
                         }
                         return `${total} notes (${done} done, ${total - done} pending)`;
                     }
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeSmall
                     color: Theme.textSecondary
                 }
@@ -347,6 +355,7 @@ Page {
                         anchors.centerIn: parent
                         text: noteModel.loading ? "● Loading..." :
                               noteModel.connected ? "● Connected" : "● Disconnected"
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeSmall
                         color: noteModel.loading ? Theme.warning :
                                noteModel.connected ? Theme.success : Theme.error
@@ -390,8 +399,9 @@ Page {
             Label {
                 anchors.centerIn: parent
                 text: "Promote to Project"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeMedium
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
             }
         }
@@ -416,6 +426,7 @@ Page {
 
             Label {
                 text: "Create a new project from this note?"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeNormal
                 color: Theme.text
                 wrapMode: Text.WordWrap
@@ -434,6 +445,7 @@ Page {
                     anchors.fill: parent
                     anchors.margins: Theme.spacingMd
                     text: promoteDialog.noteTitle
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeSmall
                     color: Theme.textSecondary
                     wrapMode: Text.WordWrap
@@ -444,6 +456,7 @@ Page {
 
             Label {
                 text: "GitHub Repository (owner/repo):"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeNormal
                 color: Theme.text
             }
@@ -472,6 +485,7 @@ Page {
 
             Label {
                 text: "The note will be used as the project description."
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.textMuted
                 wrapMode: Text.WordWrap

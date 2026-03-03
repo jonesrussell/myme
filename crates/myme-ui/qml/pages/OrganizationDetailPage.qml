@@ -13,6 +13,10 @@ Page {
 
     property int currentTab: 0
 
+    onCurrentTabChanged: {
+        prospectModel.import_result = ""
+    }
+
     background: Rectangle {
         color: Theme.background
     }
@@ -40,7 +44,7 @@ Page {
     readonly property var stages: [
         { key: "lead", label: "Lead", color: "#8a8580" },
         { key: "qualified", label: "Qualified", color: "#64b5f6" },
-        { key: "contacted", label: "Contacted", color: "#e5a54b" },
+        { key: "contacted", label: "Contacted", color: "#F59E0B" },
         { key: "proposal", label: "Proposal", color: "#b39ddb" },
         { key: "negotiation", label: "Negotiation", color: "#ff8a65" },
         { key: "won", label: "Won", color: "#5bb98c" },
@@ -174,7 +178,7 @@ Page {
             Layout.fillWidth: true
             Layout.margins: Theme.spacingMd
             height: visible ? detailErrorLabel.implicitHeight + Theme.spacingMd * 2 : 0
-            color: Theme.isDark ? "#3d2020" : "#fde8e8"
+            color: Theme.errorBg
             radius: Theme.cardRadius
             border.color: "transparent"
 
@@ -185,7 +189,7 @@ Page {
                 text: prospectModel.error_message
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeSmall
-                color: Theme.isDark ? "#f5a5a5" : "#c53030"
+                color: Theme.error
                 wrapMode: Text.WordWrap
             }
         }
@@ -200,170 +204,238 @@ Page {
             Item {
                 id: pipelineTab
 
-                ScrollView {
+                ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: Theme.spacingMd
-                    contentWidth: pipelineRow.implicitWidth
+                    spacing: 0
 
+                    // Find Leads toolbar
                     RowLayout {
-                        id: pipelineRow
-                        spacing: Theme.spacingSm
-                        height: parent.height
+                        Layout.fillWidth: true
+                        Layout.topMargin: Theme.spacingMd
+                        Layout.leftMargin: Theme.spacingMd
+                        Layout.rightMargin: Theme.spacingMd
+                        spacing: Theme.spacingMd
 
-                        Repeater {
-                            model: detailPage.stages
+                        Item { Layout.fillWidth: true }
 
-                            // Stage column
-                            Rectangle {
-                                Layout.preferredWidth: 220
-                                Layout.fillHeight: true
-                                color: Theme.isDark ? "#ffffff05" : "#00000003"
-                                radius: Theme.cardRadius
-                                border.color: Theme.isDark ? "#ffffff08" : "#00000008"
-                                border.width: 1
+                        Label {
+                            visible: importStatusText !== ""
+                            text: importStatusText
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: importStatusIsError ? Theme.error : Theme.textSecondary
 
-                                ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: Theme.spacingSm
-                                    spacing: Theme.spacingSm
+                            property string importStatusText: {
+                                var raw = prospectModel.import_result
+                                if (raw === "" || raw === '{"pending":true}') return ""
+                                try {
+                                    var r = JSON.parse(raw)
+                                    if (r.error) return "Error: " + r.error
+                                    if (r.failed > 0) return r.imported + " imported, " + r.failed + " failed"
+                                    return r.imported + " leads imported (" + r.skipped + " skipped)"
+                                } catch (e) { return "Error processing results" }
+                            }
+                            property bool importStatusIsError: {
+                                var raw = prospectModel.import_result
+                                if (raw === "") return false
+                                try {
+                                    var r = JSON.parse(raw)
+                                    return !!r.error || (r.failed > 0)
+                                } catch (e) { return true }
+                            }
+                        }
 
-                                    // Stage header
-                                    RowLayout {
-                                        Layout.fillWidth: true
+                        Button {
+                            text: prospectModel.loading ? "Importing..." : "Find Leads"
+                            enabled: !prospectModel.loading
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSizeSmall
+                            contentItem: Label {
+                                text: parent.text
+                                font: parent.font
+                                color: Theme.primaryText
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+                            background: Rectangle {
+                                color: parent.enabled ? (parent.hovered ? Theme.primaryHover : Theme.primary) : (Theme.isDark ? "#ffffff30" : "#00000020")
+                                radius: Theme.buttonRadius
+                                implicitHeight: 32
+                                implicitWidth: 110
+                            }
+                            onClicked: {
+                                prospectModel.import_rfp_leads(detailPage.organizationId)
+                            }
+                        }
+                    }
+
+                    ScrollView {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.leftMargin: Theme.spacingMd
+                        Layout.rightMargin: Theme.spacingMd
+                        Layout.bottomMargin: Theme.spacingMd
+                        contentWidth: pipelineRow.implicitWidth
+
+                        RowLayout {
+                            id: pipelineRow
+                            spacing: Theme.spacingSm
+                            height: parent.height
+
+                            Repeater {
+                                model: detailPage.stages
+
+                                // Stage column
+                                Rectangle {
+                                    Layout.preferredWidth: 220
+                                    Layout.fillHeight: true
+                                    color: Theme.isDark ? "#ffffff05" : "#00000003"
+                                    radius: Theme.cardRadius
+                                    border.color: Theme.cardBorderSubtle
+                                    border.width: 1
+
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: Theme.spacingSm
                                         spacing: Theme.spacingSm
 
-                                        Rectangle {
-                                            width: 10
-                                            height: 10
-                                            radius: 5
-                                            color: modelData.color
-                                        }
-
-                                        Label {
-                                            text: modelData.label
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeSmall
-                                            font.weight: Font.Bold
-                                            color: Theme.text
+                                        // Stage header
+                                        RowLayout {
                                             Layout.fillWidth: true
-                                        }
+                                            spacing: Theme.spacingSm
 
-                                        Label {
-                                            text: prospectModel.count_for_stage(modelData.key)
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeSmall
-                                            color: Theme.textSecondary
-                                        }
-                                    }
-
-                                    // Prospect cards
-                                    ListView {
-                                        Layout.fillWidth: true
-                                        Layout.fillHeight: true
-                                        clip: true
-                                        spacing: Theme.spacingXs
-
-                                        model: {
-                                            const indices = JSON.parse(prospectModel.prospects_for_stage(modelData.key));
-                                            return indices;
-                                        }
-
-                                        delegate: Rectangle {
-                                            width: ListView.view.width
-                                            height: prospectCardLayout.implicitHeight + Theme.spacingSm * 2
-                                            radius: Theme.buttonRadius
-                                            color: prospectMouse.containsMouse ? (Theme.isDark ? Qt.lighter(Theme.cardBg, 1.05) : Qt.darker(Theme.cardBg, 1.02)) : Theme.cardBg
-                                            border.color: Theme.isDark ? "#ffffff08" : "#00000008"
-                                            border.width: 1
-
-                                            property int prospectIndex: modelData
-
-                                            // Staggered animation
-                                            opacity: 0
-                                            Component.onCompleted: prospectFade.start()
-                                            SequentialAnimation {
-                                                id: prospectFade
-                                                PauseAnimation { duration: index * 30 }
-                                                NumberAnimation { target: parent; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                                            Rectangle {
+                                                width: 10
+                                                height: 10
+                                                radius: 5
+                                                color: modelData.color
                                             }
 
-                                            ColumnLayout {
-                                                id: prospectCardLayout
-                                                anchors.left: parent.left
-                                                anchors.right: parent.right
-                                                anchors.top: parent.top
-                                                anchors.margins: Theme.spacingSm
-                                                spacing: 2
-
-                                                Label {
-                                                    text: prospectModel.get_prospect_name(prospectIndex)
-                                                    font.family: Theme.fontFamily
-                                                    font.pixelSize: Theme.fontSizeSmall
-                                                    font.weight: Font.Medium
-                                                    color: Theme.text
-                                                    elide: Text.ElideRight
-                                                    Layout.fillWidth: true
-                                                }
-
-                                                Label {
-                                                    visible: text !== ""
-                                                    text: prospectModel.get_prospect_value(prospectIndex)
-                                                    font.family: Theme.fontFamily
-                                                    font.pixelSize: 11
-                                                    color: Theme.primary
-                                                }
-
-                                                Label {
-                                                    visible: text !== ""
-                                                    text: prospectModel.get_prospect_contact_name(prospectIndex)
-                                                    font.family: Theme.fontFamily
-                                                    font.pixelSize: 11
-                                                    color: Theme.textSecondary
-                                                    elide: Text.ElideRight
-                                                    Layout.fillWidth: true
-                                                }
+                                            Label {
+                                                text: modelData.label
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: Theme.fontSizeSmall
+                                                font.weight: Font.Bold
+                                                color: Theme.text
+                                                Layout.fillWidth: true
                                             }
 
-                                            MouseArea {
-                                                id: prospectMouse
-                                                anchors.fill: parent
-                                                hoverEnabled: true
-                                                cursorShape: Qt.PointingHandCursor
-                                                onClicked: {
-                                                    editProspectIndex = prospectIndex;
-                                                    editProspectDialog.open();
+                                            Label {
+                                                text: prospectModel.count_for_stage(modelData.key)
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: Theme.fontSizeSmall
+                                                color: Theme.textSecondary
+                                            }
+                                        }
+
+                                        // Prospect cards
+                                        ListView {
+                                            Layout.fillWidth: true
+                                            Layout.fillHeight: true
+                                            clip: true
+                                            spacing: Theme.spacingXs
+
+                                            model: {
+                                                const indices = JSON.parse(prospectModel.prospects_for_stage(modelData.key));
+                                                return indices;
+                                            }
+
+                                            delegate: Rectangle {
+                                                width: ListView.view.width
+                                                height: prospectCardLayout.implicitHeight + Theme.spacingSm * 2
+                                                radius: Theme.buttonRadius
+                                                color: prospectMouse.containsMouse ? (Theme.isDark ? Qt.lighter(Theme.cardBg, 1.05) : Qt.darker(Theme.cardBg, 1.02)) : Theme.cardBg
+                                                border.color: Theme.cardBorderSubtle
+                                                border.width: 1
+
+                                                property int prospectIndex: modelData
+
+                                                // Staggered animation
+                                                opacity: 0
+                                                Component.onCompleted: prospectFade.start()
+                                                SequentialAnimation {
+                                                    id: prospectFade
+                                                    PauseAnimation { duration: index * 30 }
+                                                    NumberAnimation { target: parent; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                                                }
+
+                                                ColumnLayout {
+                                                    id: prospectCardLayout
+                                                    anchors.left: parent.left
+                                                    anchors.right: parent.right
+                                                    anchors.top: parent.top
+                                                    anchors.margins: Theme.spacingSm
+                                                    spacing: Theme.spacingXxs
+
+                                                    Label {
+                                                        text: prospectModel.get_prospect_name(prospectIndex)
+                                                        font.family: Theme.fontFamily
+                                                        font.pixelSize: Theme.fontSizeSmall
+                                                        font.weight: Font.Medium
+                                                        color: Theme.text
+                                                        elide: Text.ElideRight
+                                                        Layout.fillWidth: true
+                                                    }
+
+                                                    Label {
+                                                        visible: text !== ""
+                                                        text: prospectModel.get_prospect_value(prospectIndex)
+                                                        font.family: Theme.fontFamily
+                                                        font.pixelSize: 11
+                                                        color: Theme.primary
+                                                    }
+
+                                                    Label {
+                                                        visible: text !== ""
+                                                        text: prospectModel.get_prospect_contact_name(prospectIndex)
+                                                        font.family: Theme.fontFamily
+                                                        font.pixelSize: 11
+                                                        color: Theme.textSecondary
+                                                        elide: Text.ElideRight
+                                                        Layout.fillWidth: true
+                                                    }
+                                                }
+
+                                                MouseArea {
+                                                    id: prospectMouse
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onClicked: {
+                                                        editProspectIndex = prospectIndex;
+                                                        editProspectDialog.open();
+                                                    }
                                                 }
                                             }
                                         }
-                                    }
 
-                                    // Add prospect button
-                                    Button {
-                                        Layout.fillWidth: true
-                                        contentItem: Label {
-                                            text: "+ Add"
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeSmall
-                                            color: Theme.textSecondary
-                                            horizontalAlignment: Text.AlignHCenter
-                                        }
-                                        background: Rectangle {
-                                            color: parent.hovered ? (Theme.isDark ? "#ffffff08" : "#00000005") : "transparent"
-                                            radius: Theme.buttonRadius
-                                            border.color: Theme.isDark ? "#ffffff10" : "#00000010"
-                                            border.width: 1
-                                            implicitHeight: 32
-                                        }
-                                        onClicked: {
-                                            addProspectStage = modelData.key;
-                                            addProspectDialog.open();
+                                        // Add prospect button
+                                        Button {
+                                            Layout.fillWidth: true
+                                            contentItem: Label {
+                                                text: "+ Add"
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: Theme.fontSizeSmall
+                                                color: Theme.textSecondary
+                                                horizontalAlignment: Text.AlignHCenter
+                                            }
+                                            background: Rectangle {
+                                                color: parent.hovered ? (Theme.surfaceAlt) : "transparent"
+                                                radius: Theme.buttonRadius
+                                                border.color: Theme.isDark ? "#ffffff10" : "#00000010"
+                                                border.width: 1
+                                                implicitHeight: 32
+                                            }
+                                            onClicked: {
+                                                addProspectStage = modelData.key;
+                                                addProspectDialog.open();
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                }
+                }  // closes ColumnLayout
             }
 
             // Tab 1: Projects
@@ -399,7 +471,7 @@ Page {
                                 horizontalAlignment: Text.AlignHCenter
                             }
                             background: Rectangle {
-                                color: parent.hovered ? Qt.darker(Theme.primary, 1.1) : Theme.primary
+                                color: parent.hovered ? Theme.primaryHover : Theme.primary
                                 radius: Theme.buttonRadius
                                 implicitHeight: 32
                                 implicitWidth: 120
@@ -424,7 +496,7 @@ Page {
                             height: 48
                             radius: Theme.buttonRadius
                             color: projectCardMouse.containsMouse ? (Theme.isDark ? Qt.lighter(Theme.cardBg, 1.05) : Qt.darker(Theme.cardBg, 1.02)) : Theme.cardBg
-                            border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                            border.color: Theme.cardBorderSubtle
                             border.width: 1
 
                             RowLayout {
@@ -553,7 +625,7 @@ Page {
         background: Rectangle {
             color: Theme.cardBg
             radius: Theme.cardRadius
-            border.color: Theme.isDark ? "#ffffff15" : "#00000015"
+            border.color: Theme.borderLight
             border.width: 1
         }
 
@@ -577,9 +649,9 @@ Page {
                 placeholderText: "Prospect name"
                 color: Theme.text
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: prospectNameField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: prospectNameField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -592,9 +664,9 @@ Page {
                 placeholderText: "$10,000"
                 color: Theme.text
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: prospectValueField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: prospectValueField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -607,9 +679,9 @@ Page {
                 placeholderText: "Contact name"
                 color: Theme.text
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: prospectContactField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: prospectContactField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -624,9 +696,9 @@ Page {
                 color: Theme.text
                 wrapMode: TextArea.Wrap
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: prospectDescField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: prospectDescField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -648,7 +720,7 @@ Page {
                 font.family: Theme.fontFamily
                 DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
                 contentItem: Label { text: parent.text; font: parent.font; color: Theme.primaryText; horizontalAlignment: Text.AlignHCenter }
-                background: Rectangle { color: parent.hovered ? Qt.darker(Theme.primary, 1.1) : Theme.primary; radius: Theme.buttonRadius; implicitHeight: 36; implicitWidth: 80 }
+                background: Rectangle { color: parent.hovered ? Theme.primaryHover : Theme.primary; radius: Theme.buttonRadius; implicitHeight: 36; implicitWidth: 80 }
             }
         }
 
@@ -688,7 +760,7 @@ Page {
         background: Rectangle {
             color: Theme.cardBg
             radius: Theme.cardRadius
-            border.color: Theme.isDark ? "#ffffff15" : "#00000015"
+            border.color: Theme.borderLight
             border.width: 1
         }
 
@@ -729,9 +801,9 @@ Page {
                 font.family: Theme.fontFamily
                 color: Theme.text
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: editNameField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: editNameField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -743,9 +815,9 @@ Page {
                 font.family: Theme.fontFamily
                 color: Theme.text
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: editValueField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: editValueField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -757,9 +829,9 @@ Page {
                 font.family: Theme.fontFamily
                 color: Theme.text
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: editContactField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: editContactField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -773,9 +845,9 @@ Page {
                 color: Theme.text
                 wrapMode: TextArea.Wrap
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: editDescField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: editDescField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -797,7 +869,7 @@ Page {
                 font.family: Theme.fontFamily
                 DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
                 contentItem: Label { text: parent.text; font: parent.font; color: Theme.primaryText; horizontalAlignment: Text.AlignHCenter }
-                background: Rectangle { color: parent.hovered ? Qt.darker(Theme.primary, 1.1) : Theme.primary; radius: Theme.buttonRadius; implicitHeight: 36; implicitWidth: 80 }
+                background: Rectangle { color: parent.hovered ? Theme.primaryHover : Theme.primary; radius: Theme.buttonRadius; implicitHeight: 36; implicitWidth: 80 }
             }
         }
 
@@ -836,7 +908,7 @@ Page {
         background: Rectangle {
             color: Theme.cardBg
             radius: Theme.cardRadius
-            border.color: Theme.isDark ? "#ffffff15" : "#00000015"
+            border.color: Theme.borderLight
             border.width: 1
         }
 
@@ -860,9 +932,9 @@ Page {
                 placeholderText: "Enter project ID"
                 color: Theme.text
                 background: Rectangle {
-                    color: Theme.isDark ? "#ffffff08" : "#00000005"
+                    color: Theme.surfaceAlt
                     radius: Theme.buttonRadius
-                    border.color: linkProjectField.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff15" : "#00000015")
+                    border.color: linkProjectField.activeFocus ? Theme.primary : (Theme.borderLight)
                     border.width: 1
                 }
             }
@@ -884,7 +956,7 @@ Page {
                 font.family: Theme.fontFamily
                 DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
                 contentItem: Label { text: parent.text; font: parent.font; color: Theme.primaryText; horizontalAlignment: Text.AlignHCenter }
-                background: Rectangle { color: parent.hovered ? Qt.darker(Theme.primary, 1.1) : Theme.primary; radius: Theme.buttonRadius; implicitHeight: 36; implicitWidth: 80 }
+                background: Rectangle { color: parent.hovered ? Theme.primaryHover : Theme.primary; radius: Theme.buttonRadius; implicitHeight: 36; implicitWidth: 80 }
             }
         }
 
