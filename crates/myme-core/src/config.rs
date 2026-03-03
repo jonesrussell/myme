@@ -121,11 +121,26 @@ pub struct WeatherConfig {
 
     /// Refresh interval in minutes
     pub refresh_minutes: u32,
+
+    /// Optional latitude override (config-based location)
+    pub latitude: Option<f64>,
+
+    /// Optional longitude override (config-based location)
+    pub longitude: Option<f64>,
+
+    /// Optional city name override (config-based location)
+    pub city_name: Option<String>,
 }
 
 impl Default for WeatherConfig {
     fn default() -> Self {
-        Self { temperature_unit: TemperatureUnit::Auto, refresh_minutes: 15 }
+        Self {
+            temperature_unit: TemperatureUnit::Auto,
+            refresh_minutes: 15,
+            latitude: None,
+            longitude: None,
+            city_name: None,
+        }
     }
 }
 
@@ -498,5 +513,42 @@ mod tests {
         let summary = result.error_summary();
         assert!(summary.contains("field1"));
         assert!(summary.contains("field2"));
+    }
+
+    #[test]
+    fn test_weather_config_default_has_no_location() {
+        let weather = WeatherConfig::default();
+        assert!(weather.latitude.is_none());
+        assert!(weather.longitude.is_none());
+        assert!(weather.city_name.is_none());
+    }
+
+    #[test]
+    fn test_weather_config_parses_with_location_fields() {
+        let toml_str = r#"
+            temperature_unit = "celsius"
+            refresh_minutes = 30
+            latitude = 59.9139
+            longitude = 10.7522
+            city_name = "Oslo"
+        "#;
+        let weather: WeatherConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(weather.latitude, Some(59.9139));
+        assert_eq!(weather.longitude, Some(10.7522));
+        assert_eq!(weather.city_name.as_deref(), Some("Oslo"));
+        assert_eq!(weather.refresh_minutes, 30);
+    }
+
+    #[test]
+    fn test_weather_config_parses_without_location_fields() {
+        let toml_str = r#"
+            temperature_unit = "fahrenheit"
+            refresh_minutes = 10
+        "#;
+        let weather: WeatherConfig = toml::from_str(toml_str).unwrap();
+        assert!(weather.latitude.is_none());
+        assert!(weather.longitude.is_none());
+        assert!(weather.city_name.is_none());
+        assert_eq!(weather.refresh_minutes, 10);
     }
 }
