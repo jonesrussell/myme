@@ -82,6 +82,10 @@ pub struct Config {
     /// Notes storage settings
     #[serde(default)]
     pub notes: NotesConfig,
+
+    /// NorthCloud API settings
+    #[serde(default)]
+    pub northcloud: NorthCloudConfig,
 }
 
 /// Service-related config. Reserved for future use.
@@ -268,6 +272,24 @@ impl NotesConfig {
     }
 }
 
+/// NorthCloud API configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NorthCloudConfig {
+    /// Base URL for the NorthCloud search API
+    #[serde(default = "default_northcloud_base_url")]
+    pub base_url: String,
+}
+
+fn default_northcloud_base_url() -> String {
+    "https://northcloud.one".to_string()
+}
+
+impl Default for NorthCloudConfig {
+    fn default() -> Self {
+        Self { base_url: default_northcloud_base_url() }
+    }
+}
+
 /// Expand ~ in paths to home directory
 fn expand_path(path: &str) -> PathBuf {
     if let Some(stripped) = path.strip_prefix("~/") {
@@ -292,6 +314,7 @@ impl Default for Config {
             github: GitHubConfig::default(),
             google: Some(GoogleConfig::default()),
             notes: NotesConfig::default(),
+            northcloud: NorthCloudConfig::default(),
         }
     }
 }
