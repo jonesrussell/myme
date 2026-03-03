@@ -27,9 +27,10 @@ pub async fn get_current_location(
             tracing::info!("Location from IP geolocation");
             Ok(loc)
         }
-        Err(ip_err) => Err(LocationError::Other(format!(
-            "All location sources failed. IP geolocation error: {ip_err}"
-        ))),
+        Err(ip_err) => {
+            tracing::error!("All location methods failed. Last error: {ip_err}");
+            Err(LocationError::ServiceUnavailable)
+        }
     }
 }
 
