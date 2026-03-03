@@ -4,7 +4,7 @@ Guidance for Claude Code working with the MyMe codebase.
 
 ## Project Overview
 
-MyMe is a modular Rust desktop app using Qt/QML via cxx-qt — a personal productivity hub integrating GitHub, Google services (Gmail/Calendar), weather, and local SQLite storage. "Warm Forge" amber/gold theme with Outfit font and persistent sidebar nav.
+MyMe is a modular Rust desktop app using Qt/QML via cxx-qt — a personal productivity hub integrating GitHub, Google services (Gmail/Calendar), weather, and local SQLite storage. Indigo/violet design system with Outfit font and persistent sidebar nav.
 
 ## Build & Run
 

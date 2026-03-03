@@ -20,12 +20,12 @@ Page {
 
     // Kanban columns configuration
     readonly property var columns: [
-        { key: "backlog", label: "Backlog", color: "#8a8580" },
-        { key: "todo", label: "Todo", color: "#64b5f6" },
+        { key: "backlog", label: "Backlog", color: "#8A8580" },
+        { key: "todo", label: "Todo", color: "#64B5F6" },
         { key: "inprogress", label: "In Progress", color: "#F59E0B" },
-        { key: "blocked", label: "Blocked", color: "#e57373" },
-        { key: "review", label: "Review", color: "#b39ddb" },
-        { key: "done", label: "Done", color: "#5bb98c" }
+        { key: "blocked", label: "Blocked", color: "#E57373" },
+        { key: "review", label: "Review", color: "#B39DDB" },
+        { key: "done", label: "Done", color: "#5BB98C" }
     ]
 
     // Track the currently dragged task

@@ -106,7 +106,7 @@ Page {
 
                         ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 2
+                            spacing: Theme.spacingXxs
 
                             Label {
                                 text: AppContext.gmailModel ? (AppContext.gmailModel.authenticated ? AppContext.gmailModel.unread_count.toString() : "--") : "--"
@@ -163,7 +163,7 @@ Page {
 
                         ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 2
+                            spacing: Theme.spacingXxs
 
                             Label {
                                 text: AppContext.calendarModel ? (AppContext.calendarModel.authenticated ? AppContext.calendarModel.today_event_count.toString() : "--") : "--"
@@ -220,7 +220,7 @@ Page {
 
                         ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 2
+                            spacing: Theme.spacingXxs
 
                             Label {
                                 text: "New note"

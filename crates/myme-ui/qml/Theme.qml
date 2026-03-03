@@ -49,14 +49,14 @@ QtObject {
     property color borderLight: isDark ? "#383556" : "#ECEAF5"
 
     // Semantic colors
-    property color success: "#5bb98c"
-    property color successBg: isDark ? "#1a2e22" : "#e8f5ed"
+    property color success: "#5BB98C"
+    property color successBg: isDark ? "#1A2E22" : "#E8F5ED"
     property color warning: "#F59E0B"
-    property color warningBg: isDark ? "#2e2518" : "#fef7e8"
-    property color error: isDark ? "#f5a5a5" : "#c53030"
-    property color errorBg: isDark ? "#3d2020" : "#fde8e8"
-    property color info: "#64b5f6"
-    property color infoBg: isDark ? "#1a222e" : "#e8f0fe"
+    property color warningBg: isDark ? "#2E2518" : "#FEF7E8"
+    property color error: isDark ? "#F5A5A5" : "#C53030"
+    property color errorBg: isDark ? "#3D2020" : "#FDE8E8"
+    property color info: "#64B5F6"
+    property color infoBg: isDark ? "#1A222E" : "#E8F0FE"
 
     // Sidebar specific
     property color sidebarBg: isDark ? "#0F0E16" : "#F0EEF8"

@@ -42,13 +42,13 @@ Page {
 
     // Pipeline stage definitions
     readonly property var stages: [
-        { key: "lead", label: "Lead", color: "#8a8580" },
-        { key: "qualified", label: "Qualified", color: "#64b5f6" },
+        { key: "lead", label: "Lead", color: "#8A8580" },
+        { key: "qualified", label: "Qualified", color: "#64B5F6" },
         { key: "contacted", label: "Contacted", color: "#F59E0B" },
-        { key: "proposal", label: "Proposal", color: "#b39ddb" },
-        { key: "negotiation", label: "Negotiation", color: "#ff8a65" },
-        { key: "won", label: "Won", color: "#5bb98c" },
-        { key: "lost", label: "Lost", color: "#e57373" }
+        { key: "proposal", label: "Proposal", color: "#B39DDB" },
+        { key: "negotiation", label: "Negotiation", color: "#FF8A65" },
+        { key: "won", label: "Won", color: "#5BB98C" },
+        { key: "lost", label: "Lost", color: "#E57373" }
     ]
 
     ColumnLayout {
@@ -419,7 +419,7 @@ Page {
                                                 horizontalAlignment: Text.AlignHCenter
                                             }
                                             background: Rectangle {
-                                                color: parent.hovered ? (Theme.surfaceAlt) : "transparent"
+                                                color: parent.hovered ? Theme.surfaceAlt : "transparent"
                                                 radius: Theme.buttonRadius
                                                 border.color: Theme.isDark ? "#ffffff10" : "#00000010"
                                                 border.width: 1
@@ -782,8 +782,8 @@ Page {
                 font.pixelSize: Theme.fontSizeSmall
                 Layout.rightMargin: Theme.spacingLg
                 Layout.topMargin: Theme.spacingLg
-                contentItem: Label { text: parent.text; font: parent.font; color: "#e57373"; horizontalAlignment: Text.AlignHCenter }
-                background: Rectangle { color: parent.hovered ? "#e5737320" : "transparent"; radius: Theme.buttonRadius; implicitHeight: 32 }
+                contentItem: Label { text: parent.text; font: parent.font; color: "#E57373"; horizontalAlignment: Text.AlignHCenter }
+                background: Rectangle { color: parent.hovered ? "#E5737320" : "transparent"; radius: Theme.buttonRadius; implicitHeight: 32 }
                 onClicked: {
                     prospectModel.delete_prospect(editProspectIndex);
                     editProspectDialog.close();

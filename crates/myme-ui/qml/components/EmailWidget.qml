@@ -124,7 +124,7 @@ Rectangle {
 
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 2
+                spacing: Theme.spacingXxs
 
                 // Unread count
                 Text {

@@ -63,7 +63,7 @@ Page {
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeSmall
                     font.weight: Font.Bold
-                    color: "#ffffff"
+                    color: Theme.primaryText
                 }
             }
 
@@ -257,7 +257,7 @@ Page {
                         text: messageData.isStarred ? Icons.starFill : Icons.star
                         font.family: Icons.family
                         font.pixelSize: 20
-                        color: messageData.isStarred ? "#f59e0b" : Theme.textMuted
+                        color: messageData.isStarred ? Theme.warning : Theme.textMuted
                     }
                 }
 

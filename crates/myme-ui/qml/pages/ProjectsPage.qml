@@ -76,12 +76,12 @@ Page {
 
     // Status bar colors for task distribution
     readonly property var statusColors: ({
-        backlog: "#8a8580",
-        todo: "#64b5f6",
+        backlog: "#8A8580",
+        todo: "#64B5F6",
         inprogress: "#F59E0B",
-        blocked: "#e57373",
-        review: "#b39ddb",
-        done: "#5bb98c"
+        blocked: "#E57373",
+        review: "#B39DDB",
+        done: "#5BB98C"
     })
 
     header: ToolBar {

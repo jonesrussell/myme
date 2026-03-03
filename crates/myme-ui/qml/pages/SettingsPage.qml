@@ -543,7 +543,7 @@ Page {
                                 width: 44
                                 height: 44
                                 radius: 22
-                                color: Theme.isDark ? "#333" : "#24292f"
+                                color: Theme.isDark ? "#333333" : "#24292F"
 
                                 Text {
                                     anchors.centerIn: parent

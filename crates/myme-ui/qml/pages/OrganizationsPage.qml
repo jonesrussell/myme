@@ -40,13 +40,13 @@ Page {
 
     // Stage colors for prospect pipeline bar
     readonly property var stageColors: ({
-        lead: "#8a8580",
-        qualified: "#64b5f6",
+        lead: "#8A8580",
+        qualified: "#64B5F6",
         contacted: "#F59E0B",
-        proposal: "#b39ddb",
-        negotiation: "#ff8a65",
-        won: "#5bb98c",
-        lost: "#e57373"
+        proposal: "#B39DDB",
+        negotiation: "#FF8A65",
+        won: "#5BB98C",
+        lost: "#E57373"
     })
 
     header: ToolBar {
