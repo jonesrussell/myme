@@ -261,14 +261,17 @@ Page {
                                     if (result.error) {
                                         importHadError = true
                                         importResult = "Error: " + result.error
+                                    } else if (result.failed > 0) {
+                                        importHadError = true
+                                        importResult = result.imported + " imported, " + result.failed + " failed, " + result.skipped + " skipped"
                                     } else {
                                         importHadError = false
                                         importResult = result.imported + " leads imported (" + result.skipped + " skipped)"
                                     }
                                 } catch (e) {
-                                    console.error("Find Leads JSON parse failed:", e)
+                                    console.error("Find Leads JSON parse failed:", e, "raw:", resultJson)
                                     importHadError = true
-                                    importResult = "Unexpected error"
+                                    importResult = "Error processing results: " + resultJson.substring(0, 100)
                                 }
                             }
                         }

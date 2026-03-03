@@ -593,8 +593,8 @@ impl qobject::ProspectModel {
             Ok(c) => c,
             Err(e) => {
                 tracing::error!("Failed to create NorthCloud client: {}", e);
-                let msg = e.to_string().replace('\\', "\\\\").replace('"', "\\\"");
-                return QString::from(format!(r#"{{"error":"{}"}}"#, msg));
+                let error = serde_json::json!({"error": e.to_string()});
+                return QString::from(error.to_string());
             }
         };
 
@@ -610,8 +610,8 @@ impl qobject::ProspectModel {
             Ok(r) => r,
             Err(e) => {
                 tracing::error!("NorthCloud RFP search failed: {}", e);
-                let msg = e.to_string().replace('\\', "\\\\").replace('"', "\\\"");
-                return QString::from(format!(r#"{{"error":"{}"}}"#, msg));
+                let error = serde_json::json!({"error": e.to_string()});
+                return QString::from(error.to_string());
             }
         };
 
@@ -623,6 +623,7 @@ impl qobject::ProspectModel {
         let now = chrono::Utc::now().to_rfc3339();
         let mut imported = 0i32;
         let mut skipped = 0i32;
+        let mut failed = 0i32;
 
         let store_guard = store.lock();
         for hit in &response.hits {
@@ -663,8 +664,8 @@ impl qobject::ProspectModel {
             match store_guard.upsert_prospect(&prospect) {
                 Ok(_) => imported += 1,
                 Err(e) => {
-                    tracing::warn!("Failed to upsert prospect '{}': {}", prospect.name, e);
-                    skipped += 1;
+                    tracing::error!("Failed to upsert prospect '{}': {}", prospect.name, e);
+                    failed += 1;
                 }
             }
         }
@@ -673,7 +674,12 @@ impl qobject::ProspectModel {
         // Reload prospects to update UI
         self.as_mut().load_prospects(organization_id);
 
-        QString::from(format!(r#"{{"imported":{},"skipped":{}}}"#, imported, skipped))
+        let result = serde_json::json!({
+            "imported": imported,
+            "skipped": skipped,
+            "failed": failed,
+        });
+        QString::from(result.to_string())
     }
 }
 
