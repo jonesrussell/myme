@@ -14,15 +14,8 @@ Page {
     property int currentTab: 0
 
     onCurrentTabChanged: {
-        importResult = ""
-        importHadError = false
+        prospectModel.import_result = ""
     }
-
-    // NOTE: import_rfp_leads is synchronous on the Qt main thread, so importingLeads
-    // will not visually update before the call returns. Reserved for a future async refactor.
-    property bool importingLeads: false
-    property bool importHadError: false
-    property string importResult: ""
 
     background: Rectangle {
         color: Theme.background
@@ -226,16 +219,35 @@ Page {
                         Item { Layout.fillWidth: true }
 
                         Label {
-                            visible: importResult !== ""
-                            text: importResult
+                            visible: importStatusText !== ""
+                            text: importStatusText
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeSmall
-                            color: importHadError ? (Theme.isDark ? "#f5a5a5" : "#c53030") : Theme.textSecondary
+                            color: importStatusIsError ? (Theme.isDark ? "#f5a5a5" : "#c53030") : Theme.textSecondary
+
+                            property string importStatusText: {
+                                var raw = prospectModel.import_result
+                                if (raw === "" || raw === '{"pending":true}') return ""
+                                try {
+                                    var r = JSON.parse(raw)
+                                    if (r.error) return "Error: " + r.error
+                                    if (r.failed > 0) return r.imported + " imported, " + r.failed + " failed"
+                                    return r.imported + " leads imported (" + r.skipped + " skipped)"
+                                } catch (e) { return "Error processing results" }
+                            }
+                            property bool importStatusIsError: {
+                                var raw = prospectModel.import_result
+                                if (raw === "") return false
+                                try {
+                                    var r = JSON.parse(raw)
+                                    return !!r.error || (r.failed > 0)
+                                } catch (e) { return true }
+                            }
                         }
 
                         Button {
-                            text: importingLeads ? "Importing..." : "Find Leads"
-                            enabled: !importingLeads
+                            text: prospectModel.loading ? "Importing..." : "Find Leads"
+                            enabled: !prospectModel.loading
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeSmall
                             contentItem: Label {
@@ -251,28 +263,7 @@ Page {
                                 implicitWidth: 110
                             }
                             onClicked: {
-                                importingLeads = true
-                                importHadError = false
-                                importResult = ""
-                                var resultJson = prospectModel.import_rfp_leads(detailPage.organizationId)
-                                importingLeads = false
-                                try {
-                                    var result = JSON.parse(resultJson)
-                                    if (result.error) {
-                                        importHadError = true
-                                        importResult = "Error: " + result.error
-                                    } else if (result.failed > 0) {
-                                        importHadError = true
-                                        importResult = result.imported + " imported, " + result.failed + " failed, " + result.skipped + " skipped"
-                                    } else {
-                                        importHadError = false
-                                        importResult = result.imported + " leads imported (" + result.skipped + " skipped)"
-                                    }
-                                } catch (e) {
-                                    console.error("Find Leads JSON parse failed:", e, "raw:", resultJson)
-                                    importHadError = true
-                                    importResult = "Error processing results: " + resultJson.substring(0, 100)
-                                }
+                                prospectModel.import_rfp_leads(detailPage.organizationId)
                             }
                         }
                     }

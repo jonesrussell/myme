@@ -20,6 +20,7 @@ pub mod qobject {
         #[qproperty(bool, loading)]
         #[qproperty(QString, error_message)]
         #[qproperty(QString, organization_id)]
+        #[qproperty(QString, import_result)]
         type ProspectModel = super::ProspectModelRust;
 
         #[qinvokable]
@@ -121,6 +122,7 @@ pub struct ProspectModelRust {
     loading: bool,
     error_message: QString,
     organization_id: QString,
+    import_result: QString,
     prospects: Vec<Prospect>,
     organization_store: Option<Arc<parking_lot::Mutex<OrganizationStore>>>,
 }
@@ -568,118 +570,77 @@ impl qobject::ProspectModel {
         }
     }
 
-    pub fn poll_channel(self: Pin<&mut Self>) {
-        // Prospect operations are synchronous (local SQLite).
-        // Channel reserved for future async operations.
-        let _ = bridge::try_recv_organization_message();
+    pub fn poll_channel(mut self: Pin<&mut Self>) {
+        let msg = match bridge::try_recv_organization_message() {
+            Some(m) => m,
+            None => return,
+        };
+
+        use crate::services::OrganizationServiceMessage;
+        match msg {
+            OrganizationServiceMessage::RfpImportDone(result) => {
+                self.as_mut().set_loading(false);
+                match result {
+                    Ok((counts, prospects)) => {
+                        self.as_mut().rust_mut().prospects = prospects;
+                        self.as_mut().prospects_changed();
+
+                        let result_json = serde_json::json!({
+                            "imported": counts.imported,
+                            "skipped": counts.skipped,
+                            "failed": counts.failed,
+                        });
+                        self.as_mut()
+                            .set_import_result(QString::from(result_json.to_string()));
+                    }
+                    Err(e) => {
+                        tracing::error!("RFP import failed: {}", e);
+                        self.as_mut()
+                            .set_error_message(QString::from(format!("Failed to import leads: {}", e)));
+                        let error_json = serde_json::json!({"error": e.to_string()});
+                        self.as_mut()
+                            .set_import_result(QString::from(error_json.to_string()));
+                    }
+                }
+            }
+            _ => {
+                // Other message types reserved for future use
+            }
+        }
     }
 
+    /// Import RFPs from NorthCloud as Lead-stage prospects.
+    /// Non-blocking: spawns async work and returns immediately.
+    /// Results arrive via poll_channel -> OrganizationServiceMessage::RfpImportDone.
     pub fn import_rfp_leads(
         mut self: Pin<&mut Self>,
         organization_id: &QString,
     ) -> QString {
-        use myme_integrations::{NorthCloudClient, RfpSearchParams};
-        use myme_organizations::ProspectStage;
-
         let org_id = organization_id.to_string();
         if org_id.is_empty() {
+            self.as_mut()
+                .set_error_message(QString::from("Organization ID is required"));
             return QString::from(r#"{"error":"organization_id is required"}"#);
         }
 
-        let config = myme_core::Config::load_cached();
-        let base_url = config.northcloud.base_url.clone();
-
-        let client = match NorthCloudClient::new(&base_url) {
-            Ok(c) => c,
-            Err(e) => {
-                tracing::error!("Failed to create NorthCloud client: {}", e);
-                let error = serde_json::json!({"error": e.to_string()});
-                return QString::from(error.to_string());
+        bridge::init_organization_service_channel();
+        let tx = match bridge::get_organization_service_tx() {
+            Some(t) => t,
+            None => {
+                self.as_mut()
+                    .set_error_message(QString::from("Service channel not ready"));
+                return QString::from(r#"{"error":"service channel not ready"}"#);
             }
         };
 
-        let params = RfpSearchParams {
-            rfp_province: Some("on".to_string()),
-            page: 1,
-            size: 50,
-            ..Default::default()
-        };
+        self.as_mut().set_loading(true);
+        self.as_mut().set_error_message(QString::from(""));
+        self.as_mut().set_import_result(QString::from(""));
 
-        let rt = crate::app_services::runtime();
-        let response = match rt.block_on(client.search_rfps(&params)) {
-            Ok(r) => r,
-            Err(e) => {
-                tracing::error!("NorthCloud RFP search failed: {}", e);
-                let error = serde_json::json!({"error": e.to_string()});
-                return QString::from(error.to_string());
-            }
-        };
+        crate::services::request_import_rfp_leads(&tx, org_id);
 
-        let store = match crate::app_services::organization_store_or_init() {
-            Some(s) => s,
-            None => return QString::from(r#"{"error":"organization store not available"}"#),
-        };
-
-        let now = chrono::Utc::now().to_rfc3339();
-        let mut imported = 0i32;
-        let mut skipped = 0i32;
-        let mut failed = 0i32;
-
-        let store_guard = store.lock();
-        for hit in &response.hits {
-            let rfp = match &hit.rfp {
-                Some(r) => r,
-                None => {
-                    skipped += 1;
-                    continue;
-                }
-            };
-
-            let name = rfp
-                .title
-                .as_deref()
-                .filter(|s| !s.is_empty())
-                .unwrap_or(&hit.title)
-                .to_string();
-
-            let description = myme_integrations::build_rfp_description(rfp, &hit.url);
-            let value = myme_integrations::rfp_budget_string(rfp);
-            let contact_name = rfp.organization_name.clone().unwrap_or_default();
-            let contact_email = rfp.contact_email.clone().unwrap_or_default();
-
-            let prospect = Prospect {
-                id: format!("nc-{}", hit.id),
-                organization_id: org_id.clone(),
-                name,
-                description: Some(description),
-                stage: ProspectStage::Lead,
-                value: if value.is_empty() { None } else { Some(value) },
-                contact_name: if contact_name.is_empty() { None } else { Some(contact_name) },
-                contact_email: if contact_email.is_empty() { None } else { Some(contact_email) },
-                contact_role: None,
-                created_at: now.clone(),
-                updated_at: now.clone(),
-            };
-
-            match store_guard.upsert_prospect(&prospect) {
-                Ok(_) => imported += 1,
-                Err(e) => {
-                    tracing::error!("Failed to upsert prospect '{}': {}", prospect.name, e);
-                    failed += 1;
-                }
-            }
-        }
-        drop(store_guard);
-
-        // Reload prospects to update UI
-        self.as_mut().load_prospects(organization_id);
-
-        let result = serde_json::json!({
-            "imported": imported,
-            "skipped": skipped,
-            "failed": failed,
-        });
-        QString::from(result.to_string())
+        // Return pending — actual result arrives via poll_channel
+        QString::from(r#"{"pending":true}"#)
     }
 }
 
