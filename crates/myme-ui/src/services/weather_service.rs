@@ -51,7 +51,7 @@ pub fn request_fetch(
 
     runtime.spawn(async move {
         // First get location
-        let mut location = match myme_weather::location::get_current_location().await {
+        let mut location = match myme_weather::location::get_current_location(None).await {
             Ok(loc) => {
                 tracing::info!("Got location: {}, {}", loc.latitude, loc.longitude);
                 loc
