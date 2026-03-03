@@ -64,26 +64,33 @@ impl Default for RfpSearchParams {
 /// HTTP client for the NorthCloud search API
 pub struct NorthCloudClient {
     client: Client,
-    base_url: String,
+    base_url: reqwest::Url,
 }
 
 impl NorthCloudClient {
     pub fn new(base_url: impl Into<String>) -> anyhow::Result<Self> {
+        let raw = base_url.into();
+        let parsed =
+            reqwest::Url::parse(&raw).context(format!("invalid NorthCloud base URL: {}", raw))?;
         let client = reqwest::Client::builder()
             .user_agent("MyMe/0.1.0")
+            .timeout(std::time::Duration::from_secs(30))
+            .connect_timeout(std::time::Duration::from_secs(10))
             .build()
             .context("Failed to create NorthCloud HTTP client")?;
         Ok(Self {
             client,
-            base_url: base_url.into(),
+            base_url: parsed,
         })
     }
 
     /// Fetch RFP leads from the NorthCloud search API.
     /// Always filters by content_type=rfp.
     pub async fn search_rfps(&self, params: &RfpSearchParams) -> Result<RfpSearchResponse> {
-        let mut url = reqwest::Url::parse(&format!("{}/api/v1/search", self.base_url))
-            .context("invalid NorthCloud base URL")?;
+        let mut url = self
+            .base_url
+            .join("/api/v1/search")
+            .context("failed to build NorthCloud search URL")?;
 
         {
             let mut query = url.query_pairs_mut();
@@ -154,6 +161,24 @@ mod tests {
         let hit: RfpHit = serde_json::from_str(json).unwrap();
         assert_eq!(hit.title, "Web RFP");
         assert_eq!(hit.rfp.as_ref().unwrap().province.as_deref(), Some("on"));
+    }
+
+    #[test]
+    fn client_rejects_invalid_base_url() {
+        let result = NorthCloudClient::new("not a url");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn client_accepts_valid_url() {
+        let client = NorthCloudClient::new("https://northcloud.one");
+        assert!(client.is_ok());
+    }
+
+    #[test]
+    fn client_normalizes_trailing_slash() {
+        let client = NorthCloudClient::new("https://northcloud.one/").unwrap();
+        assert_eq!(client.base_url.as_str(), "https://northcloud.one/");
     }
 
     #[test]
