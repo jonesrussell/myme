@@ -12,7 +12,16 @@ Page {
     required property string organizationName
 
     property int currentTab: 0
+
+    onCurrentTabChanged: {
+        importResult = ""
+        importHadError = false
+    }
+
+    // NOTE: import_rfp_leads is synchronous on the Qt main thread, so importingLeads
+    // will not visually update before the call returns. Reserved for a future async refactor.
     property bool importingLeads: false
+    property bool importHadError: false
     property string importResult: ""
 
     background: Rectangle {
@@ -221,7 +230,7 @@ Page {
                             text: importResult
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeSmall
-                            color: importResult.startsWith("Error") ? "#e57373" : Theme.textSecondary
+                            color: importHadError ? (Theme.isDark ? "#f5a5a5" : "#c53030") : Theme.textSecondary
                         }
 
                         Button {
@@ -243,17 +252,22 @@ Page {
                             }
                             onClicked: {
                                 importingLeads = true
+                                importHadError = false
                                 importResult = ""
                                 var resultJson = prospectModel.import_rfp_leads(detailPage.organizationId)
                                 importingLeads = false
                                 try {
                                     var result = JSON.parse(resultJson)
                                     if (result.error) {
+                                        importHadError = true
                                         importResult = "Error: " + result.error
                                     } else {
+                                        importHadError = false
                                         importResult = result.imported + " leads imported (" + result.skipped + " skipped)"
                                     }
                                 } catch (e) {
+                                    console.error("Find Leads JSON parse failed:", e)
+                                    importHadError = true
                                     importResult = "Unexpected error"
                                 }
                             }
