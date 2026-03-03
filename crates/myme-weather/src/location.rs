@@ -65,7 +65,7 @@ struct IpApiResponse {
 ///
 /// Accepts an optional `base_url` for testing with wiremock.
 /// When `None`, defaults to `http://ip-api.com`.
-pub async fn ip_geolocation(base_url: Option<&str>) -> Result<Location, LocationError> {
+pub(crate) async fn ip_geolocation(base_url: Option<&str>) -> Result<Location, LocationError> {
     let base = base_url.unwrap_or("http://ip-api.com");
     let url = format!("{base}/json/?fields=status,lat,lon,city");
 
