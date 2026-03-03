@@ -1,6 +1,9 @@
 //! Gmail API client with retry logic.
 
+use std::sync::Arc;
+
 use base64::Engine;
+use myme_auth::GoogleApiClient;
 use tracing::instrument;
 
 use crate::error::GmailError;
@@ -9,16 +12,14 @@ use crate::types::*;
 const GMAIL_API_BASE: &str = "https://gmail.googleapis.com";
 
 pub struct GmailClient {
-    client: reqwest::Client,
-    access_token: String,
+    api: Arc<GoogleApiClient>,
     base_url: String,
 }
 
 impl GmailClient {
-    pub fn new(access_token: &str) -> Self {
+    pub fn new(api: &Arc<GoogleApiClient>) -> Self {
         Self {
-            client: reqwest::Client::new(),
-            access_token: access_token.to_string(),
+            api: api.clone(),
             base_url: GMAIL_API_BASE.to_string(),
         }
     }
@@ -26,14 +27,18 @@ impl GmailClient {
     #[cfg(test)]
     pub fn new_with_base_url(access_token: &str, base_url: &str) -> Self {
         Self {
-            client: reqwest::Client::new(),
-            access_token: access_token.to_string(),
+            api: GoogleApiClient::new_for_test(access_token),
             base_url: base_url.to_string(),
         }
     }
 
-    fn auth_header(&self) -> String {
-        format!("Bearer {}", self.access_token)
+    async fn auth_header(&self) -> Result<String, GmailError> {
+        let token = self
+            .api
+            .access_token()
+            .await
+            .map_err(|e| GmailError::ApiError(format!("Auth error: {}", e)))?;
+        Ok(format!("Bearer {}", token))
     }
 
     /// List message IDs (metadata only, not full messages).
@@ -58,8 +63,9 @@ impl GmailClient {
             url = format!("{}?{}", url, params.join("&"));
         }
 
+        let auth = self.auth_header().await?;
         let response =
-            self.client.get(&url).header("Authorization", self.auth_header()).send().await?;
+            self.api.http().get(&url).header("Authorization", auth).send().await?;
 
         self.handle_response(response).await
     }
@@ -70,8 +76,9 @@ impl GmailClient {
         let url =
             format!("{}/gmail/v1/users/me/messages/{}?format=full", self.base_url, message_id);
 
+        let auth = self.auth_header().await?;
         let response =
-            self.client.get(&url).header("Authorization", self.auth_header()).send().await?;
+            self.api.http().get(&url).header("Authorization", auth).send().await?;
 
         let api_msg: ApiMessage = self.handle_response(response).await?;
         Ok(Message::from_api(api_msg))
@@ -82,8 +89,9 @@ impl GmailClient {
     pub async fn list_labels(&self) -> Result<Vec<Label>, GmailError> {
         let url = format!("{}/gmail/v1/users/me/labels", self.base_url);
 
+        let auth = self.auth_header().await?;
         let response =
-            self.client.get(&url).header("Authorization", self.auth_header()).send().await?;
+            self.api.http().get(&url).header("Authorization", auth).send().await?;
 
         let resp: LabelListResponse = self.handle_response(response).await?;
         Ok(resp.labels.into_iter().map(Label::from).collect())
@@ -104,10 +112,12 @@ impl GmailClient {
             "removeLabelIds": remove_labels,
         });
 
+        let auth = self.auth_header().await?;
         let response = self
-            .client
+            .api
+            .http()
             .post(&url)
-            .header("Authorization", self.auth_header())
+            .header("Authorization", auth)
             .json(&body)
             .send()
             .await?;
@@ -126,8 +136,9 @@ impl GmailClient {
     pub async fn trash_message(&self, message_id: &str) -> Result<(), GmailError> {
         let url = format!("{}/gmail/v1/users/me/messages/{}/trash", self.base_url, message_id);
 
+        let auth = self.auth_header().await?;
         let response =
-            self.client.post(&url).header("Authorization", self.auth_header()).send().await?;
+            self.api.http().post(&url).header("Authorization", auth).send().await?;
 
         if response.status().is_success() {
             Ok(())
@@ -167,10 +178,12 @@ impl GmailClient {
             "raw": encoded,
         });
 
+        let auth = self.auth_header().await?;
         let response = self
-            .client
+            .api
+            .http()
             .post(&url)
-            .header("Authorization", self.auth_header())
+            .header("Authorization", auth)
             .json(&request_body)
             .send()
             .await?;
@@ -223,6 +236,8 @@ impl GmailClient {
         } else if status.as_u16() == 404 {
             let text = response.text().await.unwrap_or_default();
             Err(GmailError::MessageNotFound(text))
+        } else if status.as_u16() == 410 {
+            Err(GmailError::HistoryExpired)
         } else if status.as_u16() == 429 {
             // Extract retry-after if available
             let retry_after = response
@@ -411,5 +426,21 @@ mod tests {
         let result = client.list_message_ids(Some("is:unread"), None).await.unwrap();
 
         assert_eq!(result.messages.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_history_expired_error() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/gmail/v1/users/me/messages"))
+            .respond_with(ResponseTemplate::new(410))
+            .mount(&mock_server)
+            .await;
+
+        let client = GmailClient::new_with_base_url("token", &mock_server.uri());
+        let result = client.list_message_ids(None, None).await;
+
+        assert!(matches!(result, Err(GmailError::HistoryExpired)));
     }
 }

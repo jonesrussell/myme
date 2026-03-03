@@ -76,12 +76,12 @@ Page {
 
     // Status bar colors for task distribution
     readonly property var statusColors: ({
-        backlog: "#8a8580",
-        todo: "#64b5f6",
-        inprogress: "#e5a54b",
-        blocked: "#e57373",
-        review: "#b39ddb",
-        done: "#5bb98c"
+        backlog: "#8A8580",
+        todo: "#64B5F6",
+        inprogress: "#F59E0B",
+        blocked: "#E57373",
+        review: "#B39DDB",
+        done: "#5BB98C"
     })
 
     header: ToolBar {
@@ -97,10 +97,10 @@ Page {
                 text: "Projects"
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeLarge
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
                 Layout.fillWidth: true
-                leftPadding: Theme.spacingMd
+                leftPadding: Theme.spacingLg
             }
 
             ToolButton {
@@ -219,7 +219,7 @@ Page {
                     text: "GitHub Authentication Required"
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeLarge
-                    font.bold: true
+                    font.weight: Font.Bold
                     color: Theme.text
                     Layout.alignment: Qt.AlignHCenter
                 }
@@ -265,7 +265,7 @@ Page {
                             text: authModel.loading ? "Connecting..." : "Connect GitHub"
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeNormal
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.primaryText
                         }
                     }
@@ -300,8 +300,6 @@ Page {
             Layout.fillWidth: true
             Layout.preferredHeight: 60
             color: Theme.errorBg
-            border.color: Theme.error
-            border.width: 1
             radius: Theme.cardRadius
 
             RowLayout {
@@ -378,7 +376,7 @@ Page {
                         Layout.minimumWidth: 300
                         Layout.maximumWidth: 450
                         color: cardMouseArea.containsMouse ? Theme.surfaceHover : Theme.surface
-                        border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                        border.color: Theme.cardBorderSubtle
                         border.width: 1
                         radius: Theme.cardRadius
                         scale: cardMouseArea.containsMouse ? 1.01 : 1.0
@@ -440,7 +438,7 @@ Page {
                                     text: projectModel.get_project_name(projectCard.index)
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeMedium
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     color: Theme.text
                                     Layout.fillWidth: true
                                     elide: Text.ElideMiddle
@@ -656,7 +654,7 @@ Page {
                                         text: parent.parent.percentDone + "% done"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeSmall
-                                        font.bold: true
+                                        font.weight: Font.Bold
                                         color: statusColors.done
                                     }
                                 }
@@ -688,7 +686,7 @@ Page {
                             text: "No projects yet"
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeLarge
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                             Layout.alignment: Qt.AlignHCenter
                         }
@@ -741,7 +739,7 @@ Page {
                 text: "Create Project"
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeMedium
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
             }
         }
@@ -891,7 +889,7 @@ Page {
                     text: "Remove Project"
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeMedium
-                    font.bold: true
+                    font.weight: Font.Bold
                     color: Theme.error
                 }
             }
@@ -927,7 +925,7 @@ Page {
                 text: removeDialog.projectName
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeMedium
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
                 Layout.fillWidth: true
                 elide: Text.ElideMiddle

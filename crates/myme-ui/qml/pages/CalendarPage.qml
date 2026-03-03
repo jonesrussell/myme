@@ -18,12 +18,22 @@ Page {
         }
     }
 
+    // Poll timer: runs while loading or syncing
     Timer {
         id: pollTimer
         interval: 100
-        running: calendarModel.loading
+        running: calendarModel.loading || calendarModel.syncing
         repeat: true
         onTriggered: calendarModel.poll_channel()
+    }
+
+    // Background sync timer
+    Timer {
+        id: syncTimer
+        interval: calendarModel.sync_interval * 1000
+        running: calendarModel.authenticated && calendarModel.sync_interval > 0
+        repeat: true
+        onTriggered: calendarModel.background_sync()
     }
 
     background: Rectangle {
@@ -41,11 +51,39 @@ Page {
 
             Label {
                 text: "Calendar"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeLarge
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
                 Layout.fillWidth: true
-                leftPadding: Theme.spacingMd
+                leftPadding: Theme.spacingLg
+            }
+
+            // Sync indicator (subtle pulsing dot during background sync)
+            Rectangle {
+                visible: calendarModel.syncing
+                width: 8
+                height: 8
+                radius: 4
+                color: Theme.primary
+                opacity: syncPulse.running ? 1 : 0.4
+
+                SequentialAnimation on opacity {
+                    id: syncPulse
+                    running: calendarModel.syncing
+                    loops: Animation.Infinite
+                    NumberAnimation { to: 0.3; duration: 800; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutSine }
+                }
+            }
+
+            // Last synced label
+            Label {
+                visible: calendarModel.last_synced !== ""
+                text: "Synced " + calendarModel.last_synced
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.textMuted
             }
 
             // Today's event count badge
@@ -59,8 +97,9 @@ Page {
                 Label {
                     anchors.centerIn: parent
                     text: calendarModel.today_event_count
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeSmall
-                    font.bold: true
+                    font.weight: Font.Bold
                     color: Theme.primaryText
                 }
             }
@@ -77,6 +116,7 @@ Page {
 
                 contentItem: Label {
                     text: parent.text
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeSmall
                     color: parent.enabled ? Theme.primaryText : Theme.textMuted
                     horizontalAlignment: Text.AlignHCenter
@@ -106,6 +146,7 @@ Page {
 
             Label {
                 text: "Connect your Google account"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeLarge
                 color: Theme.text
                 Layout.alignment: Qt.AlignHCenter
@@ -113,6 +154,7 @@ Page {
 
             Label {
                 text: "Sign in to view your calendar events"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeNormal
                 color: Theme.textSecondary
                 Layout.alignment: Qt.AlignHCenter
@@ -130,6 +172,7 @@ Page {
 
                 contentItem: Label {
                     text: parent.text
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeNormal
                     color: Theme.primaryText
                     horizontalAlignment: Text.AlignHCenter
@@ -156,8 +199,9 @@ Page {
             // Today section header
             Label {
                 text: "Upcoming Events"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeMedium
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
             }
 
@@ -172,7 +216,7 @@ Page {
                     height: eventContent.implicitHeight + Theme.spacingMd * 2
                     radius: Theme.cardRadius
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     border.width: 1
 
                     opacity: 0
@@ -218,8 +262,9 @@ Page {
                                         const d = new Date(eventData.start)
                                         return d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
                                     }
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeNormal
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     color: Theme.primary
                                     Layout.alignment: Qt.AlignHCenter
                                 }
@@ -227,6 +272,7 @@ Page {
                                 Label {
                                     visible: eventData.allDay
                                     text: "Day"
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                     color: Theme.primary
                                     Layout.alignment: Qt.AlignHCenter
@@ -240,8 +286,9 @@ Page {
 
                             Label {
                                 text: eventData.summary || "(No title)"
+                                font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeNormal
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.text
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
@@ -271,6 +318,7 @@ Page {
                                                " - " +
                                                end.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
                                     }
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                     color: Theme.textSecondary
                                 }
@@ -289,6 +337,7 @@ Page {
 
                                 Label {
                                     text: eventData.location || ""
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                     color: Theme.textSecondary
                                     elide: Text.ElideRight
@@ -310,37 +359,40 @@ Page {
             }
 
             // Empty state
-            Item {
+            ColumnLayout {
                 visible: calendarModel.event_count === 0 && !calendarModel.loading
                 Layout.fillWidth: true
                 Layout.preferredHeight: 200
+                Layout.alignment: Qt.AlignHCenter
 
-                ColumnLayout {
-                    anchors.centerIn: parent
-                    spacing: Theme.spacingMd
+                Item { Layout.fillHeight: true }
 
-                    Text {
-                        text: Icons.calendarCheck
-                        font.family: Icons.family
-                        font.pixelSize: 48
-                        color: Theme.textMuted
-                        Layout.alignment: Qt.AlignHCenter
-                    }
-
-                    Label {
-                        text: "No upcoming events"
-                        font.pixelSize: Theme.fontSizeMedium
-                        color: Theme.textSecondary
-                        Layout.alignment: Qt.AlignHCenter
-                    }
-
-                    Label {
-                        text: "Your schedule is clear for the next 7 days"
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.textMuted
-                        Layout.alignment: Qt.AlignHCenter
-                    }
+                Text {
+                    text: Icons.calendarCheck
+                    font.family: Icons.family
+                    font.pixelSize: 48
+                    color: Theme.textMuted
+                    Layout.alignment: Qt.AlignHCenter
                 }
+
+                Label {
+                    text: "No upcoming events"
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSizeMedium
+                    font.weight: Font.Bold
+                    color: Theme.text
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
+                Label {
+                    text: "Your schedule is clear for the next 7 days"
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.textMuted
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
+                Item { Layout.fillHeight: true }
             }
         }
     }
@@ -352,18 +404,17 @@ Page {
         visible: calendarModel.loading
     }
 
-    // Error message
+    // Error message (inline, at top)
     Rectangle {
-        anchors.bottom: parent.bottom
+        visible: calendarModel.error_message !== ""
+        anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.margins: Theme.spacingMd
         height: 50
         radius: Theme.cardRadius
-        color: Theme.error + "20"
-        border.color: "transparent"
-        border.width: 0
-        visible: calendarModel.error_message !== ""
+        color: Theme.errorBg
+        z: 10
 
         RowLayout {
             anchors.fill: parent
@@ -378,6 +429,7 @@ Page {
 
             Label {
                 text: calendarModel.error_message
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.error
                 Layout.fillWidth: true

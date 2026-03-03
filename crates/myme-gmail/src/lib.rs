@@ -12,4 +12,7 @@ pub use cache::GmailCache;
 pub use client::GmailClient;
 pub use error::GmailError;
 pub use sync::{QueuedAction, SyncAction, SyncQueue};
-pub use types::{Label, LabelType, Message, MessageListResponse, MessageRef};
+pub use types::{
+    HistoryLabelChange, HistoryListResponse, HistoryMessage, HistoryRecord, Label, LabelType,
+    Message, MessageListResponse, MessageRef,
+};

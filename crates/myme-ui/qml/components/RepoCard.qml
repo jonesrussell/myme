@@ -12,7 +12,7 @@ Rectangle {
     implicitHeight: cardContent.implicitHeight + Theme.spacingMd * 2
     radius: Theme.cardRadius
     color: cardMouseArea.containsMouse ? Theme.surfaceHover : Theme.surface
-    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+    border.color: Theme.cardBorderSubtle
     border.width: 1
 
     scale: cardMouseArea.containsMouse ? 1.01 : 1.0
@@ -54,7 +54,7 @@ Rectangle {
                 Label {
                     text: repoModel ? repoModel.getFullName(index) : ""
                     font.pixelSize: Theme.fontSizeMedium
-                    font.bold: true
+                    font.weight: Font.Bold
                     color: Theme.text
                     Layout.fillWidth: true
                 }

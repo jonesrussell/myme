@@ -76,7 +76,7 @@ Page {
                     Layout.preferredHeight: 90
                     radius: Theme.cardRadius
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     border.width: 1
 
                     property bool hovered: emailStatMouse.containsMouse
@@ -106,7 +106,7 @@ Page {
 
                         ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 2
+                            spacing: Theme.spacingXxs
 
                             Label {
                                 text: AppContext.gmailModel ? (AppContext.gmailModel.authenticated ? AppContext.gmailModel.unread_count.toString() : "--") : "--"
@@ -133,7 +133,7 @@ Page {
                     Layout.preferredHeight: 90
                     radius: Theme.cardRadius
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     border.width: 1
 
                     property bool hovered: calStatMouse.containsMouse
@@ -163,7 +163,7 @@ Page {
 
                         ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 2
+                            spacing: Theme.spacingXxs
 
                             Label {
                                 text: AppContext.calendarModel ? (AppContext.calendarModel.authenticated ? AppContext.calendarModel.today_event_count.toString() : "--") : "--"
@@ -190,7 +190,7 @@ Page {
                     Layout.preferredHeight: 90
                     radius: Theme.cardRadius
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     border.width: 1
 
                     property bool hovered: noteStatMouse.containsMouse
@@ -220,7 +220,7 @@ Page {
 
                         ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 2
+                            spacing: Theme.spacingXxs
 
                             Label {
                                 text: "New note"
@@ -339,7 +339,7 @@ Page {
                             Layout.preferredHeight: 80
                             radius: Theme.cardRadius
                             color: quickLinkMouse.containsMouse ? Theme.surfaceHover : Theme.surface
-                            border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                            border.color: Theme.cardBorderSubtle
                             border.width: 1
 
                             Behavior on color { ColorAnimation { duration: 100 } }

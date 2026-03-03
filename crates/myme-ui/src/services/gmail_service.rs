@@ -2,7 +2,9 @@
 //! All network work runs off the UI thread; results sent via mpsc.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
+use myme_auth::GoogleApiClient;
 use myme_gmail::{GmailCache, GmailClient, Message};
 
 use crate::bridge;
@@ -39,7 +41,7 @@ pub enum GmailServiceMessage {
 /// Request to fetch messages asynchronously.
 pub fn request_fetch(
     tx: &std::sync::mpsc::Sender<GmailServiceMessage>,
-    access_token: String,
+    api: Arc<GoogleApiClient>,
     cache_path: PathBuf,
 ) {
     let tx = tx.clone();
@@ -52,7 +54,7 @@ pub fn request_fetch(
     };
 
     runtime.spawn(async move {
-        let client = GmailClient::new(&access_token);
+        let client = GmailClient::new(&api);
 
         let result = async {
             let list_response = client
@@ -61,7 +63,7 @@ pub fn request_fetch(
                 .map_err(|e| GmailError::Network(e.to_string()))?;
 
             let mut messages = Vec::new();
-            for msg_ref in list_response.messages.into_iter().take(20) {
+            for msg_ref in list_response.messages.into_iter().take(50) {
                 match client.get_message(&msg_ref.id).await {
                     Ok(msg) => messages.push(msg),
                     Err(e) => tracing::warn!("Failed to fetch message {}: {}", msg_ref.id, e),
@@ -85,7 +87,7 @@ pub fn request_fetch(
 /// Request to mark a message as read.
 pub fn request_mark_as_read(
     tx: &std::sync::mpsc::Sender<GmailServiceMessage>,
-    access_token: String,
+    api: Arc<GoogleApiClient>,
     message_id: String,
 ) {
     let tx = tx.clone();
@@ -98,7 +100,7 @@ pub fn request_mark_as_read(
     };
 
     runtime.spawn(async move {
-        let client = GmailClient::new(&access_token);
+        let client = GmailClient::new(&api);
         let result = client
             .mark_as_read(&message_id)
             .await
@@ -111,7 +113,7 @@ pub fn request_mark_as_read(
 /// Request to archive a message.
 pub fn request_archive(
     tx: &std::sync::mpsc::Sender<GmailServiceMessage>,
-    access_token: String,
+    api: Arc<GoogleApiClient>,
     message_id: String,
 ) {
     let tx = tx.clone();
@@ -124,7 +126,7 @@ pub fn request_archive(
     };
 
     runtime.spawn(async move {
-        let client = GmailClient::new(&access_token);
+        let client = GmailClient::new(&api);
         let result = client
             .archive_message(&message_id)
             .await
@@ -137,7 +139,7 @@ pub fn request_archive(
 /// Request to move a message to trash.
 pub fn request_trash(
     tx: &std::sync::mpsc::Sender<GmailServiceMessage>,
-    access_token: String,
+    api: Arc<GoogleApiClient>,
     message_id: String,
 ) {
     let tx = tx.clone();
@@ -150,7 +152,7 @@ pub fn request_trash(
     };
 
     runtime.spawn(async move {
-        let client = GmailClient::new(&access_token);
+        let client = GmailClient::new(&api);
         let result = client
             .trash_message(&message_id)
             .await

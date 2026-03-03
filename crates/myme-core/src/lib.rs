@@ -3,7 +3,7 @@ pub mod config;
 pub mod error;
 
 pub use app::App;
-pub use config::{Config, GitHubConfig, NotesConfig, TemperatureUnit, WeatherConfig};
+pub use config::{Config, GitHubConfig, NorthCloudConfig, NotesConfig, TemperatureUnit, WeatherConfig};
 pub use error::{
     AppError, AuthError, ConfigError, DatabaseError, GitHubError, NetworkError, WeatherError,
 };

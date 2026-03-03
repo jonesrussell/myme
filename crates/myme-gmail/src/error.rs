@@ -25,6 +25,9 @@ pub enum GmailError {
     #[error("Send failed: {0}")]
     SendFailed(String),
 
+    #[error("History expired, full sync required")]
+    HistoryExpired,
+
     #[error("API error: {0}")]
     ApiError(String),
 
@@ -45,6 +48,7 @@ impl GmailError {
             Self::MessageNotFound(_) => "Message not found".to_string(),
             Self::LabelNotFound(_) => "Label not found".to_string(),
             Self::InvalidMessageFormat => "Invalid email format".to_string(),
+            Self::HistoryExpired => "Sync data expired. Performing full refresh.".to_string(),
             Self::SendFailed(msg) => format!("Failed to send email: {}", msg),
             Self::ApiError(msg) => format!("Gmail error: {}", msg),
             Self::CacheError(_) => "Local cache error".to_string(),
@@ -55,6 +59,11 @@ impl GmailError {
     /// Whether this error should trigger a token refresh.
     pub fn should_refresh_token(&self) -> bool {
         matches!(self, Self::TokenExpired | Self::AuthRequired)
+    }
+
+    /// Whether this error indicates stale sync state requiring a full re-fetch.
+    pub fn requires_full_sync(&self) -> bool {
+        matches!(self, Self::HistoryExpired)
     }
 
     /// Whether this error is retryable.
@@ -88,5 +97,12 @@ mod tests {
     fn test_is_retryable() {
         assert!(GmailError::RateLimited(10).is_retryable());
         assert!(!GmailError::MessageNotFound("x".into()).is_retryable());
+    }
+
+    #[test]
+    fn test_requires_full_sync() {
+        assert!(GmailError::HistoryExpired.requires_full_sync());
+        assert!(!GmailError::TokenExpired.requires_full_sync());
+        assert!(!GmailError::RateLimited(10).requires_full_sync());
     }
 }

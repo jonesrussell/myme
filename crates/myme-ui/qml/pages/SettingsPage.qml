@@ -49,10 +49,10 @@ Page {
                 text: "Settings"
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeLarge
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
                 Layout.fillWidth: true
-                leftPadding: Theme.spacingMd
+                leftPadding: Theme.spacingLg
             }
         }
     }
@@ -73,7 +73,7 @@ Page {
                 Layout.fillWidth: true
                 Layout.preferredHeight: appearanceContent.implicitHeight + Theme.spacingMd * 2
                 color: Theme.surface
-                border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                border.color: Theme.cardBorderSubtle
                 border.width: 1
                 radius: Theme.cardRadius
 
@@ -87,7 +87,7 @@ Page {
                         text: "Appearance"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeMedium
-                        font.bold: true
+                        font.weight: Font.Bold
                         color: Theme.text
                     }
 
@@ -134,8 +134,8 @@ Page {
                                     width: 40
                                     height: 40
                                     radius: 20
-                                    color: "#faf8f5"
-                                    border.color: "#e5e0d8"
+                                    color: "#F9F8FC"
+                                    border.color: "#E2E0EE"
                                     border.width: 1
 
                                     Text {
@@ -143,7 +143,7 @@ Page {
                                         text: Icons.sun
                                         font.family: Icons.family
                                         font.pixelSize: 20
-                                        color: "#c08832"
+                                        color: "#6366F1"
                                     }
                                 }
 
@@ -151,7 +151,7 @@ Page {
                                     text: "Light"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeNormal
-                                    font.bold: Theme.mode === "light"
+                                    font.weight: Theme.mode === "light" ? Font.Bold : Font.Normal
                                     color: Theme.text
                                     Layout.alignment: Qt.AlignHCenter
                                 }
@@ -184,8 +184,8 @@ Page {
                                     width: 40
                                     height: 40
                                     radius: 20
-                                    color: "#141414"
-                                    border.color: "#2a2a2a"
+                                    color: "#131219"
+                                    border.color: "#2E2C45"
                                     border.width: 1
 
                                     Text {
@@ -193,7 +193,7 @@ Page {
                                         text: Icons.moon
                                         font.family: Icons.family
                                         font.pixelSize: 20
-                                        color: "#e5a54b"
+                                        color: "#818CF8"
                                     }
                                 }
 
@@ -201,7 +201,7 @@ Page {
                                     text: "Dark"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeNormal
-                                    font.bold: Theme.mode === "dark"
+                                    font.weight: Theme.mode === "dark" ? Font.Bold : Font.Normal
                                     color: Theme.text
                                     Layout.alignment: Qt.AlignHCenter
                                 }
@@ -238,14 +238,14 @@ Page {
                                         orientation: Gradient.Horizontal
                                         GradientStop {
                                             position: 0.0
-                                            color: "#faf8f5"
+                                            color: "#F9F8FC"
                                         }
                                         GradientStop {
                                             position: 1.0
-                                            color: "#141414"
+                                            color: "#131219"
                                         }
                                     }
-                                    border.color: "#6b6560"
+                                    border.color: "#6C6A8A"
                                     border.width: 1
 
                                     Text {
@@ -253,7 +253,7 @@ Page {
                                         text: Icons.circleHalf
                                         font.family: Icons.family
                                         font.pixelSize: 20
-                                        color: "#6b6560"
+                                        color: "#6C6A8A"
                                     }
                                 }
 
@@ -261,7 +261,7 @@ Page {
                                     text: "Auto"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeNormal
-                                    font.bold: Theme.mode === "auto"
+                                    font.weight: Theme.mode === "auto" ? Font.Bold : Font.Normal
                                     color: Theme.text
                                     Layout.alignment: Qt.AlignHCenter
                                 }
@@ -297,7 +297,7 @@ Page {
                 Layout.fillWidth: true
                 Layout.preferredHeight: weatherContent.implicitHeight + Theme.spacingMd * 2
                 color: Theme.surface
-                border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                border.color: Theme.cardBorderSubtle
                 border.width: 1
                 radius: Theme.cardRadius
 
@@ -313,7 +313,7 @@ Page {
                         text: "Weather"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeMedium
-                        font.bold: true
+                        font.weight: Font.Bold
                         color: Theme.text
                     }
 
@@ -371,7 +371,7 @@ Page {
                                     text: "Auto"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
-                                    font.bold: parent.parent.parent.parent.parent.temperatureUnit === "auto"
+                                    font.weight: parent.parent.parent.parent.parent.temperatureUnit === "auto" ? Font.Bold : Font.Normal
                                     color: Theme.text
                                     Layout.alignment: Qt.AlignHCenter
                                 }
@@ -401,7 +401,7 @@ Page {
                                     text: "°C"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 20
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     color: Theme.textSecondary
                                     Layout.alignment: Qt.AlignHCenter
                                 }
@@ -410,7 +410,7 @@ Page {
                                     text: "Celsius"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
-                                    font.bold: parent.parent.parent.parent.parent.temperatureUnit === "celsius"
+                                    font.weight: parent.parent.parent.parent.parent.temperatureUnit === "celsius" ? Font.Bold : Font.Normal
                                     color: Theme.text
                                     Layout.alignment: Qt.AlignHCenter
                                 }
@@ -440,7 +440,7 @@ Page {
                                     text: "°F"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 20
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     color: Theme.textSecondary
                                     Layout.alignment: Qt.AlignHCenter
                                 }
@@ -449,7 +449,7 @@ Page {
                                     text: "Fahrenheit"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
-                                    font.bold: parent.parent.parent.parent.parent.temperatureUnit === "fahrenheit"
+                                    font.weight: parent.parent.parent.parent.parent.temperatureUnit === "fahrenheit" ? Font.Bold : Font.Normal
                                     color: Theme.text
                                     Layout.alignment: Qt.AlignHCenter
                                 }
@@ -496,7 +496,7 @@ Page {
                 Layout.fillWidth: true
                 Layout.preferredHeight: accountsContent.implicitHeight + Theme.spacingMd * 2
                 color: Theme.surface
-                border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                border.color: Theme.cardBorderSubtle
                 border.width: 1
                 radius: Theme.cardRadius
 
@@ -510,7 +510,7 @@ Page {
                         text: "Connected Accounts"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeMedium
-                        font.bold: true
+                        font.weight: Font.Bold
                         color: Theme.text
                     }
 
@@ -543,7 +543,7 @@ Page {
                                 width: 44
                                 height: 44
                                 radius: 22
-                                color: Theme.isDark ? "#333" : "#24292f"
+                                color: Theme.isDark ? "#333333" : "#24292F"
 
                                 Text {
                                     anchors.centerIn: parent
@@ -557,13 +557,13 @@ Page {
                             // Account info
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: Theme.spacingXxs
 
                                 Label {
                                     text: "GitHub"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeNormal
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     color: Theme.text
                                 }
 
@@ -597,7 +597,7 @@ Page {
                                     text: parent.text
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     color: {
                                         if (!parent.enabled) return Theme.textMuted
                                         if (authModel.authenticated) return Theme.error
@@ -656,8 +656,9 @@ Page {
                                 Text {
                                     anchors.centerIn: parent
                                     text: "G"
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: 24
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     color: "#4285F4"
                                 }
                             }
@@ -665,13 +666,13 @@ Page {
                             // Account info
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: Theme.spacingXxs
 
                                 Label {
                                     text: "Google"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeNormal
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     color: Theme.text
                                 }
 
@@ -705,7 +706,7 @@ Page {
                                     text: parent.text
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     color: {
                                         if (!parent.enabled) return Theme.textMuted
                                         if (googleAuthModel.authenticated) return Theme.error
@@ -751,6 +752,7 @@ Page {
                     // Open config folder button
                     Button {
                         text: "Open config folder"
+                        font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeSmall
                         Layout.topMargin: Theme.spacingSm
                         onClicked: googleAuthModel.open_config_folder()
@@ -767,7 +769,7 @@ Page {
                         ColumnLayout {
                             anchors.fill: parent
                             anchors.margins: Theme.spacingSm
-                            spacing: 2
+                            spacing: Theme.spacingXxs
 
                             RowLayout {
                                 Text {
@@ -804,7 +806,7 @@ Page {
                 Layout.fillWidth: true
                 Layout.preferredHeight: aboutContent.implicitHeight + Theme.spacingMd * 2
                 color: Theme.surface
-                border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                border.color: Theme.cardBorderSubtle
                 border.width: 1
                 radius: Theme.cardRadius
 
@@ -818,7 +820,7 @@ Page {
                         text: "About"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeMedium
-                        font.bold: true
+                        font.weight: Font.Bold
                         color: Theme.text
                     }
 
@@ -836,19 +838,19 @@ Page {
                                 text: "M"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 32
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.primaryText
                             }
                         }
 
                         ColumnLayout {
-                            spacing: 2
+                            spacing: Theme.spacingXxs
 
                             Label {
                                 text: "MyMe"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeLarge
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.text
                             }
 

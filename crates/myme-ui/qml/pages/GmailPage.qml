@@ -18,12 +18,22 @@ Page {
         }
     }
 
+    // Poll timer: runs while loading or syncing
     Timer {
         id: pollTimer
         interval: 100
-        running: gmailModel.loading
+        running: gmailModel.loading || gmailModel.syncing
         repeat: true
         onTriggered: gmailModel.poll_channel()
+    }
+
+    // Background sync timer
+    Timer {
+        id: syncTimer
+        interval: gmailModel.sync_interval * 1000
+        running: gmailModel.authenticated && gmailModel.sync_interval > 0
+        repeat: true
+        onTriggered: gmailModel.background_sync()
     }
 
     background: Rectangle {
@@ -41,11 +51,39 @@ Page {
 
             Label {
                 text: "Gmail"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeLarge
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
                 Layout.fillWidth: true
-                leftPadding: Theme.spacingMd
+                leftPadding: Theme.spacingLg
+            }
+
+            // Sync indicator (subtle pulsing dot during background sync)
+            Rectangle {
+                visible: gmailModel.syncing
+                width: 8
+                height: 8
+                radius: 4
+                color: Theme.primary
+                opacity: syncPulse.running ? 1 : 0.4
+
+                SequentialAnimation on opacity {
+                    id: syncPulse
+                    running: gmailModel.syncing
+                    loops: Animation.Infinite
+                    NumberAnimation { to: 0.3; duration: 800; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutSine }
+                }
+            }
+
+            // Last synced label
+            Label {
+                visible: gmailModel.last_synced !== ""
+                text: "Synced " + gmailModel.last_synced
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.textMuted
             }
 
             // Unread count badge
@@ -59,9 +97,10 @@ Page {
                 Label {
                     anchors.centerIn: parent
                     text: gmailModel.unread_count
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeSmall
-                    font.bold: true
-                    color: "#ffffff"
+                    font.weight: Font.Bold
+                    color: Theme.primaryText
                 }
             }
 
@@ -77,6 +116,7 @@ Page {
 
                 contentItem: Label {
                     text: parent.text
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeSmall
                     color: parent.enabled ? Theme.primaryText : Theme.textMuted
                     horizontalAlignment: Text.AlignHCenter
@@ -106,6 +146,7 @@ Page {
 
             Label {
                 text: "Connect your Google account"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeLarge
                 color: Theme.text
                 Layout.alignment: Qt.AlignHCenter
@@ -113,6 +154,7 @@ Page {
 
             Label {
                 text: "Sign in to access your Gmail inbox"
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeNormal
                 color: Theme.textSecondary
                 Layout.alignment: Qt.AlignHCenter
@@ -130,6 +172,7 @@ Page {
 
                 contentItem: Label {
                     text: parent.text
+                    font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeNormal
                     color: Theme.primaryText
                     horizontalAlignment: Text.AlignHCenter
@@ -162,7 +205,7 @@ Page {
                 height: 80
                 radius: Theme.cardRadius
                 color: Theme.surface
-                border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                border.color: Theme.cardBorderSubtle
                 border.width: 1
 
                 opacity: 0
@@ -206,8 +249,9 @@ Page {
 
                             Label {
                                 text: messageData.from || "Unknown"
+                                font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeNormal
-                                font.bold: messageData.isUnread
+                                font.weight: messageData.isUnread ? Font.Bold : Font.Normal
                                 color: Theme.text
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
@@ -219,6 +263,7 @@ Page {
                                     const d = new Date(messageData.date)
                                     return d.toLocaleDateString()
                                 }
+                                font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.textSecondary
                             }
@@ -226,8 +271,9 @@ Page {
 
                         Label {
                             text: messageData.subject || "(No subject)"
+                            font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeNormal
-                            font.bold: messageData.isUnread
+                            font.weight: messageData.isUnread ? Font.Bold : Font.Normal
                             color: Theme.text
                             elide: Text.ElideRight
                             Layout.fillWidth: true
@@ -235,6 +281,7 @@ Page {
 
                         Label {
                             text: messageData.snippet || ""
+                            font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeSmall
                             color: Theme.textSecondary
                             elide: Text.ElideRight
@@ -247,7 +294,7 @@ Page {
                         text: messageData.isStarred ? Icons.starFill : Icons.star
                         font.family: Icons.family
                         font.pixelSize: 20
-                        color: messageData.isStarred ? "#f59e0b" : Theme.textMuted
+                        color: messageData.isStarred ? Theme.warning : Theme.textMuted
                     }
                 }
 
@@ -264,12 +311,27 @@ Page {
             }
 
             // Empty state
-            Label {
+            ColumnLayout {
                 visible: messageList.count === 0 && !gmailModel.loading
                 anchors.centerIn: parent
-                text: "No messages"
-                font.pixelSize: Theme.fontSizeLarge
-                color: Theme.textSecondary
+                spacing: Theme.spacingMd
+
+                Text {
+                    text: Icons.envelopeSimple
+                    font.family: Icons.family
+                    font.pixelSize: 48
+                    color: Theme.textMuted
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
+                Label {
+                    text: "No messages"
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSizeLarge
+                    font.weight: Font.Bold
+                    color: Theme.text
+                    Layout.alignment: Qt.AlignHCenter
+                }
             }
         }
     }
@@ -281,18 +343,17 @@ Page {
         visible: gmailModel.loading
     }
 
-    // Error message
+    // Error message (inline, above message list)
     Rectangle {
-        anchors.bottom: parent.bottom
+        visible: gmailModel.error_message !== ""
+        anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.margins: Theme.spacingMd
         height: 50
         radius: Theme.cardRadius
-        color: Theme.error + "20"
-        border.color: "transparent"
-        border.width: 0
-        visible: gmailModel.error_message !== ""
+        color: Theme.errorBg
+        z: 10
 
         RowLayout {
             anchors.fill: parent
@@ -307,6 +368,7 @@ Page {
 
             Label {
                 text: gmailModel.error_message
+                font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.error
                 Layout.fillWidth: true

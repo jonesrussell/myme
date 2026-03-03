@@ -33,7 +33,9 @@ pub use note_service::{
     request_toggle_done as request_note_toggle, request_update as request_note_update, NoteError,
     NoteFilter as NoteServiceFilter, NoteServiceMessage,
 };
-pub use organization_service::{OrganizationError, OrganizationServiceMessage};
+pub use organization_service::{
+    request_import_rfp_leads, OrganizationError, OrganizationServiceMessage, RfpImportResult,
+};
 pub use project_service::{
     request_fetch_repo as request_project_fetch_repo, ProjectError, ProjectServiceMessage, RepoInfo,
 };

@@ -258,8 +258,21 @@ impl qobject::WeatherModel {
         self.as_mut().rust_mut().clear_error();
         self.as_mut().rust_mut().op_state = OpState::Fetching;
 
+        // Build location override from config (if lat+lon are set)
+        let location_override = {
+            let config = myme_core::Config::load_cached();
+            match (config.weather.latitude, config.weather.longitude) {
+                (Some(lat), Some(lon)) => Some(myme_weather::LocationOverride {
+                    latitude: lat,
+                    longitude: lon,
+                    city_name: config.weather.city_name.clone(),
+                }),
+                _ => None,
+            }
+        };
+
         // Spawn async operation (non-blocking)
-        request_weather_fetch(&tx, provider);
+        request_weather_fetch(&tx, provider, location_override);
     }
 
     /// Poll for async operation results. Call this from a QML Timer (e.g., every 100ms).

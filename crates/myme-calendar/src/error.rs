@@ -25,6 +25,9 @@ pub enum CalendarError {
     #[error("Conflict: event was modified")]
     Conflict,
 
+    #[error("Sync token expired, full sync required")]
+    SyncTokenExpired,
+
     #[error("API error: {0}")]
     ApiError(String),
 
@@ -45,6 +48,7 @@ impl CalendarError {
             Self::EventNotFound(_) => "Event not found".to_string(),
             Self::CalendarNotFound(_) => "Calendar not found".to_string(),
             Self::InvalidEventData(msg) => format!("Invalid event: {}", msg),
+            Self::SyncTokenExpired => "Sync data expired. Performing full refresh.".to_string(),
             Self::Conflict => "The event was modified elsewhere. Please refresh.".to_string(),
             Self::ApiError(msg) => format!("Calendar error: {}", msg),
             Self::CacheError(_) => "Local cache error".to_string(),
@@ -55,6 +59,11 @@ impl CalendarError {
     /// Whether this error should trigger a token refresh.
     pub fn should_refresh_token(&self) -> bool {
         matches!(self, Self::TokenExpired | Self::AuthRequired)
+    }
+
+    /// Whether this error indicates stale sync state requiring a full re-fetch.
+    pub fn requires_full_sync(&self) -> bool {
+        matches!(self, Self::SyncTokenExpired)
     }
 
     /// Whether this error is retryable.
@@ -92,5 +101,12 @@ mod tests {
         assert!(CalendarError::RateLimited(10).is_retryable());
         assert!(!CalendarError::EventNotFound("x".into()).is_retryable());
         assert!(!CalendarError::Conflict.is_retryable());
+    }
+
+    #[test]
+    fn test_requires_full_sync() {
+        assert!(CalendarError::SyncTokenExpired.requires_full_sync());
+        assert!(!CalendarError::TokenExpired.requires_full_sync());
+        assert!(!CalendarError::Conflict.requires_full_sync());
     }
 }

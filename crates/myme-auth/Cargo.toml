@@ -38,5 +38,8 @@ uuid = { version = "1.0", features = ["v4"] }
 urlencoding = "2.1"
 reqwest.workspace = true
 
+# Thread-safe token state
+parking_lot.workspace = true
+
 [lints]
 workspace = true

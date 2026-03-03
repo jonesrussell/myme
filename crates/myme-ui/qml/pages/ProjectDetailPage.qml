@@ -20,12 +20,12 @@ Page {
 
     // Kanban columns configuration
     readonly property var columns: [
-        { key: "backlog", label: "Backlog", color: "#8a8580" },
-        { key: "todo", label: "Todo", color: "#64b5f6" },
-        { key: "inprogress", label: "In Progress", color: "#e5a54b" },
-        { key: "blocked", label: "Blocked", color: "#e57373" },
-        { key: "review", label: "Review", color: "#b39ddb" },
-        { key: "done", label: "Done", color: "#5bb98c" }
+        { key: "backlog", label: "Backlog", color: "#8A8580" },
+        { key: "todo", label: "Todo", color: "#64B5F6" },
+        { key: "inprogress", label: "In Progress", color: "#F59E0B" },
+        { key: "blocked", label: "Blocked", color: "#E57373" },
+        { key: "review", label: "Review", color: "#B39DDB" },
+        { key: "done", label: "Done", color: "#5BB98C" }
     ]
 
     // Track the currently dragged task
@@ -119,7 +119,7 @@ Page {
                 text: projectName
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeLarge
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
                 Layout.fillWidth: true
                 elide: Text.ElideMiddle
@@ -347,7 +347,7 @@ Page {
                                     text: columnContainer.columnLabel
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeMedium
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     color: Theme.text
                                     Layout.fillWidth: true
                                 }
@@ -366,7 +366,7 @@ Page {
                                         text: kanbanModel.count_by_status(columnContainer.columnKey)
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeSmall
-                                        font.bold: true
+                                        font.weight: Font.Bold
                                         color: columnContainer.columnColor
                                     }
                                 }
@@ -497,7 +497,7 @@ Page {
                                                 text: "#" + kanbanModel.get_issue_number(taskCard.taskIndex)
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: Theme.fontSizeSmall
-                                                font.bold: true
+                                                font.weight: Font.Bold
                                                 color: columnContainer.columnColor
                                             }
 
@@ -623,7 +623,7 @@ Page {
                 text: "New Task"
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeMedium
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
             }
         }
@@ -916,7 +916,7 @@ Page {
                     text: "Edit Task"
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeMedium
-                    font.bold: true
+                    font.weight: Font.Bold
                     color: Theme.text
                     Layout.fillWidth: true
                 }
@@ -1077,7 +1077,7 @@ Page {
                 text: "Add Repo"
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeMedium
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
             }
         }

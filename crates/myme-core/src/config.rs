@@ -82,6 +82,10 @@ pub struct Config {
     /// Notes storage settings
     #[serde(default)]
     pub notes: NotesConfig,
+
+    /// NorthCloud API settings
+    #[serde(default)]
+    pub northcloud: NorthCloudConfig,
 }
 
 /// Service-related config. Reserved for future use.
@@ -117,11 +121,26 @@ pub struct WeatherConfig {
 
     /// Refresh interval in minutes
     pub refresh_minutes: u32,
+
+    /// Optional latitude override (config-based location)
+    pub latitude: Option<f64>,
+
+    /// Optional longitude override (config-based location)
+    pub longitude: Option<f64>,
+
+    /// Optional city name override (config-based location)
+    pub city_name: Option<String>,
 }
 
 impl Default for WeatherConfig {
     fn default() -> Self {
-        Self { temperature_unit: TemperatureUnit::Auto, refresh_minutes: 15 }
+        Self {
+            temperature_unit: TemperatureUnit::Auto,
+            refresh_minutes: 15,
+            latitude: Some(43.6532),
+            longitude: Some(-79.3832),
+            city_name: Some("Toronto".to_string()),
+        }
     }
 }
 
@@ -228,6 +247,13 @@ pub struct GoogleConfig {
     pub client_id: Option<String>,
     /// Google OAuth Client Secret
     pub client_secret: Option<String>,
+    /// Background sync interval in seconds (default: 300 = 5 minutes)
+    #[serde(default = "default_google_sync_interval")]
+    pub sync_interval_secs: u64,
+}
+
+fn default_google_sync_interval() -> u64 {
+    300
 }
 
 impl GoogleConfig {
@@ -268,6 +294,24 @@ impl NotesConfig {
     }
 }
 
+/// NorthCloud API configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NorthCloudConfig {
+    /// Base URL for the NorthCloud search API
+    #[serde(default = "default_northcloud_base_url")]
+    pub base_url: String,
+}
+
+fn default_northcloud_base_url() -> String {
+    "https://northcloud.one".to_string()
+}
+
+impl Default for NorthCloudConfig {
+    fn default() -> Self {
+        Self { base_url: default_northcloud_base_url() }
+    }
+}
+
 /// Expand ~ in paths to home directory
 fn expand_path(path: &str) -> PathBuf {
     if let Some(stripped) = path.strip_prefix("~/") {
@@ -292,6 +336,7 @@ impl Default for Config {
             github: GitHubConfig::default(),
             google: Some(GoogleConfig::default()),
             notes: NotesConfig::default(),
+            northcloud: NorthCloudConfig::default(),
         }
     }
 }
@@ -475,5 +520,42 @@ mod tests {
         let summary = result.error_summary();
         assert!(summary.contains("field1"));
         assert!(summary.contains("field2"));
+    }
+
+    #[test]
+    fn test_weather_config_default_has_toronto() {
+        let weather = WeatherConfig::default();
+        assert_eq!(weather.latitude, Some(43.6532));
+        assert_eq!(weather.longitude, Some(-79.3832));
+        assert_eq!(weather.city_name.as_deref(), Some("Toronto"));
+    }
+
+    #[test]
+    fn test_weather_config_parses_with_location_fields() {
+        let toml_str = r#"
+            temperature_unit = "celsius"
+            refresh_minutes = 30
+            latitude = 59.9139
+            longitude = 10.7522
+            city_name = "Oslo"
+        "#;
+        let weather: WeatherConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(weather.latitude, Some(59.9139));
+        assert_eq!(weather.longitude, Some(10.7522));
+        assert_eq!(weather.city_name.as_deref(), Some("Oslo"));
+        assert_eq!(weather.refresh_minutes, 30);
+    }
+
+    #[test]
+    fn test_weather_config_parses_without_location_fields() {
+        let toml_str = r#"
+            temperature_unit = "fahrenheit"
+            refresh_minutes = 10
+        "#;
+        let weather: WeatherConfig = toml::from_str(toml_str).unwrap();
+        assert!(weather.latitude.is_none());
+        assert!(weather.longitude.is_none());
+        assert!(weather.city_name.is_none());
+        assert_eq!(weather.refresh_minutes, 10);
     }
 }

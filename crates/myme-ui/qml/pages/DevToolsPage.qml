@@ -158,10 +158,10 @@ Page {
                     return "Tool";
                 }
                 font.pixelSize: Theme.fontSizeLarge
-                font.bold: true
+                font.weight: Font.Bold
                 color: Theme.text
                 Layout.fillWidth: true
-                leftPadding: currentTool === "index" ? Theme.spacingMd : 0
+                leftPadding: currentTool === "index" ? Theme.spacingLg : 0
             }
         }
     }
@@ -269,7 +269,7 @@ Page {
                             Layout.preferredWidth: 260
                             Layout.preferredHeight: 140
                             color: modelData.comingSoon ? Theme.surfaceAlt : (toolCardMouse.containsMouse ? Theme.surfaceHover : Theme.surface)
-                            border.color: toolCardMouse.containsMouse && !modelData.comingSoon ? Theme.primary : (Theme.isDark ? "#ffffff08" : "#00000008")
+                            border.color: toolCardMouse.containsMouse && !modelData.comingSoon ? Theme.primary : (Theme.cardBorderSubtle)
                             border.width: 1
                             radius: Theme.cardRadius
                             opacity: modelData.comingSoon ? 0.7 : 1.0
@@ -324,12 +324,12 @@ Page {
 
                                     ColumnLayout {
                                         Layout.fillWidth: true
-                                        spacing: 2
+                                        spacing: Theme.spacingXxs
 
                                         Label {
                                             text: modelData.name
                                             font.pixelSize: Theme.fontSizeNormal
-                                            font.bold: true
+                                            font.weight: Font.Bold
                                             color: Theme.text
                                         }
 
@@ -381,7 +381,7 @@ Page {
                     Label {
                         text: "No tools found"
                         font.pixelSize: Theme.fontSizeLarge
-                        font.bold: true
+                        font.weight: Font.Bold
                         color: Theme.text
                         Layout.alignment: Qt.AlignHCenter
                     }
@@ -437,7 +437,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: jwtContent.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     border.width: 1
                     radius: Theme.cardRadius
 
@@ -482,7 +482,7 @@ Page {
                         Label {
                             text: "Payload (JSON)"
                             font.pixelSize: Theme.fontSizeNormal
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                         }
 
@@ -526,7 +526,7 @@ Page {
                         Label {
                             text: "Secret Key"
                             font.pixelSize: Theme.fontSizeNormal
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                         }
 
@@ -582,7 +582,7 @@ Page {
                         Label {
                             text: "Algorithm"
                             font.pixelSize: Theme.fontSizeNormal
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                         }
 
@@ -617,7 +617,7 @@ Page {
                                 text: parent.text
                                 color: Theme.primaryText
                                 font.pixelSize: Theme.fontSizeNormal
-                                font.bold: true
+                                font.weight: Font.Bold
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
                             }
@@ -627,7 +627,7 @@ Page {
                         Label {
                             text: "Generated Token"
                             font.pixelSize: Theme.fontSizeNormal
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                             visible: jwtModel.generated_token.length > 0
                         }
@@ -706,7 +706,7 @@ Page {
                                     text: Icons.check + " Copied!"
                                     font.family: Icons.family
                                     color: Theme.success
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     visible: false
 
                                     Timer {
@@ -738,7 +738,7 @@ Page {
 
                                 Label {
                                     text: "Token Information"
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     font.pixelSize: Theme.fontSizeNormal
                                     color: Theme.info
                                 }
@@ -791,7 +791,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: encodingTypeRow.implicitHeight + Theme.spacingMd * 2
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     radius: Theme.cardRadius
 
                     RowLayout {
@@ -803,7 +803,7 @@ Page {
                         Label {
                             text: "Type:"
                             color: Theme.text
-                            font.bold: true
+                            font.weight: Font.Bold
                         }
 
                         Repeater {
@@ -873,7 +873,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 200
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -883,7 +883,7 @@ Page {
 
                         Label {
                             text: "Input"
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                         }
 
@@ -930,7 +930,7 @@ Page {
                             text: parent.text
                             color: Theme.primaryText
                             font.pixelSize: Theme.fontSizeNormal
-                            font.bold: true
+                            font.weight: Font.Bold
                             horizontalAlignment: Text.AlignHCenter
                         }
                     }
@@ -1000,7 +1000,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 200
                     color: Theme.surface
-                    border.color: encodingModel.output.length > 0 ? Theme.success : (Theme.isDark ? "#ffffff08" : "#00000008")
+                    border.color: encodingModel.output.length > 0 ? Theme.success : (Theme.cardBorderSubtle)
                     border.width: encodingModel.output.length > 0 ? 2 : 1
                     radius: Theme.cardRadius
 
@@ -1014,7 +1014,7 @@ Page {
 
                             Label {
                                 text: "Output"
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.text
                                 Layout.fillWidth: true
                             }
@@ -1087,7 +1087,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: uuidSettingsColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -1099,7 +1099,7 @@ Page {
                         // UUID Version selector
                         Label {
                             text: "UUID Version"
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                         }
 
@@ -1142,7 +1142,7 @@ Page {
                         // Format selector
                         Label {
                             text: "Format"
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                         }
 
@@ -1188,7 +1188,7 @@ Page {
 
                             Label {
                                 text: "Count:"
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.text
                             }
 
@@ -1210,7 +1210,7 @@ Page {
 
                             Label {
                                 text: "Namespace"
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.text
                             }
 
@@ -1275,7 +1275,7 @@ Page {
 
                             Label {
                                 text: "Name"
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.text
                             }
 
@@ -1354,7 +1354,7 @@ Page {
                             text: parent.text
                             color: Theme.primaryText
                             font.pixelSize: Theme.fontSizeNormal
-                            font.bold: true
+                            font.weight: Font.Bold
                             horizontalAlignment: Text.AlignHCenter
                         }
                     }
@@ -1399,7 +1399,7 @@ Page {
 
                             Label {
                                 text: "Generated UUIDs (" + uuidModel.generated_uuids.length + ")"
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.text
                                 Layout.fillWidth: true
                             }
@@ -1483,7 +1483,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: hashInputColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -1494,7 +1494,7 @@ Page {
 
                         Label {
                             text: "Input Text"
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                         }
 
@@ -1544,7 +1544,7 @@ Page {
                                     text: parent.text
                                     color: Theme.primaryText
                                     font.pixelSize: Theme.fontSizeNormal
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     horizontalAlignment: Text.AlignHCenter
                                 }
                             }
@@ -1622,7 +1622,7 @@ Page {
 
                         Label {
                             text: "Hash Results"
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                         }
 
@@ -1634,7 +1634,7 @@ Page {
                             RowLayout {
                                 Label {
                                     text: "MD5"
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     color: Theme.textSecondary
                                     Layout.preferredWidth: 80
                                 }
@@ -1685,7 +1685,7 @@ Page {
                             RowLayout {
                                 Label {
                                     text: "SHA-1"
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     color: Theme.textSecondary
                                     Layout.preferredWidth: 80
                                 }
@@ -1736,7 +1736,7 @@ Page {
                             RowLayout {
                                 Label {
                                     text: "SHA-256"
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     color: Theme.textSecondary
                                     Layout.preferredWidth: 80
                                 }
@@ -1787,7 +1787,7 @@ Page {
                             RowLayout {
                                 Label {
                                     text: "SHA-512"
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     color: Theme.textSecondary
                                     Layout.preferredWidth: 80
                                 }
@@ -1839,7 +1839,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: hmacColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -1851,7 +1851,7 @@ Page {
                         RowLayout {
                             Label {
                                 text: "HMAC"
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.text
                             }
 
@@ -1946,7 +1946,7 @@ Page {
 
                                 Label {
                                     text: "HMAC Result"
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     color: Theme.success
                                 }
 
@@ -1977,7 +1977,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: compareColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -1988,7 +1988,7 @@ Page {
 
                         Label {
                             text: "Verify Hash"
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                         }
 
@@ -2054,7 +2054,7 @@ Page {
                                         }
                                         return "No match found";
                                     }
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     color: hashModel.compare_result.startsWith("match") ? Theme.success : Theme.error
                                 }
                             }
@@ -2085,7 +2085,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: currentTimeColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -2111,7 +2111,7 @@ Page {
                                     text: parent.text
                                     color: Theme.primaryText
                                     font.pixelSize: Theme.fontSizeNormal
-                                    font.bold: true
+                                    font.weight: Font.Bold
                                     horizontalAlignment: Text.AlignHCenter
                                 }
                             }
@@ -2191,7 +2191,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: timestampColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -2202,7 +2202,7 @@ Page {
 
                         Label {
                             text: "Parse Unix Timestamp"
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                         }
 
@@ -2252,7 +2252,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: datetimeColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -2263,7 +2263,7 @@ Page {
 
                         Label {
                             text: "Parse Date/Time String"
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                         }
 
@@ -2333,7 +2333,7 @@ Page {
 
                         Label {
                             text: "Parsed Results"
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                         }
 
@@ -2345,7 +2345,7 @@ Page {
 
                             Label {
                                 text: "Timestamp:"
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.textSecondary
                             }
                             TextField {
@@ -2360,7 +2360,7 @@ Page {
 
                             Label {
                                 text: "ISO 8601:"
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.textSecondary
                             }
                             TextField {
@@ -2375,7 +2375,7 @@ Page {
 
                             Label {
                                 text: "RFC 2822:"
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.textSecondary
                             }
                             TextField {
@@ -2390,7 +2390,7 @@ Page {
 
                             Label {
                                 text: "Local:"
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.textSecondary
                             }
                             TextField {
@@ -2405,13 +2405,13 @@ Page {
 
                             Label {
                                 text: "Relative:"
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.textSecondary
                             }
                             Label {
                                 text: timeModel.output_relative
                                 color: Theme.info
-                                font.bold: true
+                                font.weight: Font.Bold
                             }
                         }
                     }
@@ -2423,7 +2423,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: tzColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -2434,7 +2434,7 @@ Page {
 
                         Label {
                             text: "Convert to Timezone"
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                         }
 
@@ -2491,7 +2491,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: arithmeticColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -2502,7 +2502,7 @@ Page {
 
                         Label {
                             text: "Date Arithmetic"
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                         }
 
@@ -2609,7 +2609,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 250
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -2622,7 +2622,7 @@ Page {
 
                             Label {
                                 text: "JSON Input"
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.text
                                 Layout.fillWidth: true
                             }
@@ -2707,7 +2707,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: actionButtonsRow.implicitHeight + Theme.spacingMd * 2
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     radius: Theme.cardRadius
 
                     RowLayout {
@@ -2729,7 +2729,7 @@ Page {
                                 text: parent.text
                                 color: Theme.primaryText
                                 font.pixelSize: Theme.fontSizeNormal
-                                font.bold: true
+                                font.weight: Font.Bold
                                 horizontalAlignment: Text.AlignHCenter
                             }
                         }
@@ -2813,7 +2813,7 @@ Page {
 
                             Label {
                                 text: "Output"
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.text
                                 Layout.fillWidth: true
                             }
@@ -2867,7 +2867,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: jsonpathColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -2878,7 +2878,7 @@ Page {
 
                         Label {
                             text: "JSONPath Query"
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                         }
 
@@ -2949,7 +2949,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: convertColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -2960,7 +2960,7 @@ Page {
 
                         Label {
                             text: "Convert to Format"
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                         }
 
@@ -3040,7 +3040,7 @@ Page {
                     Layout.fillWidth: true
                     Layout.preferredHeight: compareColumn.implicitHeight + Theme.spacingLg * 2
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -3051,7 +3051,7 @@ Page {
 
                         Label {
                             text: "Compare JSON"
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                         }
 
@@ -3166,7 +3166,7 @@ Page {
 
                                     Label {
                                         text: jsonModel.diff_result.startsWith("identical") ? "Documents are identical" : "Documents differ"
-                                        font.bold: true
+                                        font.weight: Font.Bold
                                         color: jsonModel.diff_result.startsWith("identical") ? Theme.success : Theme.warning
                                     }
                                 }
@@ -3310,7 +3310,7 @@ Page {
                     Layout.fillHeight: true
                     Layout.preferredWidth: parent.width * 0.45
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -3326,7 +3326,7 @@ Page {
                             Label {
                                 text: "Input Text"
                                 font.pixelSize: Theme.fontSizeMedium
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.text
                                 Layout.fillWidth: true
                             }
@@ -3373,7 +3373,7 @@ Page {
                             Layout.fillWidth: true
                             Layout.preferredHeight: prefixColumn.implicitHeight + Theme.spacingSm * 2
                             color: prefixEnabled ? Theme.primary + "10" : Theme.surfaceAlt
-                            border.color: prefixEnabled ? Theme.primary + "40" : (Theme.isDark ? "#ffffff08" : "#00000008")
+                            border.color: prefixEnabled ? Theme.primary + "40" : (Theme.cardBorderSubtle)
                             radius: Theme.cardRadius
 
                             Behavior on color { ColorAnimation { duration: 150 } }
@@ -3398,7 +3398,7 @@ Page {
                                     Label {
                                         text: "Prepend prefix to first chunk"
                                         font.pixelSize: Theme.fontSizeSmall
-                                        font.bold: true
+                                        font.weight: Font.Bold
                                         color: prefixEnabled ? Theme.text : Theme.textSecondary
                                         Layout.fillWidth: true
 
@@ -3515,7 +3515,7 @@ Page {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
                     color: Theme.surface
-                    border.color: Theme.isDark ? "#ffffff08" : "#00000008"
+                    border.color: Theme.cardBorderSubtle
                     radius: Theme.cardRadius
 
                     ColumnLayout {
@@ -3527,7 +3527,7 @@ Page {
                         Label {
                             text: "Chunks"
                             font.pixelSize: Theme.fontSizeMedium
-                            font.bold: true
+                            font.weight: Font.Bold
                             color: Theme.text
                         }
 
@@ -3551,7 +3551,7 @@ Page {
                             Label {
                                 text: "No text to chunk"
                                 font.pixelSize: Theme.fontSizeLarge
-                                font.bold: true
+                                font.weight: Font.Bold
                                 color: Theme.text
                                 Layout.alignment: Qt.AlignHCenter
                             }
@@ -3587,7 +3587,7 @@ Page {
                                         Layout.fillWidth: true
                                         Layout.preferredHeight: chunkContent.implicitHeight + Theme.spacingMd * 2
                                         color: copiedChunkIndex === index ? Theme.successBg : Theme.surfaceAlt
-                                        border.color: copiedChunkIndex === index ? Theme.success : (Theme.isDark ? "#ffffff08" : "#00000008")
+                                        border.color: copiedChunkIndex === index ? Theme.success : (Theme.cardBorderSubtle)
                                         border.width: copiedChunkIndex === index ? 2 : 1
                                         radius: Theme.cardRadius
 
@@ -3622,7 +3622,7 @@ Page {
                                                         anchors.centerIn: parent
                                                         text: "Chunk " + (index + 1) + "/" + chunks.length
                                                         font.pixelSize: Theme.fontSizeSmall
-                                                        font.bold: true
+                                                        font.weight: Font.Bold
                                                         color: Theme.primary
                                                     }
                                                 }
@@ -3662,7 +3662,7 @@ Page {
                                                         font.family: Icons.family
                                                         color: Theme.primaryText
                                                         font.pixelSize: Theme.fontSizeSmall
-                                                        font.bold: true
+                                                        font.weight: Font.Bold
                                                         horizontalAlignment: Text.AlignHCenter
                                                         verticalAlignment: Text.AlignVCenter
                                                     }

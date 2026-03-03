@@ -247,6 +247,31 @@ impl CalendarCache {
         Ok(count)
     }
 
+    /// Get the stored sync token for a calendar (for incremental sync).
+    pub fn get_sync_token(&self, calendar_id: &str) -> Result<Option<String>> {
+        let key = format!("sync_token:{}", calendar_id);
+        let result: Result<String, _> = self.conn.query_row(
+            "SELECT value FROM sync_state WHERE key = ?1",
+            params![key],
+            |row| row.get(0),
+        );
+        match result {
+            Ok(token) => Ok(Some(token)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    /// Set the sync token for a calendar (for incremental sync).
+    pub fn set_sync_token(&self, calendar_id: &str, token: &str) -> Result<()> {
+        let key = format!("sync_token:{}", calendar_id);
+        self.conn.execute(
+            "INSERT OR REPLACE INTO sync_state (key, value) VALUES (?1, ?2)",
+            params![key, token],
+        )?;
+        Ok(())
+    }
+
     /// Clear all cached data.
     pub fn clear(&self) -> Result<()> {
         self.conn
@@ -425,5 +450,23 @@ mod tests {
         cache.clear().unwrap();
 
         assert!(cache.get_event("primary", "e1").unwrap().is_none());
+    }
+
+    #[test]
+    fn test_sync_token_round_trip() {
+        let cache = CalendarCache::in_memory().unwrap();
+        assert!(cache.get_sync_token("primary").unwrap().is_none());
+
+        cache.set_sync_token("primary", "token_abc").unwrap();
+        assert_eq!(cache.get_sync_token("primary").unwrap(), Some("token_abc".to_string()));
+
+        // Different calendar has its own token
+        assert!(cache.get_sync_token("work").unwrap().is_none());
+        cache.set_sync_token("work", "token_xyz").unwrap();
+        assert_eq!(cache.get_sync_token("work").unwrap(), Some("token_xyz".to_string()));
+
+        // Clear removes all tokens
+        cache.clear().unwrap();
+        assert!(cache.get_sync_token("primary").unwrap().is_none());
     }
 }

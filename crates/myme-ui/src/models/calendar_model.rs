@@ -12,7 +12,7 @@ use myme_auth::SecureStorage;
 use myme_calendar::{Calendar, CalendarCache, Event};
 
 use crate::bridge;
-use crate::services::google_common::{get_google_access_token, get_google_cache_path};
+use crate::services::google_common::{create_google_api_client, get_google_cache_path, get_sync_interval_secs};
 use crate::services::{
     request_calendar_fetch_events, request_calendar_fetch_today_events, CalendarServiceMessage,
 };
@@ -34,6 +34,9 @@ pub mod qobject {
         #[qproperty(i32, today_event_count)]
         #[qproperty(QString, next_event_summary)]
         #[qproperty(QString, next_event_time)]
+        #[qproperty(bool, syncing)]
+        #[qproperty(QString, last_synced)]
+        #[qproperty(i32, sync_interval)]
         type CalendarModel = super::CalendarModelRust;
 
         #[qinvokable]
@@ -50,6 +53,10 @@ pub mod qobject {
 
         #[qinvokable]
         fn get_calendars(self: Pin<&mut CalendarModel>) -> QString;
+
+        /// Trigger a background sync (non-blocking, doesn't set loading=true).
+        #[qinvokable]
+        fn background_sync(self: Pin<&mut CalendarModel>);
 
         /// Poll for async operation results. Call this from a QML Timer.
         #[qinvokable]
@@ -72,6 +79,9 @@ pub struct CalendarModelRust {
     today_event_count: i32,
     next_event_summary: QString,
     next_event_time: QString,
+    syncing: bool,
+    last_synced: QString,
+    sync_interval: i32,
     events: Vec<Event>,
     calendars: Vec<Calendar>,
 }
@@ -85,10 +95,6 @@ impl CalendarModelRust {
         self.error_message = QString::from("");
     }
 
-    fn get_access_token() -> Option<String> {
-        get_google_access_token()
-    }
-
     fn get_cache_path() -> std::path::PathBuf {
         get_google_cache_path("calendar_cache.db")
     }
@@ -99,6 +105,10 @@ impl qobject::CalendarModel {
     pub fn check_auth(mut self: Pin<&mut Self>) {
         let is_authenticated = SecureStorage::has_token("google");
         self.as_mut().set_authenticated(is_authenticated);
+
+        // Load sync interval from config
+        let interval = get_sync_interval_secs() as i32;
+        self.as_mut().set_sync_interval(interval);
 
         if is_authenticated {
             if let Ok(cache) = CalendarCache::new(CalendarModelRust::get_cache_path()) {
@@ -111,8 +121,8 @@ impl qobject::CalendarModel {
 
     /// Fetch events for the next 7 days (non-blocking, uses shared runtime)
     pub fn fetch_events(mut self: Pin<&mut Self>) {
-        let access_token = match CalendarModelRust::get_access_token() {
-            Some(t) => t,
+        let api = match create_google_api_client() {
+            Some(a) => a,
             None => {
                 self.as_mut().set_error_message(QString::from("Not authenticated"));
                 self.as_mut().set_authenticated(false);
@@ -133,13 +143,13 @@ impl qobject::CalendarModel {
         self.as_mut().rust_mut().clear_error();
 
         let cache_path = CalendarModelRust::get_cache_path();
-        request_calendar_fetch_events(&tx, access_token, cache_path);
+        request_calendar_fetch_events(&tx, api, cache_path);
     }
 
     /// Fetch events for today only
     pub fn fetch_today_events(mut self: Pin<&mut Self>) {
-        let access_token = match CalendarModelRust::get_access_token() {
-            Some(t) => t,
+        let api = match create_google_api_client() {
+            Some(a) => a,
             None => {
                 self.as_mut().set_error_message(QString::from("Not authenticated"));
                 self.as_mut().set_authenticated(false);
@@ -159,7 +169,7 @@ impl qobject::CalendarModel {
         self.as_mut().set_loading(true);
         self.as_mut().rust_mut().clear_error();
 
-        request_calendar_fetch_today_events(&tx, access_token);
+        request_calendar_fetch_today_events(&tx, api);
     }
 
     /// Get event at index as JSON
@@ -206,6 +216,29 @@ impl qobject::CalendarModel {
         QString::from(s.as_str())
     }
 
+    /// Background sync: fetches events without showing the loading spinner.
+    pub fn background_sync(mut self: Pin<&mut Self>) {
+        if *self.as_ref().syncing() || *self.as_ref().loading() {
+            return;
+        }
+
+        let api = match create_google_api_client() {
+            Some(a) => a,
+            None => return,
+        };
+
+        bridge::init_calendar_service_channel();
+        let tx = match bridge::get_calendar_service_tx() {
+            Some(t) => t,
+            None => return,
+        };
+
+        self.as_mut().set_syncing(true);
+
+        let cache_path = CalendarModelRust::get_cache_path();
+        request_calendar_fetch_events(&tx, api, cache_path);
+    }
+
     /// Poll for async operation results
     pub fn poll_channel(mut self: Pin<&mut Self>) {
         let msg = match bridge::try_recv_calendar_message() {
@@ -215,7 +248,9 @@ impl qobject::CalendarModel {
 
         match msg {
             CalendarServiceMessage::FetchEventsDone(result) => {
+                let was_syncing = *self.as_ref().syncing();
                 self.as_mut().set_loading(false);
+                self.as_mut().set_syncing(false);
 
                 match result {
                     Ok(events) => {
@@ -249,12 +284,20 @@ impl qobject::CalendarModel {
                         self.as_mut().set_today_event_count(today_count as i32);
                         self.as_mut().rust_mut().events = events;
                         self.as_mut().rust_mut().clear_error();
+
+                        // Update last-synced timestamp
+                        let time_str = now.format("%H:%M").to_string();
+                        self.as_mut().set_last_synced(QString::from(time_str.as_str()));
+
                         self.as_mut().events_changed();
                     }
                     Err(e) => {
-                        self.as_mut()
-                            .rust_mut()
-                            .set_error(myme_core::AppError::from(e).user_message());
+                        let app_error = myme_core::AppError::from(e);
+                        if was_syncing {
+                            tracing::warn!("Background Calendar sync failed: {}", app_error);
+                        } else {
+                            self.as_mut().rust_mut().set_error(app_error.user_message());
+                        }
                     }
                 }
             }

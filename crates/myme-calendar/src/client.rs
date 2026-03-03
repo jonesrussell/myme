@@ -1,6 +1,9 @@
 //! Google Calendar API client.
 
+use std::sync::Arc;
+
 use chrono::{DateTime, Utc};
+use myme_auth::GoogleApiClient;
 use tracing::instrument;
 
 use crate::error::CalendarError;
@@ -9,16 +12,14 @@ use crate::types::*;
 const CALENDAR_API_BASE: &str = "https://www.googleapis.com/calendar/v3";
 
 pub struct CalendarClient {
-    client: reqwest::Client,
-    access_token: String,
+    api: Arc<GoogleApiClient>,
     base_url: String,
 }
 
 impl CalendarClient {
-    pub fn new(access_token: &str) -> Self {
+    pub fn new(api: &Arc<GoogleApiClient>) -> Self {
         Self {
-            client: reqwest::Client::new(),
-            access_token: access_token.to_string(),
+            api: api.clone(),
             base_url: CALENDAR_API_BASE.to_string(),
         }
     }
@@ -26,14 +27,18 @@ impl CalendarClient {
     #[cfg(test)]
     pub fn new_with_base_url(access_token: &str, base_url: &str) -> Self {
         Self {
-            client: reqwest::Client::new(),
-            access_token: access_token.to_string(),
+            api: GoogleApiClient::new_for_test(access_token),
             base_url: base_url.to_string(),
         }
     }
 
-    fn auth_header(&self) -> String {
-        format!("Bearer {}", self.access_token)
+    async fn auth_header(&self) -> Result<String, CalendarError> {
+        let token = self
+            .api
+            .access_token()
+            .await
+            .map_err(|e| CalendarError::ApiError(format!("Auth error: {}", e)))?;
+        Ok(format!("Bearer {}", token))
     }
 
     /// List all calendars.
@@ -41,8 +46,9 @@ impl CalendarClient {
     pub async fn list_calendars(&self) -> Result<Vec<Calendar>, CalendarError> {
         let url = format!("{}/users/me/calendarList", self.base_url);
 
+        let auth = self.auth_header().await?;
         let response =
-            self.client.get(&url).header("Authorization", self.auth_header()).send().await?;
+            self.api.http().get(&url).header("Authorization", auth).send().await?;
 
         let resp: CalendarListResponse = self.handle_response(response).await?;
         Ok(resp.items.into_iter().map(Calendar::from).collect())
@@ -69,8 +75,9 @@ impl CalendarClient {
             url.push_str(&format!("&pageToken={}", pt));
         }
 
+        let auth = self.auth_header().await?;
         let response =
-            self.client.get(&url).header("Authorization", self.auth_header()).send().await?;
+            self.api.http().get(&url).header("Authorization", auth).send().await?;
 
         self.handle_response(response).await
     }
@@ -89,8 +96,9 @@ impl CalendarClient {
             urlencoding::encode(event_id),
         );
 
+        let auth = self.auth_header().await?;
         let response =
-            self.client.get(&url).header("Authorization", self.auth_header()).send().await?;
+            self.api.http().get(&url).header("Authorization", auth).send().await?;
 
         let api_event: ApiEvent = self.handle_response(response).await?;
         Ok(Event::from_api(api_event, calendar_id))
@@ -123,10 +131,12 @@ impl CalendarClient {
             body["location"] = serde_json::Value::String(loc.to_string());
         }
 
+        let auth = self.auth_header().await?;
         let response = self
-            .client
+            .api
+            .http()
             .post(&url)
-            .header("Authorization", self.auth_header())
+            .header("Authorization", auth)
             .json(&body)
             .send()
             .await?;
@@ -173,10 +183,12 @@ impl CalendarClient {
             body.insert("location".to_string(), serde_json::Value::String(l.to_string()));
         }
 
+        let auth = self.auth_header().await?;
         let response = self
-            .client
+            .api
+            .http()
             .patch(&url)
-            .header("Authorization", self.auth_header())
+            .header("Authorization", auth)
             .json(&body)
             .send()
             .await?;
@@ -199,8 +211,9 @@ impl CalendarClient {
             urlencoding::encode(event_id),
         );
 
+        let auth = self.auth_header().await?;
         let response =
-            self.client.delete(&url).header("Authorization", self.auth_header()).send().await?;
+            self.api.http().delete(&url).header("Authorization", auth).send().await?;
 
         // Delete returns 204 No Content on success
         if response.status().is_success() {
@@ -222,8 +235,9 @@ impl CalendarClient {
             urlencoding::encode(text),
         );
 
+        let auth = self.auth_header().await?;
         let response =
-            self.client.post(&url).header("Authorization", self.auth_header()).send().await?;
+            self.api.http().post(&url).header("Authorization", auth).send().await?;
 
         let api_event: ApiEvent = self.handle_response(response).await?;
         Ok(Event::from_api(api_event, calendar_id))
@@ -250,6 +264,8 @@ impl CalendarClient {
             Err(CalendarError::EventNotFound(text))
         } else if status.as_u16() == 409 {
             Err(CalendarError::Conflict)
+        } else if status.as_u16() == 410 {
+            Err(CalendarError::SyncTokenExpired)
         } else if status.as_u16() == 429 {
             let retry_after = response
                 .headers()
@@ -395,5 +411,21 @@ mod tests {
         let result = client.delete_event("primary", "event123").await;
 
         assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_sync_token_expired_error() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/users/me/calendarList"))
+            .respond_with(ResponseTemplate::new(410))
+            .mount(&mock_server)
+            .await;
+
+        let client = CalendarClient::new_with_base_url("token", &mock_server.uri());
+        let result = client.list_calendars().await;
+
+        assert!(matches!(result, Err(CalendarError::SyncTokenExpired)));
     }
 }
