@@ -84,10 +84,8 @@ impl NorthCloudClient {
     /// Fetch RFP leads from the NorthCloud search API.
     /// Always filters by content_type=rfp.
     pub async fn search_rfps(&self, params: &RfpSearchParams) -> Result<RfpSearchResponse> {
-        let mut url = self
-            .base_url
-            .join("/api/search")
-            .context("failed to build NorthCloud search URL")?;
+        let mut url =
+            self.base_url.join("/api/search").context("failed to build NorthCloud search URL")?;
 
         {
             let mut query = url.query_pairs_mut();
@@ -383,11 +381,7 @@ mod tests {
         let client = NorthCloudClient::new(mock_server.uri()).unwrap();
         let err = client.search_rfps(&RfpSearchParams::default()).await.unwrap_err();
         let msg = err.to_string();
-        assert!(
-            msg.contains("non-JSON"),
-            "Should report non-JSON content type: {}",
-            msg
-        );
+        assert!(msg.contains("non-JSON"), "Should report non-JSON content type: {}", msg);
     }
 
     #[tokio::test]
@@ -406,11 +400,7 @@ mod tests {
         let client = NorthCloudClient::new(mock_server.uri()).unwrap();
         let err = client.search_rfps(&RfpSearchParams::default()).await.unwrap_err();
         let msg = err.to_string();
-        assert!(
-            msg.contains("parse"),
-            "Should report JSON parse failure: {}",
-            msg
-        );
+        assert!(msg.contains("parse"), "Should report JSON parse failure: {}", msg);
     }
 
     #[tokio::test]
@@ -419,23 +409,17 @@ mod tests {
         // insert_header must come after set_body_string to override text/plain
         let mock_server = wiremock::MockServer::start().await;
         wiremock::Mock::given(wiremock::matchers::any())
-            .respond_with(
-                wiremock::ResponseTemplate::new(200).set_body_raw(
-                    b"<html><body>Please log in</body></html>".to_vec(),
-                    "text/html; charset=utf-8",
-                ),
-            )
+            .respond_with(wiremock::ResponseTemplate::new(200).set_body_raw(
+                b"<html><body>Please log in</body></html>".to_vec(),
+                "text/html; charset=utf-8",
+            ))
             .mount(&mock_server)
             .await;
 
         let client = NorthCloudClient::new(mock_server.uri()).unwrap();
         let err = client.search_rfps(&RfpSearchParams::default()).await.unwrap_err();
         let msg = err.to_string();
-        assert!(
-            msg.contains("non-JSON"),
-            "Should report non-JSON content type: {}",
-            msg
-        );
+        assert!(msg.contains("non-JSON"), "Should report non-JSON content type: {}", msg);
         assert!(
             msg.contains("text/html"),
             "Should include the actual content type in error: {}",

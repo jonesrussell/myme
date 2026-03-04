@@ -206,11 +206,7 @@ impl OrganizationStore {
     pub fn get_org_notes(&self, org_id: &str) -> Result<String> {
         let notes: Option<String> = self
             .conn
-            .query_row(
-                "SELECT notes FROM organizations WHERE id = ?1",
-                [org_id],
-                |row| row.get(0),
-            )
+            .query_row("SELECT notes FROM organizations WHERE id = ?1", [org_id], |row| row.get(0))
             .optional()?
             .flatten();
         Ok(notes.unwrap_or_default())
@@ -701,11 +697,10 @@ mod tests {
     fn test_fresh_db_initialises_at_v2() {
         // Verifies that a fresh store lands on v2 and has the new columns
         let (store, _dir) = test_store();
-        let ver: i32 = store.conn.query_row(
-            "SELECT version FROM schema_version LIMIT 1",
-            [],
-            |r| r.get(0),
-        ).unwrap();
+        let ver: i32 = store
+            .conn
+            .query_row("SELECT version FROM schema_version LIMIT 1", [], |r| r.get(0))
+            .unwrap();
         assert_eq!(ver, 2);
         // Insert an org first so FK constraint is satisfied
         store.conn.execute(
@@ -769,9 +764,10 @@ mod tests {
         let store = OrganizationStore::open(&db_path).unwrap();
 
         // Schema version bumped to 2
-        let ver: i32 = store.conn.query_row(
-            "SELECT version FROM schema_version LIMIT 1", [], |r| r.get(0)
-        ).unwrap();
+        let ver: i32 = store
+            .conn
+            .query_row("SELECT version FROM schema_version LIMIT 1", [], |r| r.get(0))
+            .unwrap();
         assert_eq!(ver, 2);
 
         // Existing row is still readable

@@ -310,10 +310,11 @@ impl qobject::ProspectModel {
     }
 
     pub fn lead_prospects_by_urgency(&self) -> QString {
-        let indices: Vec<i32> = myme_organizations::models::lead_indices_by_urgency(&self.rust().prospects)
-            .into_iter()
-            .map(|i| i as i32)
-            .collect();
+        let indices: Vec<i32> =
+            myme_organizations::models::lead_indices_by_urgency(&self.rust().prospects)
+                .into_iter()
+                .map(|i| i as i32)
+                .collect();
         let json = serde_json::to_string(&indices).unwrap_or_else(|_| "[]".to_string());
         QString::from(&json)
     }

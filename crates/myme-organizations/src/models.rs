@@ -176,10 +176,10 @@ mod sort_tests {
     #[test]
     fn test_lead_indices_urgency_sorted_ascending_nulls_last() {
         let prospects = vec![
-            lead("p0", Some("2026-04-10")),   // index 0
-            non_lead("p1"),                    // index 1 — excluded
-            lead("p2", None),                  // index 2 — null, must be last
-            lead("p3", Some("2026-03-05")),   // index 3 — soonest
+            lead("p0", Some("2026-04-10")), // index 0
+            non_lead("p1"),                 // index 1 — excluded
+            lead("p2", None),               // index 2 — null, must be last
+            lead("p3", Some("2026-03-05")), // index 3 — soonest
         ];
         let order = lead_indices_by_urgency(&prospects);
         assert_eq!(order, vec![3, 0, 2]);

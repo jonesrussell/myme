@@ -84,11 +84,7 @@ async fn do_import_rfp_leads(
     let client =
         NorthCloudClient::new(&base_url).map_err(|e| OrganizationError::Network(e.to_string()))?;
 
-    let params = RfpSearchParams {
-        page: 1,
-        size: 50,
-        ..Default::default()
-    };
+    let params = RfpSearchParams { page: 1, size: 50, ..Default::default() };
 
     let response =
         client.search_rfps(&params).await.map_err(|e| OrganizationError::Network(e.to_string()))?;
@@ -142,10 +138,7 @@ async fn do_import_rfp_leads(
             .and_then(|s| {
                 use chrono::NaiveDate;
                 NaiveDate::parse_from_str(s, "%Y-%m-%d")
-                    .or_else(|_| {
-                        chrono::DateTime::parse_from_rfc3339(s)
-                            .map(|dt| dt.date_naive())
-                    })
+                    .or_else(|_| chrono::DateTime::parse_from_rfc3339(s).map(|dt| dt.date_naive()))
                     .map_err(|_| {
                         tracing::warn!("closing_date '{}' is not ISO 8601 — ignoring", s);
                     })
