@@ -356,7 +356,8 @@ impl qobject::ProspectModel {
         };
         if let Err(e) = store.lock().set_org_notes(&org_id, &notes.to_string()) {
             tracing::error!("Failed to save org notes: {}", e);
-            self.as_mut().set_error_message(QString::from(format!("Failed to save notes: {}", e)));
+            self.as_mut()
+                .set_error_message(QString::from(myme_core::AppError::from(e).user_message()));
         }
     }
 
@@ -586,7 +587,10 @@ impl qobject::ProspectModel {
         }
         let store = match &self.rust().organization_store {
             Some(s) => s,
-            None => return QString::from("[]"),
+            None => {
+                tracing::warn!("linked_projects: store not initialized");
+                return QString::from("[]");
+            }
         };
         let store_guard = store.lock();
         match store_guard.list_linked_projects(&org_id) {
