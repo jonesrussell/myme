@@ -21,6 +21,7 @@ pub mod qobject {
         #[qproperty(QString, error_message)]
         #[qproperty(QString, organization_id)]
         #[qproperty(QString, import_result)]
+        #[qproperty(i32, prospect_revision)]
         type ProspectModel = super::ProspectModelRust;
 
         #[qinvokable]
@@ -120,6 +121,7 @@ pub struct ProspectModelRust {
     error_message: QString,
     organization_id: QString,
     import_result: QString,
+    prospect_revision: i32,
     prospects: Vec<Prospect>,
     organization_store: Option<Arc<parking_lot::Mutex<OrganizationStore>>>,
 }
@@ -166,6 +168,13 @@ fn parse_stage(s: &str) -> ProspectStage {
 }
 
 impl qobject::ProspectModel {
+    /// Bump revision counter (triggers QML binding re-evaluation) and emit signal.
+    fn notify_prospects_changed(mut self: Pin<&mut Self>) {
+        let rev = *self.as_ref().prospect_revision();
+        self.as_mut().set_prospect_revision(rev + 1);
+        self.as_mut().prospects_changed();
+    }
+
     pub fn load_prospects(mut self: Pin<&mut Self>, organization_id: &QString) {
         self.as_mut().rust_mut().ensure_initialized();
         self.as_mut().set_organization_id(organization_id.clone());
@@ -190,7 +199,7 @@ impl qobject::ProspectModel {
                 drop(store_guard);
                 self.as_mut().rust_mut().prospects = prospects;
                 self.as_mut().set_loading(false);
-                self.as_mut().prospects_changed();
+                self.as_mut().notify_prospects_changed();
             }
             Err(e) => {
                 tracing::error!("Failed to load prospects: {}", e);
@@ -308,7 +317,7 @@ impl qobject::ProspectModel {
             Ok(()) => {
                 drop(store_guard);
                 self.as_mut().rust_mut().prospects[index as usize].stage = stage;
-                self.as_mut().prospects_changed();
+                self.as_mut().notify_prospects_changed();
                 tracing::info!("Moved prospect {} to stage {:?}", prospect_id, stage);
             }
             Err(e) => {
@@ -369,7 +378,7 @@ impl qobject::ProspectModel {
                 drop(store_guard);
                 tracing::info!("Created prospect: {}", prospect.name);
                 self.as_mut().rust_mut().prospects.push(prospect);
-                self.as_mut().prospects_changed();
+                self.as_mut().notify_prospects_changed();
             }
             Err(e) => {
                 tracing::error!("Failed to create prospect: {}", e);
@@ -436,7 +445,7 @@ impl qobject::ProspectModel {
                 drop(store_guard);
                 tracing::info!("Updated prospect: {}", updated.name);
                 self.as_mut().rust_mut().prospects[index as usize] = updated;
-                self.as_mut().prospects_changed();
+                self.as_mut().notify_prospects_changed();
             }
             Err(e) => {
                 tracing::error!("Failed to update prospect: {}", e);
@@ -470,7 +479,7 @@ impl qobject::ProspectModel {
                 tracing::info!("Deleted prospect: {}", prospect_id);
                 drop(store_guard);
                 self.as_mut().rust_mut().prospects.remove(index as usize);
-                self.as_mut().prospects_changed();
+                self.as_mut().notify_prospects_changed();
             }
             Err(e) => {
                 tracing::error!("Failed to delete prospect: {}", e);
@@ -524,7 +533,7 @@ impl qobject::ProspectModel {
             Ok(()) => {
                 drop(store_guard);
                 tracing::info!("Linked project {} to org {}", project_id_str, org_id);
-                self.as_mut().prospects_changed();
+                self.as_mut().notify_prospects_changed();
             }
             Err(e) => {
                 tracing::error!("Failed to link project: {}", e);
@@ -556,7 +565,7 @@ impl qobject::ProspectModel {
             Ok(()) => {
                 drop(store_guard);
                 tracing::info!("Unlinked project {} from org {}", project_id_str, org_id);
-                self.as_mut().prospects_changed();
+                self.as_mut().notify_prospects_changed();
             }
             Err(e) => {
                 tracing::error!("Failed to unlink project: {}", e);
@@ -580,7 +589,7 @@ impl qobject::ProspectModel {
                 match result {
                     Ok((counts, prospects)) => {
                         self.as_mut().rust_mut().prospects = prospects;
-                        self.as_mut().prospects_changed();
+                        self.as_mut().notify_prospects_changed();
 
                         let result_json = serde_json::json!({
                             "imported": counts.imported,

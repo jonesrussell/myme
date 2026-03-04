@@ -33,12 +33,8 @@ Page {
         onTriggered: prospectModel.poll_channel()
     }
 
-    Connections {
-        target: prospectModel
-        function onProspects_changed() {
-            prospectModel.prospect_count(); // trigger UI refresh
-        }
-    }
+    // prospect_revision is a QProperty counter that increments on every change,
+    // allowing QML bindings that read it to re-evaluate automatically.
 
     // Pipeline stage definitions
     readonly property var stages: [
@@ -320,7 +316,7 @@ Page {
                                             }
 
                                             Label {
-                                                text: prospectModel.count_for_stage(modelData.key)
+                                                text: { void(prospectModel.prospect_revision); return prospectModel.count_for_stage(modelData.key) }
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: Theme.fontSizeSmall
                                                 color: Theme.textSecondary
@@ -335,11 +331,13 @@ Page {
                                             spacing: Theme.spacingXs
 
                                             model: {
+                                                void(prospectModel.prospect_revision);
                                                 const indices = JSON.parse(prospectModel.prospects_for_stage(modelData.key));
                                                 return indices;
                                             }
 
                                             delegate: Rectangle {
+                                                id: prospectCard
                                                 width: ListView.view.width
                                                 height: prospectCardLayout.implicitHeight + Theme.spacingSm * 2
                                                 radius: Theme.buttonRadius
@@ -351,11 +349,18 @@ Page {
 
                                                 // Staggered animation
                                                 opacity: 0
-                                                Component.onCompleted: prospectFade.start()
+                                                Component.onCompleted: {
+                                                    console.log("[ProspectCard] index=" + index
+                                                        + " prospectIndex=" + prospectIndex
+                                                        + " name=" + prospectModel.get_prospect_name(prospectIndex)
+                                                        + " height=" + height
+                                                        + " implicitH=" + prospectCardLayout.implicitHeight)
+                                                    prospectFade.start()
+                                                }
                                                 SequentialAnimation {
                                                     id: prospectFade
                                                     PauseAnimation { duration: index * 30 }
-                                                    NumberAnimation { target: parent; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                                                    NumberAnimation { target: prospectCard; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
                                                 }
 
                                                 ColumnLayout {
