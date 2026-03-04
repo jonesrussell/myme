@@ -100,6 +100,7 @@ crates/
 6. **Sidebar is StackView sibling** — in `RowLayout`, not inside StackView (prevents page reload on nav)
 7. **Run `cargo build` before `cmake`** — cxx-qt generates C++ bridge code that cmake needs
 8. **Enum serialization** — use `#[serde(rename_all = "lowercase")]`; `serde_json::to_string()` on bare enums produces quoted strings
+9. **QML 8-digit hex colors are `#AARRGGBB`** — NOT CSS `#RRGGBBAA`. `"#ffffff05"` = opaque yellow, NOT white at 2% opacity. Use `"#05ffffff"` or `Qt.rgba(1,1,1,0.02)`
 
 ## Testing
 

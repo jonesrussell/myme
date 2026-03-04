@@ -255,7 +255,7 @@ Page {
                             width: prospectBadgeLabel.implicitWidth + 12
                             height: 22
                             radius: 11
-                            color: Theme.isDark ? "#ffffff15" : "#00000010"
+                            color: Theme.isDark ? "#15ffffff" : "#10000000"
 
                             Label {
                                 id: prospectBadgeLabel
@@ -317,7 +317,7 @@ Page {
                         Layout.fillWidth: true
                         height: 6
                         radius: 3
-                        color: Theme.isDark ? "#ffffff10" : "#00000008"
+                        color: Theme.isDark ? "#10ffffff" : "#08000000"
 
                         Row {
                             anchors.fill: parent
@@ -456,7 +456,7 @@ Page {
                 font.family: Theme.fontFamily
                 DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
                 contentItem: Label { text: parent.text; font: parent.font; color: Theme.textSecondary; horizontalAlignment: Text.AlignHCenter }
-                background: Rectangle { color: parent.hovered ? (Theme.isDark ? "#ffffff10" : "#00000008") : "transparent"; radius: Theme.buttonRadius; implicitHeight: 36 }
+                background: Rectangle { color: parent.hovered ? (Theme.isDark ? "#10ffffff" : "#08000000") : "transparent"; radius: Theme.buttonRadius; implicitHeight: 36 }
             }
 
             Button {

@@ -86,7 +86,7 @@ impl NorthCloudClient {
     pub async fn search_rfps(&self, params: &RfpSearchParams) -> Result<RfpSearchResponse> {
         let mut url = self
             .base_url
-            .join("/api/v1/search")
+            .join("/api/search")
             .context("failed to build NorthCloud search URL")?;
 
         {
@@ -114,6 +114,18 @@ impl NorthCloudClient {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
             anyhow::bail!("NorthCloud API returned {}: {}", status, body);
+        }
+
+        let content_type = response
+            .headers()
+            .get(reqwest::header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        if !content_type.contains("application/json") {
+            anyhow::bail!(
+                "NorthCloud API returned non-JSON response (Content-Type: {}). Is the API URL correct?",
+                if content_type.is_empty() { "missing" } else { content_type }
+            );
         }
 
         response
@@ -309,7 +321,7 @@ mod tests {
             }]
         });
         wiremock::Mock::given(wiremock::matchers::method("GET"))
-            .and(wiremock::matchers::path("/api/v1/search"))
+            .and(wiremock::matchers::path("/api/search"))
             .and(wiremock::matchers::query_param("content_type", "rfp"))
             .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(&body))
             .mount(&mock_server)
