@@ -217,14 +217,27 @@ impl OrganizationStore {
     /// Set the notes for an organization.
     pub fn set_org_notes(&self, org_id: &str, notes: &str) -> Result<()> {
         let now = chrono::Utc::now().to_rfc3339();
-        self.conn.execute(
+        let rows = self.conn.execute(
             "UPDATE organizations SET notes = ?1, updated_at = ?2 WHERE id = ?3",
             params![notes, now, org_id],
         )?;
+        if rows == 0 {
+            anyhow::bail!("Organization '{}' not found", org_id);
+        }
         Ok(())
     }
 
     // =========== Prospects ===========
+
+    /// Check if a prospect with the given ID already exists.
+    pub fn prospect_exists(&self, id: &str) -> Result<bool> {
+        let count: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM prospects WHERE id = ?1",
+            [id],
+            |row| row.get(0),
+        )?;
+        Ok(count > 0)
+    }
 
     /// Insert or update a prospect
     pub fn upsert_prospect(&self, prospect: &Prospect) -> Result<()> {
@@ -678,6 +691,39 @@ mod tests {
                 [],
             )
             .unwrap();
+    }
+
+    #[test]
+    fn test_set_org_notes_nonexistent_org_errors() {
+        let (store, _dir) = test_store();
+        let result = store.set_org_notes("no-such-org", "some notes");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not found"));
+    }
+
+    #[test]
+    fn test_prospect_exists() {
+        let (store, _dir) = test_store();
+        store.upsert_organization(&test_org()).unwrap();
+        assert!(!store.prospect_exists("p-1").unwrap());
+        let prospect = Prospect {
+            id: "p-1".to_string(),
+            organization_id: "org-1".to_string(),
+            name: "Test".to_string(),
+            description: None,
+            stage: ProspectStage::Lead,
+            value: None,
+            contact_name: None,
+            contact_email: None,
+            contact_role: None,
+            source_url: None,
+            closing_date: None,
+            created_at: "2026-03-02T00:00:00Z".to_string(),
+            updated_at: "2026-03-02T00:00:00Z".to_string(),
+        };
+        store.upsert_prospect(&prospect).unwrap();
+        assert!(store.prospect_exists("p-1").unwrap());
+        assert!(!store.prospect_exists("p-2").unwrap());
     }
 
     #[test]

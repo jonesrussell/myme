@@ -104,7 +104,7 @@ async fn do_import_rfp_leads(
 
     let now = chrono::Utc::now().to_rfc3339();
     let mut imported = 0i32;
-    let skipped = 0i32;
+    let mut skipped = 0i32;
     let mut failed = 0i32;
 
     let store_guard = store.lock();
@@ -156,8 +156,15 @@ async fn do_import_rfp_leads(
             has_rfp_metadata,
         );
 
+        let already_exists = store_guard.prospect_exists(&prospect.id).unwrap_or(false);
         match store_guard.upsert_prospect(&prospect) {
-            Ok(_) => imported += 1,
+            Ok(_) => {
+                if already_exists {
+                    skipped += 1;
+                } else {
+                    imported += 1;
+                }
+            }
             Err(e) => {
                 tracing::error!("Failed to upsert prospect '{}': {}", prospect.name, e);
                 failed += 1;

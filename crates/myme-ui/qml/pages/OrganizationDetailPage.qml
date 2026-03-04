@@ -28,6 +28,8 @@ Page {
         if (parts.length < 3)
             return -1
         var d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
+        if (isNaN(d.getTime()))
+            return -1
         var today = new Date()
         today.setHours(0, 0, 0, 0)
         return Math.ceil((d - today) / 86400000)
@@ -383,10 +385,14 @@ Page {
 
                                                 model: {
                                                     void(prospectModel.prospect_revision);
-                                                    if (stageColumn.stageKey === "lead") {
-                                                        return JSON.parse(prospectModel.lead_prospects_by_urgency());
+                                                    try {
+                                                        if (stageColumn.stageKey === "lead") {
+                                                            return JSON.parse(prospectModel.lead_prospects_by_urgency());
+                                                        }
+                                                        return JSON.parse(prospectModel.prospects_for_stage(stageColumn.stageKey));
+                                                    } catch (e) {
+                                                        return [];
                                                     }
-                                                    return JSON.parse(prospectModel.prospects_for_stage(stageColumn.stageKey));
                                                 }
 
                                                 delegate: Rectangle {
@@ -427,11 +433,11 @@ Page {
 
                                                             Label {
                                                                 visible: parent.days >= 0
-                                                                text: detailPage.urgencyLabel(parent.parent.days)
+                                                                text: detailPage.urgencyLabel(parent.days)
                                                                 font.family: Theme.fontFamily
                                                                 font.pixelSize: 10
                                                                 font.weight: Font.Medium
-                                                                color: detailPage.urgencyColor(parent.parent.days)
+                                                                color: detailPage.urgencyColor(parent.days)
                                                             }
 
                                                             Item { Layout.fillWidth: true }
@@ -921,8 +927,11 @@ Page {
                         spacing: Theme.spacingSm
 
                         model: {
-                            const projects = JSON.parse(prospectModel.linked_projects());
-                            return projects;
+                            try {
+                                return JSON.parse(prospectModel.linked_projects());
+                            } catch (e) {
+                                return [];
+                            }
                         }
 
                         delegate: Rectangle {
@@ -1411,6 +1420,5 @@ Page {
 
     Component.onCompleted: {
         prospectModel.load_prospects(detailPage.organizationId);
-        notesArea.text = prospectModel.get_org_notes();
     }
 }
