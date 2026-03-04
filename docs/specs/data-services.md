@@ -204,6 +204,10 @@ pub struct Prospect {
     pub value: Option<String>, pub contact_name: Option<String>,
     pub contact_email: Option<String>, pub contact_role: Option<String>,
     pub created_at: String, pub updated_at: String,
+    /// Direct link to the source RFP posting. When present, must be a valid URL.
+    pub source_url: Option<String>,
+    /// Closing date in `YYYY-MM-DD` format.
+    pub closing_date: Option<String>,
 }
 ```
 
@@ -222,6 +226,8 @@ impl OrganizationStore {
     pub fn delete_prospect(&self, id: &str) -> Result<()>;
     pub fn update_prospect_stage(&self, id: &str, stage: ProspectStage) -> Result<()>;
     pub fn count_prospects_by_stage(&self, organization_id: &str) -> Result<Vec<(ProspectStage, i32)>>;
+    pub fn get_org_notes(&self, org_id: &str) -> Result<String>;
+    pub fn set_org_notes(&self, org_id: &str, notes: &str) -> Result<()>;
     pub fn link_project(&self, organization_id: &str, project_id: &str) -> Result<()>;
     pub fn unlink_project(&self, organization_id: &str, project_id: &str) -> Result<()>;
     pub fn list_linked_projects(&self, organization_id: &str) -> Result<Vec<String>>;
@@ -304,9 +310,9 @@ CREATE INDEX idx_project_repos_repo ON project_repos(repo_id);
 ### Organizations Database (`~/.config/myme/organizations.db`)
 
 ```sql
--- Schema version: 1
-CREATE TABLE organizations (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT, website TEXT, contact_name TEXT, contact_email TEXT, contact_phone TEXT, contact_role TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
-CREATE TABLE prospects (id TEXT PRIMARY KEY, organization_id TEXT NOT NULL, name TEXT NOT NULL, description TEXT, stage TEXT NOT NULL, value TEXT, contact_name TEXT, contact_email TEXT, contact_role TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY (organization_id) REFERENCES organizations(id));
+-- Schema version: 2
+CREATE TABLE organizations (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT, website TEXT, contact_name TEXT, contact_email TEXT, contact_phone TEXT, contact_role TEXT, notes TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+CREATE TABLE prospects (id TEXT PRIMARY KEY, organization_id TEXT NOT NULL, name TEXT NOT NULL, description TEXT, stage TEXT NOT NULL, value TEXT, contact_name TEXT, contact_email TEXT, contact_role TEXT, source_url TEXT, closing_date TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY (organization_id) REFERENCES organizations(id));
 CREATE TABLE organization_projects (organization_id TEXT NOT NULL, project_id TEXT NOT NULL, PRIMARY KEY (organization_id, project_id));
 CREATE INDEX idx_prospects_org ON prospects(organization_id);
 CREATE INDEX idx_prospects_stage ON prospects(stage);
@@ -332,6 +338,7 @@ CREATE INDEX idx_org_projects_proj ON organization_projects(project_id);
 - **408 Request Timeout**: Classified as retryable (checked before general 4xx rejection)
 - **401/403 not retried**: Auth failures return immediately to avoid retry loops
 - **Schema migration**: `ProjectStore` auto-migrates v1 (single repo) -> v2 (many-to-many) -> v3 (project-based tasks) on `open()`
+- **Organizations schema v2**: Adds `notes TEXT` to `organizations` and `source_url TEXT`, `closing_date TEXT` to `prospects`; auto-migrated from v1 on `open()`
 - **Organization delete cascade**: Uses `unchecked_transaction` to atomically delete prospects, project links, and organization
 - **Git merge conflicts**: `pull()` fails with "Merge conflicts; resolve manually" on conflicting merges
 - **Git unrelated histories**: `pull()` bails if merge analysis shows unrelated histories
