@@ -145,7 +145,8 @@ impl NorthCloudClient {
 }
 
 /// Build a multi-line prospect description from RFP metadata.
-pub fn build_rfp_description(rfp: &RfpData, url: &str) -> String {
+/// Does NOT include closing_date or source_url — those live in dedicated Prospect fields.
+pub fn build_rfp_description(rfp: &RfpData) -> String {
     let mut parts = Vec::new();
     if let Some(org) = &rfp.organization_name {
         if !org.is_empty() {
@@ -157,18 +158,10 @@ pub fn build_rfp_description(rfp: &RfpData, url: &str) -> String {
             parts.push(desc.clone());
         }
     }
-    if let Some(closing) = &rfp.closing_date {
-        if !closing.is_empty() {
-            parts.push(format!("Closing: {}", closing));
-        }
-    }
     if let Some(city) = &rfp.city {
         if !city.is_empty() {
             parts.push(format!("Location: {}", city));
         }
-    }
-    if !url.is_empty() {
-        parts.push(format!("Source: {}", url));
     }
     parts.join("\n")
 }
@@ -256,18 +249,19 @@ mod tests {
             city: Some("Ottawa".into()),
             ..Default::default()
         };
-        let result = build_rfp_description(&rfp, "https://example.com/rfp/1");
+        let result = build_rfp_description(&rfp);
         assert!(result.contains("Issuer: City of Ottawa"));
         assert!(result.contains("Web dev project"));
-        assert!(result.contains("Closing: 2026-04-01"));
         assert!(result.contains("Location: Ottawa"));
-        assert!(result.contains("Source: https://example.com/rfp/1"));
+        // closing date and source URL now live in dedicated Prospect fields
+        assert!(!result.contains("Closing:"));
+        assert!(!result.contains("Source:"));
     }
 
     #[test]
     fn build_rfp_description_minimal() {
         let rfp = RfpData::default();
-        let result = build_rfp_description(&rfp, "");
+        let result = build_rfp_description(&rfp);
         assert_eq!(result, "");
     }
 
@@ -278,7 +272,7 @@ mod tests {
             description: Some("A project".into()),
             ..Default::default()
         };
-        let result = build_rfp_description(&rfp, "");
+        let result = build_rfp_description(&rfp);
         assert!(!result.contains("Issuer:"));
         assert!(result.contains("A project"));
     }
