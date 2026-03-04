@@ -261,7 +261,7 @@ Page {
                                     var r = JSON.parse(raw)
                                     if (r.error) return "Error: " + r.error
                                     if (r.failed > 0) return r.imported + " imported, " + r.failed + " failed"
-                                    return r.imported + " leads imported (" + r.skipped + " skipped)"
+                                    return r.imported + " leads imported"
                                 } catch (e) { return "Error processing results" }
                             }
                             property bool importStatusIsError: {
@@ -373,10 +373,15 @@ Page {
 
                                             model: {
                                                 void(prospectModel.prospect_revision);
-                                                if (stageColumn.stageKey === "lead") {
-                                                    return JSON.parse(prospectModel.lead_prospects_by_urgency());
+                                                try {
+                                                    if (stageColumn.stageKey === "lead") {
+                                                        return JSON.parse(prospectModel.lead_prospects_by_urgency());
+                                                    }
+                                                    return JSON.parse(prospectModel.prospects_for_stage(stageColumn.stageKey));
+                                                } catch (e) {
+                                                    console.error("[Pipeline] JSON parse error for stage '" + stageColumn.stageKey + "':", e);
+                                                    return [];
                                                 }
-                                                return JSON.parse(prospectModel.prospects_for_stage(stageColumn.stageKey));
                                             }
 
                                             delegate: Rectangle {
@@ -399,18 +404,25 @@ Page {
 
                                                 // Staggered animation
                                                 opacity: 0
-                                                Component.onCompleted: {
-                                                    console.log("[ProspectCard] index=" + index
-                                                        + " prospectIndex=" + prospectIndex
-                                                        + " name=" + prospectModel.get_prospect_name(prospectIndex)
-                                                        + " height=" + height
-                                                        + " implicitH=" + prospectCardLayout.implicitHeight)
-                                                    prospectFade.start()
-                                                }
+                                                Component.onCompleted: prospectFade.start()
                                                 SequentialAnimation {
                                                     id: prospectFade
                                                     PauseAnimation { duration: index * 30 }
                                                     NumberAnimation { target: prospectCard; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                                                }
+
+                                                MouseArea {
+                                                    id: prospectMouse
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onClicked: {
+                                                        if (detailPage.selectedProspectIndex === prospectCard.prospectIndex) {
+                                                            detailPage.selectedProspectIndex = -1
+                                                        } else {
+                                                            detailPage.selectedProspectIndex = prospectCard.prospectIndex
+                                                        }
+                                                    }
                                                 }
 
                                                 ColumnLayout {
@@ -573,20 +585,6 @@ Page {
                                                                 }
                                                                 prospectModel.move_prospect(prospectCard.prospectIndex, "lost")
                                                             }
-                                                        }
-                                                    }
-                                                }
-
-                                                MouseArea {
-                                                    id: prospectMouse
-                                                    anchors.fill: parent
-                                                    hoverEnabled: true
-                                                    cursorShape: Qt.PointingHandCursor
-                                                    onClicked: {
-                                                        if (detailPage.selectedProspectIndex === prospectCard.prospectIndex) {
-                                                            detailPage.selectedProspectIndex = -1
-                                                        } else {
-                                                            detailPage.selectedProspectIndex = prospectCard.prospectIndex
                                                         }
                                                     }
                                                 }
@@ -993,8 +991,12 @@ Page {
                         spacing: Theme.spacingSm
 
                         model: {
-                            const projects = JSON.parse(prospectModel.linked_projects());
-                            return projects;
+                            try {
+                                return JSON.parse(prospectModel.linked_projects());
+                            } catch (e) {
+                                console.error("[Pipeline] JSON parse error for linked_projects:", e);
+                                return [];
+                            }
                         }
 
                         delegate: Rectangle {
