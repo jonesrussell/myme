@@ -121,17 +121,13 @@ async fn do_import_rfp_leads(
 
         // Build description from RFP metadata or fall back to hit-level data
         let description = if let Some(r) = rfp {
-            build_rfp_description(r, &hit.url)
+            build_rfp_description(r)
         } else {
-            let mut parts = Vec::new();
-            parts.push(format!("Source: {} — {}", hit.source_name, hit.url));
-            if let Some(snippet) = &hit.snippet {
-                if !snippet.is_empty() {
-                    parts.push(snippet.clone());
-                }
-            }
-            parts.join("\n")
+            hit.snippet.clone().unwrap_or_default()
         };
+
+        let source_url = Some(hit.url.clone());
+        let closing_date = rfp.and_then(|r| r.closing_date.clone());
 
         let value = rfp.map(|r| rfp_budget_string(r)).unwrap_or_default();
         let contact_name = rfp.and_then(|r| r.organization_name.clone()).unwrap_or_default();
@@ -147,6 +143,8 @@ async fn do_import_rfp_leads(
             contact_name: if contact_name.is_empty() { None } else { Some(contact_name) },
             contact_email: if contact_email.is_empty() { None } else { Some(contact_email) },
             contact_role: None,
+            source_url,
+            closing_date,
             created_at: now.clone(),
             updated_at: now.clone(),
         };

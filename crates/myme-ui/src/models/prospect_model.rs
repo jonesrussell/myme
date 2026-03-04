@@ -368,6 +368,8 @@ impl qobject::ProspectModel {
             contact_name: opt_string(contact_name),
             contact_email: opt_string(contact_email),
             contact_role: opt_string(contact_role),
+            source_url: None,
+            closing_date: None,
             created_at: now.clone(),
             updated_at: now,
         };
@@ -435,6 +437,8 @@ impl qobject::ProspectModel {
             contact_name: opt_string(contact_name),
             contact_email: opt_string(contact_email),
             contact_role: opt_string(contact_role),
+            source_url: existing.source_url.clone(),
+            closing_date: existing.closing_date.clone(),
             created_at: existing.created_at,
             updated_at: now,
         };
