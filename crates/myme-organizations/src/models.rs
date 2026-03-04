@@ -68,6 +68,8 @@ pub struct Prospect {
     pub contact_name: Option<String>,
     pub contact_email: Option<String>,
     pub contact_role: Option<String>,
+    pub source_url: Option<String>,
+    pub closing_date: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
