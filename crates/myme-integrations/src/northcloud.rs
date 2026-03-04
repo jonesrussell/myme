@@ -32,7 +32,7 @@ pub struct RfpHit {
     pub rfp: Option<RfpData>,
 }
 
-/// Response from GET /api/v1/search
+/// Response from GET /api/search
 #[derive(Debug, Clone, Deserialize)]
 pub struct RfpSearchResponse {
     pub total_hits: i64,
@@ -86,7 +86,7 @@ impl NorthCloudClient {
     pub async fn search_rfps(&self, params: &RfpSearchParams) -> Result<RfpSearchResponse> {
         let mut url = self
             .base_url
-            .join("/api/v1/search")
+            .join("/api/search")
             .context("failed to build NorthCloud search URL")?;
 
         {
@@ -114,6 +114,27 @@ impl NorthCloudClient {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
             anyhow::bail!("NorthCloud API returned {}: {}", status, body);
+        }
+
+        let content_type_header = response.headers().get(reqwest::header::CONTENT_TYPE);
+        let content_type = match content_type_header {
+            None => "",
+            Some(v) => match v.to_str() {
+                Ok(s) => s,
+                Err(_) => {
+                    tracing::warn!(
+                        "NorthCloud API returned non-UTF-8 Content-Type header: {:?}",
+                        v.as_bytes()
+                    );
+                    ""
+                }
+            },
+        };
+        if !content_type.contains("application/json") {
+            anyhow::bail!(
+                "NorthCloud API returned non-JSON response (Content-Type: {}). Is the API URL correct?",
+                if content_type.is_empty() { "missing" } else { content_type }
+            );
         }
 
         response
@@ -309,7 +330,7 @@ mod tests {
             }]
         });
         wiremock::Mock::given(wiremock::matchers::method("GET"))
-            .and(wiremock::matchers::path("/api/v1/search"))
+            .and(wiremock::matchers::path("/api/search"))
             .and(wiremock::matchers::query_param("content_type", "rfp"))
             .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(&body))
             .mount(&mock_server)
@@ -357,7 +378,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn search_rfps_invalid_json() {
+    async fn search_rfps_non_json_content_type() {
+        // Verifies the content-type guard: a 200 with text/plain triggers a clear error
         let mock_server = wiremock::MockServer::start().await;
         wiremock::Mock::given(wiremock::matchers::any())
             .respond_with(wiremock::ResponseTemplate::new(200).set_body_string("not json"))
@@ -365,7 +387,90 @@ mod tests {
             .await;
 
         let client = NorthCloudClient::new(mock_server.uri()).unwrap();
-        let result = client.search_rfps(&RfpSearchParams::default()).await;
-        assert!(result.is_err());
+        let err = client.search_rfps(&RfpSearchParams::default()).await.unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("non-JSON"),
+            "Should report non-JSON content type: {}",
+            msg
+        );
+    }
+
+    #[tokio::test]
+    async fn search_rfps_invalid_json_with_json_content_type() {
+        // Verifies the JSON parse error path: 200 with application/json but wrong shape
+        // set_body_json ensures content-type: application/json, bypassing the guard
+        let mock_server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::any())
+            .respond_with(
+                wiremock::ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!("this is a string not an object")),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let client = NorthCloudClient::new(mock_server.uri()).unwrap();
+        let err = client.search_rfps(&RfpSearchParams::default()).await.unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("parse"),
+            "Should report JSON parse failure: {}",
+            msg
+        );
+    }
+
+    #[tokio::test]
+    async fn search_rfps_html_response_gives_clear_error() {
+        // The main use case for the content-type guard: login redirect or captive portal
+        // insert_header must come after set_body_string to override text/plain
+        let mock_server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::any())
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_raw(
+                    b"<html><body>Please log in</body></html>".to_vec(),
+                    "text/html; charset=utf-8",
+                ),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let client = NorthCloudClient::new(mock_server.uri()).unwrap();
+        let err = client.search_rfps(&RfpSearchParams::default()).await.unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("non-JSON"),
+            "Should report non-JSON content type: {}",
+            msg
+        );
+        assert!(
+            msg.contains("text/html"),
+            "Should include the actual content type in error: {}",
+            msg
+        );
+    }
+
+    #[tokio::test]
+    async fn search_rfps_default_params_omits_province() {
+        let mock_server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/api/search"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"total_hits": 0, "hits": []})),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let client = NorthCloudClient::new(mock_server.uri()).unwrap();
+        client.search_rfps(&RfpSearchParams::default()).await.unwrap();
+
+        let requests = mock_server.received_requests().await.unwrap();
+        assert_eq!(requests.len(), 1);
+        let query = requests[0].url.query().unwrap_or("");
+        assert!(
+            !query.contains("rfp_province"),
+            "Default params should not include rfp_province, got: {}",
+            query
+        );
     }
 }

@@ -83,7 +83,6 @@ async fn do_import_rfp_leads(
         NorthCloudClient::new(&base_url).map_err(|e| OrganizationError::Network(e.to_string()))?;
 
     let params = RfpSearchParams {
-        rfp_province: Some("on".to_string()),
         page: 1,
         size: 50,
         ..Default::default()

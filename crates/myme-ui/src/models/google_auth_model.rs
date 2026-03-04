@@ -181,7 +181,12 @@ impl qobject::GoogleAuthModel {
                     access_token: token_response.access_token.clone(),
                     refresh_token: token_response.refresh_token,
                     expires_at,
-                    scopes: token_response.scope.split(' ').map(|s| s.to_string()).collect(),
+                    scopes: {
+                        if token_response.scope.is_none() {
+                            tracing::warn!("Google token response missing 'scope' field — storing empty scopes; Gmail/Calendar may fail");
+                        }
+                        token_response.scope.unwrap_or_default().split(' ').filter(|s| !s.is_empty()).map(|s| s.to_string()).collect()
+                    },
                 };
 
                 SecureStorage::store_token("google", &token_set)

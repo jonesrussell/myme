@@ -62,10 +62,10 @@ Page {
         anchors.fill: parent
         anchors.margins: Theme.spacingLg
         clip: true
-        contentWidth: scroll.viewport.width
+        contentWidth: scroll.viewport ? scroll.viewport.width : scroll.width
 
         ColumnLayout {
-            width: scroll.viewport.width
+            width: scroll.viewport ? scroll.viewport.width : scroll.width
             spacing: Theme.spacingLg
 
             // Appearance Section
@@ -104,7 +104,7 @@ Page {
                     GridLayout {
                         Layout.fillWidth: true
                         Layout.topMargin: Theme.spacingSm
-                        columns: Responsive.columnsFor(scroll.viewport.width - Theme.spacingLg * 2 - Theme.spacingMd * 2, 160, 3)
+                        columns: Responsive.columnsFor((scroll.viewport ? scroll.viewport.width : scroll.width) - Theme.spacingLg * 2 - Theme.spacingMd * 2, 160, 3)
                         rowSpacing: Theme.spacingMd
                         columnSpacing: Theme.spacingMd
 

@@ -42,7 +42,7 @@ QtObject {
     property color primary: isDark ? "#818CF8" : "#6366F1"
     property color primaryHover: isDark ? "#6D78F5" : "#4F46E5"
     property color primaryText: isDark ? "#131219" : "#FFFFFF"
-    property color primaryGlow: isDark ? "#818CF840" : "#6366F140"
+    property color primaryGlow: isDark ? "#40818CF8" : "#406366F1"
 
     // Borders
     property color border: isDark ? "#2E2C45" : "#E2E0EE"
@@ -68,7 +68,7 @@ QtObject {
     // Card styling
     property color cardBg: surface
     property color cardBorder: border
-    property color cardBorderSubtle: isDark ? "#ffffff08" : "#00000008"
+    property color cardBorderSubtle: isDark ? "#08ffffff" : "#08000000"
     property int cardRadius: 10
     property int cardPadding: 20
 
@@ -83,7 +83,7 @@ QtObject {
     property int buttonPadding: 12
 
     // Shadows
-    property color shadowColor: isDark ? "#00000080" : "#1E1B2E15"
+    property color shadowColor: isDark ? "#80000000" : "#151E1B2E"
 
     // Typography sizes
     property int fontSizeSmall: 12

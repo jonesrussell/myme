@@ -100,6 +100,7 @@ crates/
 6. **Sidebar is StackView sibling** — in `RowLayout`, not inside StackView (prevents page reload on nav)
 7. **Run `cargo build` before `cmake`** — cxx-qt generates C++ bridge code that cmake needs
 8. **Enum serialization** — use `#[serde(rename_all = "lowercase")]`; `serde_json::to_string()` on bare enums produces quoted strings
+9. **QML 8-digit hex colors are `#AARRGGBB`** — NOT CSS `#RRGGBBAA`. `"#ffffff05"` = opaque yellow, NOT white at 2% opacity. Use `"#05ffffff"` or `Qt.rgba(1,1,1,0.02)`
 
 ## Testing
 
@@ -114,7 +115,7 @@ crates/
 - **Theme**: `Theme.qml` singleton — colors, spacing, fonts. Import via `import ".."`
 - **Icons**: Phosphor font via `Icons.qml` singleton
 - **Fonts**: Outfit variable font; use `font.weight: Font.Bold` for variants
-- **Cards**: `cardRadius: 10`, `cardPadding: 20`, borders `#ffffff08` (dark) / `#00000008` (light)
+- **Cards**: `cardRadius: 10`, `cardPadding: 20`, borders `#08ffffff` (dark) / `#08000000` (light)
 - **Animations**: Staggered delegates: `PauseAnimation { duration: index * 30 }` + opacity 0→1
 - **Keyboard**: Ctrl+1-9 nav, Ctrl+B sidebar toggle, Ctrl+, settings
 - **ES6+**: Qt 6.x QML supports arrow functions, template literals, destructuring

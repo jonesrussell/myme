@@ -85,7 +85,7 @@ Page {
                         }
                     }
                     background: Rectangle {
-                        color: parent.hovered ? (Theme.isDark ? "#ffffff10" : "#00000008") : "transparent"
+                        color: parent.hovered ? (Theme.isDark ? "#10ffffff" : "#08000000") : "transparent"
                         radius: Theme.buttonRadius
                     }
                     onClicked: AppContext.pageStack.pop()
@@ -128,7 +128,7 @@ Page {
                         Layout.preferredHeight: 36
                         Layout.preferredWidth: tabLabel.implicitWidth + Theme.spacingLg * 2
                         radius: Theme.buttonRadius
-                        color: detailPage.currentTab === index ? (Theme.isDark ? "#ffffff15" : "#00000008") : (tabMouse.containsMouse ? (Theme.isDark ? "#ffffff08" : "#00000004") : "transparent")
+                        color: detailPage.currentTab === index ? (Theme.isDark ? "#15ffffff" : "#08000000") : (tabMouse.containsMouse ? (Theme.isDark ? "#08ffffff" : "#04000000") : "transparent")
 
                         Label {
                             id: tabLabel
@@ -257,7 +257,7 @@ Page {
                                 horizontalAlignment: Text.AlignHCenter
                             }
                             background: Rectangle {
-                                color: parent.enabled ? (parent.hovered ? Theme.primaryHover : Theme.primary) : (Theme.isDark ? "#ffffff30" : "#00000020")
+                                color: parent.enabled ? (parent.hovered ? Theme.primaryHover : Theme.primary) : (Theme.isDark ? "#30ffffff" : "#20000000")
                                 radius: Theme.buttonRadius
                                 implicitHeight: 32
                                 implicitWidth: 110
@@ -288,7 +288,7 @@ Page {
                                 Rectangle {
                                     Layout.preferredWidth: 220
                                     Layout.fillHeight: true
-                                    color: Theme.isDark ? "#ffffff05" : "#00000003"
+                                    color: Theme.isDark ? "#05ffffff" : "#03000000"
                                     radius: Theme.cardRadius
                                     border.color: Theme.cardBorderSubtle
                                     border.width: 1
@@ -421,7 +421,7 @@ Page {
                                             background: Rectangle {
                                                 color: parent.hovered ? Theme.surfaceAlt : "transparent"
                                                 radius: Theme.buttonRadius
-                                                border.color: Theme.isDark ? "#ffffff10" : "#00000010"
+                                                border.color: Theme.isDark ? "#10ffffff" : "#10000000"
                                                 border.width: 1
                                                 implicitHeight: 32
                                             }
@@ -529,7 +529,7 @@ Page {
                                         horizontalAlignment: Text.AlignHCenter
                                     }
                                     background: Rectangle {
-                                        color: parent.hovered ? (Theme.isDark ? "#ffffff10" : "#00000008") : "transparent"
+                                        color: parent.hovered ? (Theme.isDark ? "#10ffffff" : "#08000000") : "transparent"
                                         radius: Theme.buttonRadius
                                         implicitWidth: 28
                                         implicitHeight: 28
@@ -598,9 +598,9 @@ Page {
                             placeholderText: "Write notes about this organization..."
 
                             background: Rectangle {
-                                color: Theme.isDark ? "#ffffff05" : "#00000003"
+                                color: Theme.isDark ? "#05ffffff" : "#03000000"
                                 radius: Theme.cardRadius
-                                border.color: notesArea.activeFocus ? Theme.primary : (Theme.isDark ? "#ffffff10" : "#00000010")
+                                border.color: notesArea.activeFocus ? Theme.primary : (Theme.isDark ? "#10ffffff" : "#10000000")
                                 border.width: 1
                             }
                         }
@@ -712,7 +712,7 @@ Page {
                 font.family: Theme.fontFamily
                 DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
                 contentItem: Label { text: parent.text; font: parent.font; color: Theme.textSecondary; horizontalAlignment: Text.AlignHCenter }
-                background: Rectangle { color: parent.hovered ? (Theme.isDark ? "#ffffff10" : "#00000008") : "transparent"; radius: Theme.buttonRadius; implicitHeight: 36 }
+                background: Rectangle { color: parent.hovered ? (Theme.isDark ? "#10ffffff" : "#08000000") : "transparent"; radius: Theme.buttonRadius; implicitHeight: 36 }
             }
 
             Button {
@@ -783,7 +783,7 @@ Page {
                 Layout.rightMargin: Theme.spacingLg
                 Layout.topMargin: Theme.spacingLg
                 contentItem: Label { text: parent.text; font: parent.font; color: "#E57373"; horizontalAlignment: Text.AlignHCenter }
-                background: Rectangle { color: parent.hovered ? "#E5737320" : "transparent"; radius: Theme.buttonRadius; implicitHeight: 32 }
+                background: Rectangle { color: parent.hovered ? "#20E57373" : "transparent"; radius: Theme.buttonRadius; implicitHeight: 32 }
                 onClicked: {
                     prospectModel.delete_prospect(editProspectIndex);
                     editProspectDialog.close();
@@ -861,7 +861,7 @@ Page {
                 font.family: Theme.fontFamily
                 DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
                 contentItem: Label { text: parent.text; font: parent.font; color: Theme.textSecondary; horizontalAlignment: Text.AlignHCenter }
-                background: Rectangle { color: parent.hovered ? (Theme.isDark ? "#ffffff10" : "#00000008") : "transparent"; radius: Theme.buttonRadius; implicitHeight: 36 }
+                background: Rectangle { color: parent.hovered ? (Theme.isDark ? "#10ffffff" : "#08000000") : "transparent"; radius: Theme.buttonRadius; implicitHeight: 36 }
             }
 
             Button {
@@ -948,7 +948,7 @@ Page {
                 font.family: Theme.fontFamily
                 DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
                 contentItem: Label { text: parent.text; font: parent.font; color: Theme.textSecondary; horizontalAlignment: Text.AlignHCenter }
-                background: Rectangle { color: parent.hovered ? (Theme.isDark ? "#ffffff10" : "#00000008") : "transparent"; radius: Theme.buttonRadius; implicitHeight: 36 }
+                background: Rectangle { color: parent.hovered ? (Theme.isDark ? "#10ffffff" : "#08000000") : "transparent"; radius: Theme.buttonRadius; implicitHeight: 36 }
             }
 
             Button {
