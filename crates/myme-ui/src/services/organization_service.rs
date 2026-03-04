@@ -100,7 +100,7 @@ async fn do_import_rfp_leads(
 
     let now = chrono::Utc::now().to_rfc3339();
     let mut imported = 0i32;
-    let mut skipped = 0i32;
+    let skipped = 0i32;
     let mut failed = 0i32;
 
     let store_guard = store.lock();

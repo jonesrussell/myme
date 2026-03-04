@@ -405,7 +405,14 @@ Page {
 
                                                 // Staggered animation
                                                 opacity: 0
-                                                Component.onCompleted: prospectFade.start()
+                                                Component.onCompleted: {
+                                                    console.log("[ProspectCard] index=" + index
+                                                        + " prospectIndex=" + prospectIndex
+                                                        + " name=" + prospectModel.get_prospect_name(prospectIndex)
+                                                        + " height=" + height
+                                                        + " implicitH=" + prospectCardLayout.implicitHeight)
+                                                    prospectFade.start()
+                                                }
                                                 SequentialAnimation {
                                                     id: prospectFade
                                                     PauseAnimation { duration: index * 30 }
