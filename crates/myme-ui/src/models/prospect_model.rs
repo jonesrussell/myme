@@ -54,6 +54,24 @@ pub mod qobject {
         #[qinvokable]
         fn get_prospect_created_at(self: &ProspectModel, index: i32) -> QString;
 
+        #[qinvokable]
+        fn get_prospect_source_url(self: &ProspectModel, index: i32) -> QString;
+
+        #[qinvokable]
+        fn get_prospect_closing_date(self: &ProspectModel, index: i32) -> QString;
+
+        /// Returns JSON array of indices for Lead prospects sorted by closing_date ascending (nulls last).
+        #[qinvokable]
+        fn lead_prospects_by_urgency(self: &ProspectModel) -> QString;
+
+        /// Get notes for the current organization.
+        #[qinvokable]
+        fn get_org_notes(self: &ProspectModel) -> QString;
+
+        /// Save notes for the current organization.
+        #[qinvokable]
+        fn set_org_notes(self: Pin<&mut ProspectModel>, notes: &QString);
+
         /// Returns JSON array of indices for prospects in the given stage
         #[qinvokable]
         fn prospects_for_stage(self: &ProspectModel, stage: &QString) -> QString;
@@ -273,6 +291,77 @@ impl qobject::ProspectModel {
             .get_prospect(index)
             .map(|p| QString::from(&p.created_at))
             .unwrap_or_else(|| QString::from(""))
+    }
+
+    pub fn get_prospect_source_url(&self, index: i32) -> QString {
+        self.rust()
+            .get_prospect(index)
+            .and_then(|p| p.source_url.as_ref())
+            .map(|u| QString::from(u.as_str()))
+            .unwrap_or_else(|| QString::from(""))
+    }
+
+    pub fn get_prospect_closing_date(&self, index: i32) -> QString {
+        self.rust()
+            .get_prospect(index)
+            .and_then(|p| p.closing_date.as_ref())
+            .map(|d| QString::from(d.as_str()))
+            .unwrap_or_else(|| QString::from(""))
+    }
+
+    pub fn lead_prospects_by_urgency(&self) -> QString {
+        let mut lead_indices: Vec<(usize, Option<String>)> = self
+            .rust()
+            .prospects
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| p.stage == ProspectStage::Lead)
+            .map(|(i, p)| (i, p.closing_date.clone()))
+            .collect();
+
+        lead_indices.sort_by(|(_, a_date), (_, b_date)| match (a_date, b_date) {
+            (Some(a), Some(b)) => a.cmp(b),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => std::cmp::Ordering::Equal,
+        });
+
+        let indices: Vec<i32> = lead_indices.into_iter().map(|(i, _)| i as i32).collect();
+        let json = serde_json::to_string(&indices).unwrap_or_else(|_| "[]".to_string());
+        QString::from(&json)
+    }
+
+    pub fn get_org_notes(&self) -> QString {
+        let org_id = self.rust().organization_id.to_string();
+        if org_id.is_empty() {
+            return QString::from("");
+        }
+        let store = match &self.rust().organization_store {
+            Some(s) => s,
+            None => return QString::from(""),
+        };
+        match store.lock().get_org_notes(&org_id) {
+            Ok(notes) => QString::from(notes),
+            Err(e) => {
+                tracing::error!("Failed to get org notes: {}", e);
+                QString::from("")
+            }
+        }
+    }
+
+    pub fn set_org_notes(mut self: Pin<&mut Self>, notes: &QString) {
+        let org_id = self.as_ref().rust().organization_id.to_string();
+        if org_id.is_empty() {
+            return;
+        }
+        let store = match &self.as_ref().rust().organization_store {
+            Some(s) => s.clone(),
+            None => return,
+        };
+        if let Err(e) = store.lock().set_org_notes(&org_id, &notes.to_string()) {
+            tracing::error!("Failed to save org notes: {}", e);
+            self.as_mut().set_error_message(QString::from(format!("Failed to save notes: {}", e)));
+        }
     }
 
     pub fn prospects_for_stage(&self, stage: &QString) -> QString {
