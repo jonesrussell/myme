@@ -68,6 +68,8 @@ pub struct Prospect {
     pub contact_name: Option<String>,
     pub contact_email: Option<String>,
     pub contact_role: Option<String>,
+    pub source_url: Option<String>,      // NEW: direct link to the RFP source
+    pub closing_date: Option<String>,    // NEW: ISO 8601 date e.g. "2026-04-10"
     pub created_at: String,
     pub updated_at: String,
 }
