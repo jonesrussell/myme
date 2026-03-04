@@ -183,6 +183,25 @@ CxxQtBuilder::new_qml_module(QmlModule::new("myme_ui"))
     .build();
 ```
 
+### ProspectModel Invokables (crates/myme-ui/src/models/prospect_model.rs)
+
+```rust
+// All methods are #[qinvokable] — called from QML with snake_case names.
+
+impl ProspectModelRust {
+    // Per-row field accessors
+    pub fn get_prospect_source_url(&self, index: i32) -> QString;    // "" if index out of range or field absent
+    pub fn get_prospect_closing_date(&self, index: i32) -> QString;  // "" if index out of range or field absent
+
+    // Sorting / filtering
+    pub fn lead_prospects_by_urgency(&self) -> QString;  // JSON array of Lead prospect indices sorted by closing_date ASC, None last
+
+    // Organization notes
+    pub fn get_org_notes(&self) -> QString;              // notes for the current organization
+    pub fn set_org_notes(&self, notes: &QString);        // save notes for the current organization
+}
+```
+
 ## Data Flow
 
 ### Channel-Based Async Pattern (used by all models)

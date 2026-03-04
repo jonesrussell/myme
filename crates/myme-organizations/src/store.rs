@@ -4,7 +4,7 @@ use std::path::Path;
 
 use crate::models::{Organization, Prospect, ProspectStage};
 
-const SCHEMA_VERSION: i32 = 1;
+const SCHEMA_VERSION: i32 = 2;
 
 /// Local SQLite storage for organizations and prospects
 pub struct OrganizationStore {
@@ -32,56 +32,74 @@ impl OrganizationStore {
             .optional()?
             .unwrap_or(0);
 
-        if version < SCHEMA_VERSION {
-            self.conn.execute_batch(
-                "BEGIN TRANSACTION;
+        if version < 1 {
+            // Fresh database: create all tables with current (v2) schema
+            self.conn
+                .execute_batch(
+                    "BEGIN TRANSACTION;
 
-                CREATE TABLE IF NOT EXISTS organizations (
-                    id TEXT PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    description TEXT,
-                    website TEXT,
-                    contact_name TEXT,
-                    contact_email TEXT,
-                    contact_phone TEXT,
-                    contact_role TEXT,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
-                );
+                    CREATE TABLE IF NOT EXISTS organizations (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        description TEXT,
+                        website TEXT,
+                        contact_name TEXT,
+                        contact_email TEXT,
+                        contact_phone TEXT,
+                        contact_role TEXT,
+                        notes TEXT,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL
+                    );
 
-                CREATE TABLE IF NOT EXISTS prospects (
-                    id TEXT PRIMARY KEY,
-                    organization_id TEXT NOT NULL,
-                    name TEXT NOT NULL,
-                    description TEXT,
-                    stage TEXT NOT NULL,
-                    value TEXT,
-                    contact_name TEXT,
-                    contact_email TEXT,
-                    contact_role TEXT,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL,
-                    FOREIGN KEY (organization_id) REFERENCES organizations(id)
-                );
+                    CREATE TABLE IF NOT EXISTS prospects (
+                        id TEXT PRIMARY KEY,
+                        organization_id TEXT NOT NULL,
+                        name TEXT NOT NULL,
+                        description TEXT,
+                        stage TEXT NOT NULL,
+                        value TEXT,
+                        contact_name TEXT,
+                        contact_email TEXT,
+                        contact_role TEXT,
+                        source_url TEXT,
+                        closing_date TEXT,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL,
+                        FOREIGN KEY (organization_id) REFERENCES organizations(id)
+                    );
 
-                CREATE TABLE IF NOT EXISTS organization_projects (
-                    organization_id TEXT NOT NULL,
-                    project_id TEXT NOT NULL,
-                    PRIMARY KEY (organization_id, project_id),
-                    FOREIGN KEY (organization_id) REFERENCES organizations(id)
-                );
+                    CREATE TABLE IF NOT EXISTS organization_projects (
+                        organization_id TEXT NOT NULL,
+                        project_id TEXT NOT NULL,
+                        PRIMARY KEY (organization_id, project_id),
+                        FOREIGN KEY (organization_id) REFERENCES organizations(id)
+                    );
 
-                CREATE INDEX IF NOT EXISTS idx_prospects_org ON prospects(organization_id);
-                CREATE INDEX IF NOT EXISTS idx_prospects_stage ON prospects(stage);
-                CREATE INDEX IF NOT EXISTS idx_org_projects_org ON organization_projects(organization_id);
-                CREATE INDEX IF NOT EXISTS idx_org_projects_proj ON organization_projects(project_id);
+                    CREATE INDEX IF NOT EXISTS idx_prospects_org ON prospects(organization_id);
+                    CREATE INDEX IF NOT EXISTS idx_prospects_stage ON prospects(stage);
+                    CREATE INDEX IF NOT EXISTS idx_org_projects_org ON organization_projects(organization_id);
+                    CREATE INDEX IF NOT EXISTS idx_org_projects_proj ON organization_projects(project_id);
 
-                DELETE FROM schema_version;
-                INSERT INTO schema_version (version) VALUES (1);
+                    DELETE FROM schema_version;
+                    INSERT INTO schema_version (version) VALUES (2);
 
-                COMMIT;",
-            )
-            .context("Failed to initialize schema")?;
+                    COMMIT;",
+                )
+                .context("Failed to initialize schema")?;
+        } else if version < 2 {
+            // Upgrade existing v1 database: add new columns
+            self.conn
+                .execute_batch(
+                    "BEGIN TRANSACTION;
+                    ALTER TABLE prospects ADD COLUMN source_url TEXT;
+                    ALTER TABLE prospects ADD COLUMN closing_date TEXT;
+                    ALTER TABLE organizations ADD COLUMN notes TEXT;
+                    DELETE FROM schema_version;
+                    INSERT INTO schema_version (version) VALUES (2);
+                    COMMIT;",
+                )
+                .context("Failed to migrate schema to v2")?;
         }
 
         Ok(())
@@ -184,6 +202,32 @@ impl OrganizationStore {
         Ok(())
     }
 
+    /// Get the notes for an organization. Returns empty string if none.
+    pub fn get_org_notes(&self, org_id: &str) -> Result<String> {
+        let notes: Option<String> = self
+            .conn
+            .query_row("SELECT notes FROM organizations WHERE id = ?1", [org_id], |row| row.get(0))
+            .optional()?
+            .flatten();
+        Ok(notes.unwrap_or_default())
+    }
+
+    /// Set the notes for an organization.
+    pub fn set_org_notes(&self, org_id: &str, notes: &str) -> Result<()> {
+        let now = chrono::Utc::now().to_rfc3339();
+        let rows = self.conn.execute(
+            "UPDATE organizations SET notes = ?1, updated_at = ?2 WHERE id = ?3",
+            params![notes, now, org_id],
+        )?;
+        if rows == 0 {
+            return Err(anyhow::anyhow!(
+                "set_org_notes: no organization found with id '{}' — notes not saved",
+                org_id
+            ));
+        }
+        Ok(())
+    }
+
     // =========== Prospects ===========
 
     /// Insert or update a prospect
@@ -191,8 +235,8 @@ impl OrganizationStore {
         let stage_str = serde_json::to_string(&prospect.stage)?;
 
         self.conn.execute(
-            "INSERT INTO prospects (id, organization_id, name, description, stage, value, contact_name, contact_email, contact_role, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+            "INSERT INTO prospects (id, organization_id, name, description, stage, value, contact_name, contact_email, contact_role, source_url, closing_date, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
              ON CONFLICT(id) DO UPDATE SET
                 name = excluded.name,
                 description = excluded.description,
@@ -201,6 +245,8 @@ impl OrganizationStore {
                 contact_name = excluded.contact_name,
                 contact_email = excluded.contact_email,
                 contact_role = excluded.contact_role,
+                source_url = excluded.source_url,
+                closing_date = excluded.closing_date,
                 updated_at = excluded.updated_at",
             params![
                 prospect.id,
@@ -212,6 +258,8 @@ impl OrganizationStore {
                 prospect.contact_name,
                 prospect.contact_email,
                 prospect.contact_role,
+                prospect.source_url,
+                prospect.closing_date,
                 prospect.created_at,
                 prospect.updated_at,
             ],
@@ -222,7 +270,7 @@ impl OrganizationStore {
     /// Get prospects for an organization
     pub fn list_prospects(&self, organization_id: &str) -> Result<Vec<Prospect>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, organization_id, name, description, stage, value, contact_name, contact_email, contact_role, created_at, updated_at
+            "SELECT id, organization_id, name, description, stage, value, contact_name, contact_email, contact_role, source_url, closing_date, created_at, updated_at
              FROM prospects WHERE organization_id = ?1 ORDER BY created_at",
         )?;
 
@@ -250,8 +298,10 @@ impl OrganizationStore {
                     contact_name: row.get(6)?,
                     contact_email: row.get(7)?,
                     contact_role: row.get(8)?,
-                    created_at: row.get(9)?,
-                    updated_at: row.get(10)?,
+                    source_url: row.get(9)?,
+                    closing_date: row.get(10)?,
+                    created_at: row.get(11)?,
+                    updated_at: row.get(12)?,
                 })
             })?
             .collect::<Result<Vec<_>, _>>()?;
@@ -399,6 +449,8 @@ mod tests {
             contact_name: None,
             contact_email: None,
             contact_role: None,
+            source_url: None,
+            closing_date: None,
             created_at: "2026-03-02T00:00:00Z".to_string(),
             updated_at: "2026-03-02T00:00:00Z".to_string(),
         };
@@ -422,6 +474,8 @@ mod tests {
             contact_name: Some("Jane Doe".to_string()),
             contact_email: None,
             contact_role: None,
+            source_url: None,
+            closing_date: None,
             created_at: "2026-03-02T00:00:00Z".to_string(),
             updated_at: "2026-03-02T00:00:00Z".to_string(),
         };
@@ -445,6 +499,8 @@ mod tests {
             contact_name: None,
             contact_email: None,
             contact_role: None,
+            source_url: None,
+            closing_date: None,
             created_at: "2026-03-02T00:00:00Z".to_string(),
             updated_at: "2026-03-02T00:00:00Z".to_string(),
         };
@@ -471,6 +527,8 @@ mod tests {
                 contact_name: None,
                 contact_email: None,
                 contact_role: None,
+                source_url: None,
+                closing_date: None,
                 created_at: "2026-03-02T00:00:00Z".to_string(),
                 updated_at: "2026-03-02T00:00:00Z".to_string(),
             };
@@ -540,6 +598,8 @@ mod tests {
             contact_name: Some("Alice".to_string()),
             contact_email: Some("alice@example.com".to_string()),
             contact_role: Some("Manager".to_string()),
+            source_url: None,
+            closing_date: None,
             created_at: "2026-03-02T00:00:00Z".to_string(),
             updated_at: "2026-03-02T00:00:00Z".to_string(),
         };
@@ -566,6 +626,14 @@ mod tests {
         assert_eq!(prospects[0].contact_email.as_deref(), Some("bob@example.com"));
         assert_eq!(prospects[0].contact_role.as_deref(), Some("Director"));
         assert_eq!(prospects[0].updated_at, "2026-04-01T00:00:00Z");
+
+        // also update the new fields
+        updated.source_url = Some("https://example.com/rfp/updated".to_string());
+        updated.closing_date = Some("2026-05-01".to_string());
+        store.upsert_prospect(&updated).unwrap();
+        let prospects = store.list_prospects("org-1").unwrap();
+        assert_eq!(prospects[0].source_url.as_deref(), Some("https://example.com/rfp/updated"));
+        assert_eq!(prospects[0].closing_date.as_deref(), Some("2026-05-01"));
     }
 
     #[test]
@@ -584,5 +652,133 @@ mod tests {
             assert_eq!(orgs.len(), 1);
             assert_eq!(orgs[0].name, "Web Networks");
         }
+    }
+
+    #[test]
+    fn test_prospect_source_url_and_closing_date() {
+        let (store, _dir) = test_store();
+        store.upsert_organization(&test_org()).unwrap();
+        let prospect = Prospect {
+            id: "p-rfp".to_string(),
+            organization_id: "org-1".to_string(),
+            name: "Air Quality RFP".to_string(),
+            description: None,
+            stage: ProspectStage::Lead,
+            value: None,
+            contact_name: None,
+            contact_email: None,
+            contact_role: None,
+            source_url: Some("https://buyandsell.gc.ca/rfp/123".to_string()),
+            closing_date: Some("2026-04-10".to_string()),
+            created_at: "2026-03-03T00:00:00Z".to_string(),
+            updated_at: "2026-03-03T00:00:00Z".to_string(),
+        };
+        store.upsert_prospect(&prospect).unwrap();
+        let loaded = store.list_prospects("org-1").unwrap();
+        assert_eq!(loaded[0].source_url.as_deref(), Some("https://buyandsell.gc.ca/rfp/123"));
+        assert_eq!(loaded[0].closing_date.as_deref(), Some("2026-04-10"));
+    }
+
+    #[test]
+    fn test_org_notes_get_set() {
+        let (store, _dir) = test_store();
+        store.upsert_organization(&test_org()).unwrap();
+        // defaults to empty
+        assert_eq!(store.get_org_notes("org-1").unwrap(), "");
+        // set and retrieve
+        store.set_org_notes("org-1", "Follow up next week").unwrap();
+        assert_eq!(store.get_org_notes("org-1").unwrap(), "Follow up next week");
+        // overwrite
+        store.set_org_notes("org-1", "Updated notes").unwrap();
+        assert_eq!(store.get_org_notes("org-1").unwrap(), "Updated notes");
+    }
+
+    #[test]
+    fn test_fresh_db_initialises_at_v2() {
+        // Verifies that a fresh store lands on v2 and has the new columns
+        let (store, _dir) = test_store();
+        let ver: i32 = store
+            .conn
+            .query_row("SELECT version FROM schema_version LIMIT 1", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(ver, 2);
+        // Insert an org first so FK constraint is satisfied
+        store.conn.execute(
+            "INSERT INTO organizations (id, name, created_at, updated_at) VALUES ('x', 'Test Org', 'now', 'now')",
+            [],
+        ).unwrap();
+        // new columns exist — insert would fail if they didn't
+        store.conn.execute(
+            "INSERT INTO prospects (id, organization_id, name, stage, source_url, closing_date, created_at, updated_at)
+             VALUES ('t', 'x', 'n', '\"lead\"', 'https://x.com', '2026-01-01', 'now', 'now')",
+            [],
+        ).unwrap();
+    }
+
+    #[test]
+    fn test_schema_migration_real_v1_to_v2() {
+        use rusqlite::Connection;
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join("v1.db");
+
+        // Build a v1 schema manually (no source_url, closing_date, notes columns)
+        {
+            let conn = Connection::open(&db_path).unwrap();
+            conn.execute_batch(
+                "PRAGMA foreign_keys = ON;
+                 CREATE TABLE schema_version (version INTEGER NOT NULL);
+                 CREATE TABLE organizations (
+                     id TEXT PRIMARY KEY,
+                     name TEXT NOT NULL,
+                     description TEXT,
+                     website TEXT,
+                     contact_name TEXT,
+                     contact_email TEXT,
+                     contact_phone TEXT,
+                     contact_role TEXT,
+                     created_at TEXT NOT NULL,
+                     updated_at TEXT NOT NULL
+                 );
+                 CREATE TABLE prospects (
+                     id TEXT PRIMARY KEY,
+                     organization_id TEXT NOT NULL,
+                     name TEXT NOT NULL,
+                     description TEXT,
+                     stage TEXT NOT NULL,
+                     value TEXT,
+                     contact_name TEXT,
+                     contact_email TEXT,
+                     contact_role TEXT,
+                     created_at TEXT NOT NULL,
+                     updated_at TEXT NOT NULL,
+                     FOREIGN KEY (organization_id) REFERENCES organizations(id)
+                 );
+                 INSERT INTO schema_version (version) VALUES (1);
+                 INSERT INTO organizations (id, name, created_at, updated_at) VALUES ('o1', 'Test Org', 'now', 'now');
+                 INSERT INTO prospects (id, organization_id, name, stage, created_at, updated_at)
+                     VALUES ('p1', 'o1', 'Old RFP', '\"lead\"', 'now', 'now');",
+            ).unwrap();
+        }
+
+        // Open with the current store — triggers the v1→v2 migration
+        let store = OrganizationStore::open(&db_path).unwrap();
+
+        // Schema version bumped to 2
+        let ver: i32 = store
+            .conn
+            .query_row("SELECT version FROM schema_version LIMIT 1", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(ver, 2);
+
+        // Existing row is still readable
+        let prospects = store.list_prospects("o1").unwrap();
+        assert_eq!(prospects.len(), 1);
+        assert_eq!(prospects[0].id, "p1");
+        assert!(prospects[0].source_url.is_none());
+        assert!(prospects[0].closing_date.is_none());
+
+        // New columns are writable
+        store.set_org_notes("o1", "migrated notes").unwrap();
+        assert_eq!(store.get_org_notes("o1").unwrap(), "migrated notes");
     }
 }

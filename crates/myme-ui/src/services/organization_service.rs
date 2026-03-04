@@ -79,17 +79,21 @@ async fn do_import_rfp_leads(
     let config = myme_core::Config::load_cached();
     let base_url = config.northcloud.base_url.clone();
 
+    tracing::info!("RFP import: fetching from {} for org {}", base_url, org_id);
+
     let client =
         NorthCloudClient::new(&base_url).map_err(|e| OrganizationError::Network(e.to_string()))?;
 
-    let params = RfpSearchParams {
-        page: 1,
-        size: 50,
-        ..Default::default()
-    };
+    let params = RfpSearchParams { page: 1, size: 50, ..Default::default() };
 
     let response =
         client.search_rfps(&params).await.map_err(|e| OrganizationError::Network(e.to_string()))?;
+
+    tracing::info!(
+        "RFP import: API returned {} hits (total_hits: {})",
+        response.hits.len(),
+        response.total_hits
+    );
 
     let store = crate::app_services::organization_store_or_init()
         .ok_or(OrganizationError::NotInitialized)?;
@@ -101,34 +105,73 @@ async fn do_import_rfp_leads(
 
     let store_guard = store.lock();
     for hit in &response.hits {
-        let rfp = match &hit.rfp {
-            Some(r) => r,
-            None => {
-                skipped += 1;
-                continue;
+        let has_rfp_metadata = hit.rfp.is_some();
+        let rfp = hit.rfp.as_ref();
+
+        // Use RFP metadata title if available, otherwise fall back to hit title
+        let name = rfp
+            .and_then(|r| r.title.as_deref())
+            .filter(|s| !s.is_empty())
+            .unwrap_or(&hit.title)
+            .to_string();
+
+        // Build description from RFP metadata or fall back to hit-level data
+        let description = if let Some(r) = rfp {
+            build_rfp_description(r)
+        } else {
+            skipped += 1;
+            hit.snippet.clone().unwrap_or_default()
+        };
+
+        let source_url = {
+            let raw = &hit.url;
+            if url::Url::parse(raw).is_ok() {
+                Some(raw.clone())
+            } else {
+                tracing::warn!("source_url '{}' is not a valid URL — ignoring", raw);
+                None
             }
         };
 
-        let name = rfp.title.as_deref().filter(|s| !s.is_empty()).unwrap_or(&hit.title).to_string();
+        let closing_date = rfp
+            .and_then(|r| r.closing_date.as_deref())
+            .and_then(|s| {
+                use chrono::NaiveDate;
+                NaiveDate::parse_from_str(s, "%Y-%m-%d")
+                    .or_else(|_| chrono::DateTime::parse_from_rfc3339(s).map(|dt| dt.date_naive()))
+                    .map_err(|_| {
+                        tracing::warn!("closing_date '{}' is not ISO 8601 — ignoring", s);
+                    })
+                    .ok()
+            })
+            .map(|d| d.format("%Y-%m-%d").to_string());
 
-        let description = build_rfp_description(rfp, &hit.url);
-        let value = rfp_budget_string(rfp);
-        let contact_name = rfp.organization_name.clone().unwrap_or_default();
-        let contact_email = rfp.contact_email.clone().unwrap_or_default();
+        let value = rfp.map(|r| rfp_budget_string(r)).unwrap_or_default();
+        let contact_name = rfp.and_then(|r| r.organization_name.clone()).unwrap_or_default();
+        let contact_email = rfp.and_then(|r| r.contact_email.clone()).unwrap_or_default();
 
         let prospect = Prospect {
             id: format!("nc-{}", hit.id),
             organization_id: org_id.to_string(),
             name,
-            description: Some(description),
+            description: if description.is_empty() { None } else { Some(description) },
             stage: ProspectStage::Lead,
             value: if value.is_empty() { None } else { Some(value) },
             contact_name: if contact_name.is_empty() { None } else { Some(contact_name) },
             contact_email: if contact_email.is_empty() { None } else { Some(contact_email) },
             contact_role: None,
+            source_url,
+            closing_date,
             created_at: now.clone(),
             updated_at: now.clone(),
         };
+
+        tracing::info!(
+            "RFP import: processing hit '{}' (id={}, has_rfp_metadata={})",
+            prospect.name,
+            hit.id,
+            has_rfp_metadata,
+        );
 
         match store_guard.upsert_prospect(&prospect) {
             Ok(_) => imported += 1,
@@ -145,6 +188,13 @@ async fn do_import_rfp_leads(
         .map_err(|e| OrganizationError::Database(e.to_string()))?;
 
     drop(store_guard);
+
+    tracing::info!(
+        "RFP import complete: {} imported, {} skipped, {} failed",
+        imported,
+        skipped,
+        failed,
+    );
 
     Ok((RfpImportResult { imported, skipped, failed }, prospects))
 }
