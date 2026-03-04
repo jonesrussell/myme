@@ -23,6 +23,7 @@ Page {
         var parts = dateStr.split("-")
         if (parts.length < 3) return -1
         var d = new Date(parts[0], parts[1] - 1, parts[2])
+        if (isNaN(d.getTime())) return -1
         var today = new Date()
         today.setHours(0, 0, 0, 0)
         return Math.ceil((d - today) / 86400000)
@@ -1484,6 +1485,5 @@ Page {
 
     Component.onCompleted: {
         prospectModel.load_prospects(detailPage.organizationId);
-        notesArea.text = prospectModel.get_org_notes()
     }
 }

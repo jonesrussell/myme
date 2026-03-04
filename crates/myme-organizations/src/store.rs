@@ -694,6 +694,15 @@ mod tests {
     }
 
     #[test]
+    fn test_set_org_notes_nonexistent_org_errors() {
+        let (store, _dir) = test_store();
+        let result = store.set_org_notes("no-such-org", "some notes");
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("no organization found"), "Expected 'no organization found' in: {}", msg);
+    }
+
+    #[test]
     fn test_fresh_db_initialises_at_v2() {
         // Verifies that a fresh store lands on v2 and has the new columns
         let (store, _dir) = test_store();
