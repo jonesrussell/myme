@@ -219,10 +219,16 @@ impl OrganizationStore {
     /// Set the notes for an organization.
     pub fn set_org_notes(&self, org_id: &str, notes: &str) -> Result<()> {
         let now = chrono::Utc::now().to_rfc3339();
-        self.conn.execute(
+        let rows = self.conn.execute(
             "UPDATE organizations SET notes = ?1, updated_at = ?2 WHERE id = ?3",
             params![notes, now, org_id],
         )?;
+        if rows == 0 {
+            return Err(anyhow::anyhow!(
+                "set_org_notes: no organization found with id '{}' — notes not saved",
+                org_id
+            ));
+        }
         Ok(())
     }
 
@@ -624,6 +630,14 @@ mod tests {
         assert_eq!(prospects[0].contact_email.as_deref(), Some("bob@example.com"));
         assert_eq!(prospects[0].contact_role.as_deref(), Some("Director"));
         assert_eq!(prospects[0].updated_at, "2026-04-01T00:00:00Z");
+
+        // also update the new fields
+        updated.source_url = Some("https://example.com/rfp/updated".to_string());
+        updated.closing_date = Some("2026-05-01".to_string());
+        store.upsert_prospect(&updated).unwrap();
+        let prospects = store.list_prospects("org-1").unwrap();
+        assert_eq!(prospects[0].source_url.as_deref(), Some("https://example.com/rfp/updated"));
+        assert_eq!(prospects[0].closing_date.as_deref(), Some("2026-05-01"));
     }
 
     #[test]
@@ -684,7 +698,7 @@ mod tests {
     }
 
     #[test]
-    fn test_schema_migration_v1_to_v2() {
+    fn test_fresh_db_initialises_at_v2() {
         // Verifies that a fresh store lands on v2 and has the new columns
         let (store, _dir) = test_store();
         let ver: i32 = store.conn.query_row(
@@ -704,5 +718,71 @@ mod tests {
              VALUES ('t', 'x', 'n', '\"lead\"', 'https://x.com', '2026-01-01', 'now', 'now')",
             [],
         ).unwrap();
+    }
+
+    #[test]
+    fn test_schema_migration_real_v1_to_v2() {
+        use rusqlite::Connection;
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join("v1.db");
+
+        // Build a v1 schema manually (no source_url, closing_date, notes columns)
+        {
+            let conn = Connection::open(&db_path).unwrap();
+            conn.execute_batch(
+                "PRAGMA foreign_keys = ON;
+                 CREATE TABLE schema_version (version INTEGER NOT NULL);
+                 CREATE TABLE organizations (
+                     id TEXT PRIMARY KEY,
+                     name TEXT NOT NULL,
+                     description TEXT,
+                     website TEXT,
+                     contact_name TEXT,
+                     contact_email TEXT,
+                     contact_phone TEXT,
+                     contact_role TEXT,
+                     created_at TEXT NOT NULL,
+                     updated_at TEXT NOT NULL
+                 );
+                 CREATE TABLE prospects (
+                     id TEXT PRIMARY KEY,
+                     organization_id TEXT NOT NULL,
+                     name TEXT NOT NULL,
+                     description TEXT,
+                     stage TEXT NOT NULL,
+                     value TEXT,
+                     contact_name TEXT,
+                     contact_email TEXT,
+                     contact_role TEXT,
+                     created_at TEXT NOT NULL,
+                     updated_at TEXT NOT NULL,
+                     FOREIGN KEY (organization_id) REFERENCES organizations(id)
+                 );
+                 INSERT INTO schema_version (version) VALUES (1);
+                 INSERT INTO organizations (id, name, created_at, updated_at) VALUES ('o1', 'Test Org', 'now', 'now');
+                 INSERT INTO prospects (id, organization_id, name, stage, created_at, updated_at)
+                     VALUES ('p1', 'o1', 'Old RFP', '\"lead\"', 'now', 'now');",
+            ).unwrap();
+        }
+
+        // Open with the current store — triggers the v1→v2 migration
+        let store = OrganizationStore::open(&db_path).unwrap();
+
+        // Schema version bumped to 2
+        let ver: i32 = store.conn.query_row(
+            "SELECT version FROM schema_version LIMIT 1", [], |r| r.get(0)
+        ).unwrap();
+        assert_eq!(ver, 2);
+
+        // Existing row is still readable
+        let prospects = store.list_prospects("o1").unwrap();
+        assert_eq!(prospects.len(), 1);
+        assert_eq!(prospects[0].id, "p1");
+        assert!(prospects[0].source_url.is_none());
+        assert!(prospects[0].closing_date.is_none());
+
+        // New columns are writable
+        store.set_org_notes("o1", "migrated notes").unwrap();
+        assert_eq!(store.get_org_notes("o1").unwrap(), "migrated notes");
     }
 }

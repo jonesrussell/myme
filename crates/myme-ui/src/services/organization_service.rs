@@ -104,7 +104,7 @@ async fn do_import_rfp_leads(
 
     let now = chrono::Utc::now().to_rfc3339();
     let mut imported = 0i32;
-    let skipped = 0i32;
+    let mut skipped = 0i32;
     let mut failed = 0i32;
 
     let store_guard = store.lock();
@@ -123,11 +123,35 @@ async fn do_import_rfp_leads(
         let description = if let Some(r) = rfp {
             build_rfp_description(r)
         } else {
+            skipped += 1;
             hit.snippet.clone().unwrap_or_default()
         };
 
-        let source_url = Some(hit.url.clone());
-        let closing_date = rfp.and_then(|r| r.closing_date.clone());
+        let source_url = {
+            let raw = &hit.url;
+            if url::Url::parse(raw).is_ok() {
+                Some(raw.clone())
+            } else {
+                tracing::warn!("source_url '{}' is not a valid URL — ignoring", raw);
+                None
+            }
+        };
+
+        let closing_date = rfp
+            .and_then(|r| r.closing_date.as_deref())
+            .and_then(|s| {
+                use chrono::NaiveDate;
+                NaiveDate::parse_from_str(s, "%Y-%m-%d")
+                    .or_else(|_| {
+                        chrono::DateTime::parse_from_rfc3339(s)
+                            .map(|dt| dt.date_naive())
+                    })
+                    .map_err(|_| {
+                        tracing::warn!("closing_date '{}' is not ISO 8601 — ignoring", s);
+                    })
+                    .ok()
+            })
+            .map(|d| d.format("%Y-%m-%d").to_string());
 
         let value = rfp.map(|r| rfp_budget_string(r)).unwrap_or_default();
         let contact_name = rfp.and_then(|r| r.organization_name.clone()).unwrap_or_default();

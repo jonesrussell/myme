@@ -310,23 +310,10 @@ impl qobject::ProspectModel {
     }
 
     pub fn lead_prospects_by_urgency(&self) -> QString {
-        let mut lead_indices: Vec<(usize, Option<String>)> = self
-            .rust()
-            .prospects
-            .iter()
-            .enumerate()
-            .filter(|(_, p)| p.stage == ProspectStage::Lead)
-            .map(|(i, p)| (i, p.closing_date.clone()))
+        let indices: Vec<i32> = myme_organizations::models::lead_indices_by_urgency(&self.rust().prospects)
+            .into_iter()
+            .map(|i| i as i32)
             .collect();
-
-        lead_indices.sort_by(|(_, a_date), (_, b_date)| match (a_date, b_date) {
-            (Some(a), Some(b)) => a.cmp(b),
-            (Some(_), None) => std::cmp::Ordering::Less,
-            (None, Some(_)) => std::cmp::Ordering::Greater,
-            (None, None) => std::cmp::Ordering::Equal,
-        });
-
-        let indices: Vec<i32> = lead_indices.into_iter().map(|(i, _)| i as i32).collect();
         let json = serde_json::to_string(&indices).unwrap_or_else(|_| "[]".to_string());
         QString::from(&json)
     }
@@ -334,11 +321,15 @@ impl qobject::ProspectModel {
     pub fn get_org_notes(&self) -> QString {
         let org_id = self.rust().organization_id.to_string();
         if org_id.is_empty() {
+            tracing::warn!("get_org_notes called before organization_id is set");
             return QString::from("");
         }
         let store = match &self.rust().organization_store {
             Some(s) => s,
-            None => return QString::from(""),
+            None => {
+                tracing::warn!("get_org_notes: store not initialized");
+                return QString::from("");
+            }
         };
         match store.lock().get_org_notes(&org_id) {
             Ok(notes) => QString::from(notes),
@@ -352,11 +343,15 @@ impl qobject::ProspectModel {
     pub fn set_org_notes(mut self: Pin<&mut Self>, notes: &QString) {
         let org_id = self.as_ref().rust().organization_id.to_string();
         if org_id.is_empty() {
+            tracing::warn!("set_org_notes called with no organization_id set — notes discarded");
             return;
         }
         let store = match &self.as_ref().rust().organization_store {
             Some(s) => s.clone(),
-            None => return,
+            None => {
+                tracing::warn!("set_org_notes: store not initialized — notes discarded");
+                return;
+            }
         };
         if let Err(e) = store.lock().set_org_notes(&org_id, &notes.to_string()) {
             tracing::error!("Failed to save org notes: {}", e);
