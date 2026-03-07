@@ -30,3 +30,9 @@ settings.local.json
 .worktrees/
 
 node_modules/
+
+# Playwright MCP browser data
+.playwright-mcp/
+
+# Development/debugging screenshots
+*.png
