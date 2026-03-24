@@ -3,5 +3,19 @@
     "superpowers@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tools/drift-detector.sh 20 2>&1",
+            "show_output": true
+          }
+        ]
+      }
+    ]
   }
 }
